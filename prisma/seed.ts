@@ -6,6 +6,10 @@
  *   - Team A: 1 coach + 8 players
  *   - Team B: 1 coach + 3 players (proves the multi-team data model works)
  *
+ * Most players are fully onboarded. Two Team A players (Andre Washington and
+ * Brandon Lee) are left NOT onboarded — they have no PlayerProfile yet — so the
+ * forced onboarding flow can be tested end to end.
+ *
  * Safe to re-run: it wipes and recreates the seeded data each time.
  * Run with: npm run seed   (or it runs automatically on `prisma migrate reset`)
  */
@@ -26,17 +30,20 @@ type PlayerSeed = {
   favoritePlayer: string;
   favoriteTeam: string;
   points: number;
+  // Defaults to true. When false, the player is created without a profile so
+  // they must complete onboarding in the app.
+  onboarded?: boolean;
 };
 
 const teamAPlayers: PlayerSeed[] = [
   { name: "Jordan Carter", email: "jordan.carter@example.com", dream: "Play Division I basketball and earn a full scholarship.", heightInches: 70, position: "Point Guard", jerseyNumber: 3, ppg: 14.2, rpg: 3.1, apg: 5.4, favoritePlayer: "Stephen Curry", favoriteTeam: "Golden State Warriors", points: 320 },
   { name: "Malik Johnson", email: "malik.johnson@example.com", dream: "Earn a spot in my varsity team's starting five this season.", heightInches: 74, position: "Forward", jerseyNumber: 21, ppg: 11.5, rpg: 7.8, apg: 1.9, favoritePlayer: "LeBron James", favoriteTeam: "Los Angeles Lakers", points: 280 },
   { name: "Tyler Nguyen", email: "tyler.nguyen@example.com", dream: "Become the best on-ball defender on my team.", heightInches: 71, position: "Shooting Guard", jerseyNumber: 5, ppg: 8.3, rpg: 2.4, apg: 4.1, favoritePlayer: "Jrue Holiday", favoriteTeam: "Boston Celtics", points: 245 },
-  { name: "Andre Washington", email: "andre.washington@example.com", dream: "Dunk in a real game by the end of the year.", heightInches: 76, position: "Center", jerseyNumber: 34, ppg: 9.9, rpg: 9.2, apg: 1.2, favoritePlayer: "Giannis Antetokounmpo", favoriteTeam: "Milwaukee Bucks", points: 300 },
+  { name: "Andre Washington", email: "andre.washington@example.com", dream: "Dunk in a real game by the end of the year.", heightInches: 76, position: "Center", jerseyNumber: 34, ppg: 9.9, rpg: 9.2, apg: 1.2, favoritePlayer: "Giannis Antetokounmpo", favoriteTeam: "Milwaukee Bucks", points: 300, onboarded: false },
   { name: "Diego Ramirez", email: "diego.ramirez@example.com", dream: "Lead my team in assists and run the offense.", heightInches: 69, position: "Point Guard", jerseyNumber: 11, ppg: 7.1, rpg: 2.0, apg: 6.0, favoritePlayer: "Chris Paul", favoriteTeam: "Phoenix Suns", points: 210 },
   { name: "Chris Thompson", email: "chris.thompson@example.com", dream: "Raise my free-throw percentage above 85%.", heightInches: 72, position: "Guard/Forward", jerseyNumber: 8, ppg: 10.0, rpg: 4.5, apg: 2.8, favoritePlayer: "Devin Booker", favoriteTeam: "Phoenix Suns", points: 260 },
   { name: "Sam Okafor", email: "sam.okafor@example.com", dream: "Get recruited to play college basketball.", heightInches: 78, position: "Center", jerseyNumber: 50, ppg: 12.4, rpg: 10.1, apg: 0.9, favoritePlayer: "Joel Embiid", favoriteTeam: "Philadelphia 76ers", points: 290 },
-  { name: "Brandon Lee", email: "brandon.lee@example.com", dream: "Be a leader my teammates can always count on.", heightInches: 73, position: "Forward", jerseyNumber: 14, ppg: 9.2, rpg: 6.0, apg: 3.3, favoritePlayer: "Jayson Tatum", favoriteTeam: "Boston Celtics", points: 230 },
+  { name: "Brandon Lee", email: "brandon.lee@example.com", dream: "Be a leader my teammates can always count on.", heightInches: 73, position: "Forward", jerseyNumber: 14, ppg: 9.2, rpg: 6.0, apg: 3.3, favoritePlayer: "Jayson Tatum", favoriteTeam: "Boston Celtics", points: 230, onboarded: false },
 ];
 
 const teamBPlayers: PlayerSeed[] = [
@@ -47,26 +54,34 @@ const teamBPlayers: PlayerSeed[] = [
 
 async function createPlayers(teamId: number, players: PlayerSeed[]) {
   for (const p of players) {
+    const onboarded = p.onboarded !== false; // default true
     await prisma.user.create({
       data: {
         name: p.name,
         email: p.email,
         role: Role.PLAYER,
         teamId,
-        profile: {
-          create: {
-            dream: p.dream,
-            heightInches: p.heightInches,
-            position: p.position,
-            jerseyNumber: p.jerseyNumber,
-            pointsPerGame: p.ppg,
-            reboundsPerGame: p.rpg,
-            assistsPerGame: p.apg,
-            favoritePlayer: p.favoritePlayer,
-            favoriteTeam: p.favoriteTeam,
-            points: p.points,
-          },
-        },
+        // A not-yet-onboarded player has no PlayerProfile until they finish
+        // onboarding in the app (CLAUDE.md section 2).
+        ...(onboarded
+          ? {
+              profile: {
+                create: {
+                  dream: p.dream,
+                  heightInches: p.heightInches,
+                  position: p.position,
+                  jerseyNumber: p.jerseyNumber,
+                  pointsPerGame: p.ppg,
+                  reboundsPerGame: p.rpg,
+                  assistsPerGame: p.apg,
+                  favoritePlayer: p.favoritePlayer,
+                  favoriteTeam: p.favoriteTeam,
+                  points: p.points,
+                  onboardedAt: new Date(),
+                },
+              },
+            }
+          : {}),
       },
     });
   }
@@ -110,18 +125,29 @@ async function main() {
   await createPlayers(teamA.id, teamAPlayers);
   await createPlayers(teamB.id, teamBPlayers);
 
-  const [teamCount, userCount, playerCount] = await Promise.all([
-    prisma.team.count(),
-    prisma.user.count(),
+  const [coachCount, playerCount, onboardedCount] = await Promise.all([
+    prisma.user.count({ where: { role: Role.COACH } }),
+    prisma.user.count({ where: { role: Role.PLAYER } }),
     prisma.playerProfile.count(),
   ]);
+  const notOnboardedNames = [...teamAPlayers, ...teamBPlayers]
+    .filter((p) => p.onboarded === false)
+    .map((p) => p.name);
 
   console.log("Seed complete:");
-  console.log(`  Teams:   ${teamCount} (Team A, Team B)`);
-  console.log(`  Users:   ${userCount} (2 coaches + ${playerCount} players)`);
+  console.log("  Teams:   2 (Team A, Team B)");
+  console.log(
+    `  Users:   ${coachCount + playerCount} (${coachCount} coaches + ${playerCount} players)`,
+  );
+  console.log(
+    `  Players onboarded: ${onboardedCount} · not yet onboarded: ${playerCount - onboardedCount} (${notOnboardedNames.join(", ")})`,
+  );
   console.log("");
   console.log(
-    "Run `npm run dev`, then use the bottom-left \"Dev: switch user\" menu to view the app as any coach or player.",
+    'Run `npm run dev`, then use the bottom-left "Dev: switch user" menu. Switch to a',
+  );
+  console.log(
+    "not-onboarded player to test the forced onboarding flow.",
   );
 }
 

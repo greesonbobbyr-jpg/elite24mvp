@@ -88,5 +88,10 @@ model PlayerProfile {
   // Earned via the daily check-in and quests in later phases.
   points Int @default(0)
 
+  // Set when the player completes first-time onboarding (CLAUDE.md section 2).
+  // Null = not yet onboarded. In the seed, a not-yet-onboarded player has no
+  // PlayerProfile row at all; this timestamp marks completion explicitly.
+  onboardedAt DateTime?
+
   createdAt DateTime @default(now())
 }
