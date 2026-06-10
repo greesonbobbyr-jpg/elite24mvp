@@ -1,0 +1,92 @@
+// Elite24MVP — Prisma schema
+//
+// Data layer for the team-private basketball development app (see CLAUDE.md).
+// SQLite is an MVP/testing choice; keep the data layer swappable for a hosted
+// database later (CLAUDE.md section 6).
+//
+// Phase 1 introduces Team, User, and PlayerProfile. Feature models
+// (journal entries, quests, notifications) arrive in their own later phases.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  COACH
+  PLAYER
+}
+
+// A team is the private space a coach runs for their players.
+//
+// `parentId` is a nullable self-relation: a team can later belong to a larger
+// grouping (conference / region) so leaderboards can be scoped to any level
+// (CLAUDE.md section 3.5). It is intentionally unused in the UI for now — the
+// app shows a single-team view — but the model must never hard-code "one team".
+model Team {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  // Future branding (logo, accent color). Optional; no UI yet.
+  logoUrl     String?
+  accentColor String?
+
+  // Future grouping hook (conference/region). Unused in the current UI.
+  parentId Int?
+  parent   Team?  @relation("TeamHierarchy", fields: [parentId], references: [id])
+  children Team[] @relation("TeamHierarchy")
+
+  users User[]
+}
+
+// A user is either a COACH (team admin) or a PLAYER. Both belong to one team.
+// No password field yet: Phase 1 uses the dev user switcher for local testing,
+// and real auth will be added with a vetted library in a later hardening phase
+// (CLAUDE.md section 6).
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  role      Role
+  createdAt DateTime @default(now())
+
+  teamId Int
+  team   Team @relation(fields: [teamId], references: [id])
+
+  // Players have a profile; coaches do not.
+  profile PlayerProfile?
+}
+
+// Player-only data: the required Dream plus structured "Your Brand" stats.
+// Kept on a separate 1:1 model so the User model stays clean for both roles
+// and we only collect what the loop needs (CLAUDE.md section 3.4).
+model PlayerProfile {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // The Dream is required at onboarding and is the heart of the loop (section 2).
+  dream String
+
+  // Structured basketball stats (all optional; entered by the player).
+  heightInches    Int?
+  position        String?
+  jerseyNumber    Int?
+  pointsPerGame   Float?
+  reboundsPerGame Float?
+  assistsPerGame  Float?
+
+  favoritePlayer String?
+  favoriteTeam   String?
+
+  // Running points total that places the player on the team leaderboard.
+  // Earned via the daily check-in and quests in later phases.
+  points Int @default(0)
+
+  createdAt DateTime @default(now())
+}
