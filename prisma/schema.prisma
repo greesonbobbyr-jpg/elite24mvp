@@ -4,8 +4,9 @@
 // SQLite is an MVP/testing choice; keep the data layer swappable for a hosted
 // database later (CLAUDE.md section 6).
 //
-// Phase 1 introduces Team, User, and PlayerProfile. Feature models
-// (journal entries, quests, notifications) arrive in their own later phases.
+// Phase 1 introduces Team, User, and PlayerProfile; Phase 3 adds JournalEntry
+// and PointsLedger. Remaining feature models (quests, notifications) arrive in
+// their own later phases.
 
 generator client {
   provider = "prisma-client-js"
@@ -60,6 +61,10 @@ model User {
 
   // Players have a profile; coaches do not.
   profile PlayerProfile?
+
+  // A player's daily check-ins and their points history.
+  journalEntries JournalEntry[]
+  pointsLedger   PointsLedger[]
 }
 
 // Player-only data: the required Dream plus structured "Your Brand" stats.
@@ -84,8 +89,9 @@ model PlayerProfile {
   favoritePlayer String?
   favoriteTeam   String?
 
-  // Running points total that places the player on the team leaderboard.
-  // Earned via the daily check-in and quests in later phases.
+  // Convenience cache of the player's total points. The PointsLedger is the
+  // source of truth; this is kept in sync in the same transaction as each
+  // ledger write so a future leaderboard can read a single number quickly.
   points Int @default(0)
 
   // Set when the player completes first-time onboarding (CLAUDE.md section 2).
@@ -94,4 +100,40 @@ model PlayerProfile {
   onboardedAt DateTime?
 
   createdAt DateTime @default(now())
+}
+
+// One row per daily check-in: the player's typed reflection for a calendar day.
+// One per player per day (see @@unique). Typed text only — no photo upload and
+// no AI grading (CLAUDE.md section 3.3).
+model JournalEntry {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reflection String
+  day        String   // calendar day "YYYY-MM-DD" (server-local time)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, day])
+  @@index([userId])
+}
+
+// Where a points-earning event came from. New sources (quests, coach awards)
+// are added here as the app grows, so they can be told apart.
+enum PointsSource {
+  DAILY_CHECK_IN
+}
+
+// The points ledger is the source of truth for a player's points: one row per
+// earning event. A player's total = the sum of their rows. PlayerProfile.points
+// is a convenience cache kept in sync in the same transaction.
+model PointsLedger {
+  id        Int          @id @default(autoincrement())
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  reason    String
+  source    PointsSource
+  createdAt DateTime     @default(now())
+
+  @@index([userId])
 }

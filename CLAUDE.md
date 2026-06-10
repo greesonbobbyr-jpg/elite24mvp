@@ -100,7 +100,21 @@ If the owner asks for any of these later, treat it as a new project phase with i
 
 ---
 
-## 9. Rules for you, Claude Code
+## 9. Branding & Visual Identity
+
+- **Colors:** Black is the base/background. The accent is a bold **red / orange-red**. Primary text is **white**. Black theme throughout.
+- **Master logo:** the **"E24 / MVP"** basketball mark (Elite 24, "Most Valuable Process").
+- **Tagline:** "Most Valuable Process."
+- **Mascot:** **"Prospect"** — a pit bull in a #24 basketball jersey. Brand character, used for personality/flavor.
+- **Always-present mark:** **"Powered by Elite 24 MVP"** should appear consistently (e.g. footer), on every team's pages.
+- **Frame vs. slot rule:** The Elite24 brand is the **fixed frame** and is never overridden. Each team gets a **bounded slot** they control: their team logo (top-center of dashboard) + their team name + optionally **ONE** accent color. Teams may **NOT** restyle the whole app, change fonts, recolor the black base, or move/hide the Elite24 marks. Every team's page must still clearly read as an Elite24 product.
+- **The E24P method** is a 4-part cycle: **Pro Plan → Pro Preview → Pro Perform → Pro Review** (mottos include "See It. Say It. Sketch It. Feel It." and ball-handling mantras like "Value the Ball"). Keep this in mind for the daily-loop design, but **do not build it speculatively.**
+
+> **Note:** This is the visual spec for later phases. No logo/mascot image files are added yet — those come when the visible branding/dashboard is built. The `logoUrl` and `accentColor` Team fields already exist as placeholders.
+
+---
+
+## 10. Rules for you, Claude Code
 
 1. **Plan before building.** For each phase, propose a short plan (files you'll create/change, data model changes, how it'll be testable) and wait for approval before writing code.
 2. **Keep changes scoped to the current phase.** Don't jump ahead to deferred features or refactor unrelated code without asking.

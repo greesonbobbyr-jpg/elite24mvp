@@ -1,4 +1,10 @@
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
+import { getTodaysEntry, todayKey } from "@/lib/journal";
+import { listLedger, getPointsTotal, POINTS_PER_CHECKIN } from "@/lib/points";
+import { quoteForDay } from "@/lib/quotes";
+import { CheckInForm } from "./CheckInForm";
+import { PointsHistory } from "./PointsHistory";
 
 function formatHeight(inches: number | null | undefined): string | null {
   if (inches == null) return null;
@@ -8,6 +14,7 @@ function formatHeight(inches: number | null | undefined): string | null {
 export default async function Home() {
   const user = await getCurrentUser();
 
+  // No user selected (dev switcher idle).
   if (!user) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
@@ -25,7 +32,34 @@ export default async function Home() {
     );
   }
 
+  // Coaches don't do check-ins (player-only loop).
+  if (user.role === "COACH") {
+    return (
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
+        <header className="flex flex-col gap-1">
+          <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            Viewing as
+          </span>
+          <h1 className="text-3xl font-bold tracking-tight">{user.name}</h1>
+          <p className="text-sm text-zinc-500">Coach · {user.team.name}</p>
+        </header>
+        <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+          <p className="text-sm text-zinc-500">
+            Coach view. Team roster and coaching tools arrive in later phases.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  // Player (guaranteed onboarded by the (main) layout gate).
   const profile = user.profile;
+  const [todaysEntry, ledger, points] = await Promise.all([
+    getTodaysEntry(user.id),
+    listLedger(user.id),
+    getPointsTotal(user.id),
+  ]);
+  const quote = quoteForDay(todayKey());
   const height = formatHeight(profile?.heightInches);
 
   return (
@@ -34,46 +68,67 @@ export default async function Home() {
         <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
           Viewing as
         </span>
-        <h1 className="text-3xl font-bold tracking-tight">{user.name}</h1>
-        <p className="text-sm text-zinc-500">
-          {user.role === "COACH" ? "Coach" : "Player"} · {user.team.name}
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{user.name}</h1>
+        <p className="text-sm text-zinc-500">Player · {user.team.name}</p>
       </header>
 
-      {user.role === "PLAYER" && profile ? (
-        <>
-          <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              The Dream
-            </h2>
-            <p className="mt-1 text-lg font-medium">{profile.dream}</p>
-          </section>
+      {/* Daily check-in (the core loop) */}
+      <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+        <p className="text-sm italic text-zinc-500">&ldquo;{quote}&rdquo;</p>
+        <h2 className="mt-3 text-lg font-semibold">
+          What will you work on today?
+        </h2>
+        {todaysEntry ? (
+          <div className="mt-2">
+            <p className="whitespace-pre-wrap text-sm">{todaysEntry.reflection}</p>
+            <p className="mt-3 text-xs font-semibold text-emerald-700">
+              ✓ Checked in today (+{POINTS_PER_CHECKIN} points)
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3">
+            <CheckInForm />
+          </div>
+        )}
+      </section>
 
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Stat label="Points" value={String(profile.points)} />
-            {profile.position && (
-              <Stat label="Position" value={profile.position} />
-            )}
-            {height && <Stat label="Height" value={height} />}
-            {profile.jerseyNumber != null && (
-              <Stat label="Jersey" value={`#${profile.jerseyNumber}`} />
-            )}
-            {profile.pointsPerGame != null && (
-              <Stat label="PPG" value={String(profile.pointsPerGame)} />
-            )}
-            {profile.reboundsPerGame != null && (
-              <Stat label="RPG" value={String(profile.reboundsPerGame)} />
-            )}
-            {profile.assistsPerGame != null && (
-              <Stat label="APG" value={String(profile.assistsPerGame)} />
-            )}
-          </section>
-        </>
-      ) : (
+      {/* Points total with expandable history */}
+      <PointsHistory total={points} entries={ledger} />
+
+      <Link
+        href="/journal"
+        className="text-sm font-medium text-emerald-700 hover:underline"
+      >
+        View your journal →
+      </Link>
+
+      {/* The Dream — motivation */}
+      {profile?.dream && (
         <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-          <p className="text-sm text-zinc-500">
-            Coach view. Team roster and coaching tools arrive in later phases.
-          </p>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            The Dream
+          </h2>
+          <p className="mt-1 text-lg font-medium">{profile.dream}</p>
+        </section>
+      )}
+
+      {/* Profile basics */}
+      {profile && (
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {profile.position && <Stat label="Position" value={profile.position} />}
+          {height && <Stat label="Height" value={height} />}
+          {profile.jerseyNumber != null && (
+            <Stat label="Jersey" value={`#${profile.jerseyNumber}`} />
+          )}
+          {profile.pointsPerGame != null && (
+            <Stat label="PPG" value={String(profile.pointsPerGame)} />
+          )}
+          {profile.reboundsPerGame != null && (
+            <Stat label="RPG" value={String(profile.reboundsPerGame)} />
+          )}
+          {profile.assistsPerGame != null && (
+            <Stat label="APG" value={String(profile.assistsPerGame)} />
+          )}
         </section>
       )}
     </main>
