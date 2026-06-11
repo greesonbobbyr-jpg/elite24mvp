@@ -22,7 +22,7 @@ export function DevUserSwitcher({
 
   return (
     <details className="fixed bottom-4 left-4 z-50 w-64 rounded-xl border border-zinc-200 bg-white text-zinc-900 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
-      <summary className="cursor-pointer list-none select-none rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+      <summary className="cursor-pointer list-none select-none rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-wide text-red-500">
         Dev: switch user
       </summary>
       <div className="max-h-80 overflow-y-auto border-t border-zinc-200 p-2 dark:border-zinc-700">
@@ -46,7 +46,7 @@ export function DevUserSwitcher({
                     type="submit"
                     className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
                       active
-                        ? "bg-emerald-50 font-semibold dark:bg-emerald-950"
+                        ? "bg-red-600/20 font-semibold"
                         : ""
                     }`}
                   >

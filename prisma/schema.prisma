@@ -5,8 +5,8 @@
 // database later (CLAUDE.md section 6).
 //
 // Phase 1 introduces Team, User, and PlayerProfile; Phase 3 adds JournalEntry
-// and PointsLedger. Remaining feature models (quests, notifications) arrive in
-// their own later phases.
+// and PointsLedger; Phase 4 adds Quest and QuestLog. Remaining feature models
+// (notifications) arrive in their own later phases.
 
 generator client {
   provider = "prisma-client-js"
@@ -62,9 +62,10 @@ model User {
   // Players have a profile; coaches do not.
   profile PlayerProfile?
 
-  // A player's daily check-ins and their points history.
+  // A player's daily check-ins, points history, and quest completions.
   journalEntries JournalEntry[]
   pointsLedger   PointsLedger[]
+  questLogs      QuestLog[]
 }
 
 // Player-only data: the required Dream plus structured "Your Brand" stats.
@@ -121,6 +122,7 @@ model JournalEntry {
 // are added here as the app grows, so they can be told apart.
 enum PointsSource {
   DAILY_CHECK_IN
+  QUEST
 }
 
 // The points ledger is the source of truth for a player's points: one row per
@@ -136,4 +138,44 @@ model PointsLedger {
   createdAt DateTime     @default(now())
 
   @@index([userId])
+}
+
+// Daily quests are shared, global definitions for the MVP (not team-specific).
+// PLACEHOLDER content lives in the seed; Gary replaces it later. Kept clean so a
+// nullable teamId could be added later for team-specific quests (CLAUDE.md 3.5).
+model Quest {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String
+  points      Int
+  active      Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+
+  logs QuestLog[]
+}
+
+// Whether a quest completion has been awarded. Defaults to APPROVED so points
+// are earned immediately (no approval UI in this phase). PENDING leaves room for
+// a future coach-approval flow without a schema change.
+enum QuestStatus {
+  PENDING
+  APPROVED
+}
+
+// One row per player completing a quest on a calendar day. One per player per
+// quest per day (see @@unique), mirroring the daily check-in pattern.
+model QuestLog {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questId   Int
+  quest     Quest       @relation(fields: [questId], references: [id], onDelete: Cascade)
+  day       String      // calendar day "YYYY-MM-DD" (server-local time)
+  status    QuestStatus @default(APPROVED)
+  createdAt DateTime    @default(now())
+
+  @@unique([userId, questId, day])
+  @@index([userId])
+  @@index([questId])
 }

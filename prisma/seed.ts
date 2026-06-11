@@ -9,9 +9,10 @@
  * Two Team A players (Andre Washington, Brandon Lee) are left NOT onboarded so
  * the forced onboarding flow can be tested.
  *
- * A few already-onboarded Team A players get back-dated daily check-ins across
- * the past several weeks (with matching points-ledger rows), so the journal and
- * points history look real and the totals match the ledger.
+ * A few already-onboarded Team A players get back-dated daily check-ins AND
+ * back-dated quest completions across the past several weeks (each with matching
+ * points-ledger rows), so the journal, points history, and leaderboard look real
+ * and the totals match the ledger.
  *
  * Safe to re-run: it wipes and recreates the seeded data each time.
  * Run with: npm run seed   (or it runs automatically on `prisma migrate reset`)
@@ -57,6 +58,17 @@ const teamBPlayers: PlayerSeed[] = [
   { name: "Noah Patel", email: "noah.patel@example.com", dream: "Start every game and stay healthy all season.", heightInches: 75, position: "Forward", jerseyNumber: 23, ppg: 10.5, rpg: 7.0, apg: 2.1, favoritePlayer: "Kevin Durant", favoriteTeam: "Phoenix Suns" },
 ];
 
+// PLACEHOLDER quests — Gary to replace. Generic basketball-development daily
+// tasks; deliberately NOT tied to the E24P 4-part cycle (future design).
+const QUESTS = [
+  { title: "Shooting reps", description: "Get up 100 shots — game spots, both sides.", points: 15, sortOrder: 1 },
+  { title: "Ball-handling", description: "10 minutes of two-ball dribbling drills.", points: 10, sortOrder: 2 },
+  { title: "Free throws", description: "Shoot 50 free throws and track your makes.", points: 10, sortOrder: 3 },
+  { title: "Conditioning", description: "Run sprints or a timed mile.", points: 15, sortOrder: 4 },
+  { title: "Strength & core", description: "15 minutes of bodyweight strength and core work.", points: 10, sortOrder: 5 },
+  { title: "Film study", description: "Watch 10 minutes of film and note one thing to improve.", points: 10, sortOrder: 6 },
+];
+
 // Realistic short reflections for the back-dated journal.
 const REFLECTIONS = [
   "100 free throws after practice. Made 84.",
@@ -73,9 +85,9 @@ const REFLECTIONS = [
   "Studied pick-and-roll reads with the coaches.",
 ];
 
-// Distinct "days ago" so each back-dated check-in lands on its own calendar day
-// (realistic gaps across the past ~6 weeks).
+// Distinct "days ago" so each back-dated entry lands on its own calendar day.
 const CHECKIN_OFFSETS = [1, 2, 4, 5, 7, 9, 11, 14, 17, 20, 24, 28, 33, 39];
+const QUEST_OFFSETS = [1, 2, 3, 5, 6, 8, 10, 12, 15, 18, 22, 26, 31, 38];
 
 function dayKeyOf(date: Date): string {
   const y = date.getFullYear();
@@ -101,8 +113,8 @@ async function createPlayers(teamId: number, players: PlayerSeed[]) {
         role: Role.PLAYER,
         teamId,
         // A not-yet-onboarded player has no PlayerProfile until they finish
-        // onboarding in the app (CLAUDE.md section 2). Points start at 0; they
-        // are earned through the ledger.
+        // onboarding in the app. Points start at 0; they are earned via the
+        // ledger and recomputed at the end of seeding.
         ...(onboarded
           ? {
               profile: {
@@ -127,37 +139,43 @@ async function createPlayers(teamId: number, players: PlayerSeed[]) {
 }
 
 // Back-date `count` daily check-ins for a player: a JournalEntry + a matching
-// PointsLedger row per day, then sync the cached points total.
+// PointsLedger row per day.
 async function seedCheckIns(email: string, count: number) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return 0;
-
   const offsets = CHECKIN_OFFSETS.slice(0, count);
   for (let i = 0; i < offsets.length; i++) {
     const date = daysAgo(offsets[i]);
     await prisma.journalEntry.create({
-      data: {
-        userId: user.id,
-        reflection: REFLECTIONS[i % REFLECTIONS.length],
-        day: dayKeyOf(date),
-        createdAt: date,
-      },
+      data: { userId: user.id, reflection: REFLECTIONS[i % REFLECTIONS.length], day: dayKeyOf(date), createdAt: date },
     });
     await prisma.pointsLedger.create({
-      data: {
-        userId: user.id,
-        amount: POINTS_PER_CHECKIN,
-        reason: "Daily check-in",
-        source: PointsSource.DAILY_CHECK_IN,
-        createdAt: date,
-      },
+      data: { userId: user.id, amount: POINTS_PER_CHECKIN, reason: "Daily check-in", source: PointsSource.DAILY_CHECK_IN, createdAt: date },
     });
   }
+  return offsets.length;
+}
 
-  await prisma.playerProfile.update({
-    where: { userId: user.id },
-    data: { points: offsets.length * POINTS_PER_CHECKIN },
-  });
+// Back-date `count` quest completions for a player (one quest per past day): a
+// QuestLog + a matching PointsLedger row (source QUEST) each.
+async function seedQuestLogs(
+  email: string,
+  quests: { id: number; title: string; points: number }[],
+  count: number,
+) {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return 0;
+  const offsets = QUEST_OFFSETS.slice(0, count);
+  for (let i = 0; i < offsets.length; i++) {
+    const date = daysAgo(offsets[i]);
+    const quest = quests[i % quests.length];
+    await prisma.questLog.create({
+      data: { userId: user.id, questId: quest.id, day: dayKeyOf(date), createdAt: date },
+    });
+    await prisma.pointsLedger.create({
+      data: { userId: user.id, amount: quest.points, reason: quest.title, source: PointsSource.QUEST, createdAt: date },
+    });
+  }
   return offsets.length;
 }
 
@@ -173,49 +191,69 @@ async function main() {
 
   // Reset (safe to re-run): delete children before parents.
   await prisma.pointsLedger.deleteMany();
+  await prisma.questLog.deleteMany();
   await prisma.journalEntry.deleteMany();
   await prisma.playerProfile.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.quest.deleteMany();
   await prisma.team.deleteMany();
 
   const teamA = await prisma.team.create({ data: { name: "Team A" } });
   const teamB = await prisma.team.create({ data: { name: "Team B" } });
 
   await prisma.user.create({
-    data: {
-      name: "Coach Marcus Bell",
-      email: "coach.a@example.com",
-      role: Role.COACH,
-      teamId: teamA.id,
-    },
+    data: { name: "Coach Marcus Bell", email: "coach.a@example.com", role: Role.COACH, teamId: teamA.id },
   });
   await prisma.user.create({
-    data: {
-      name: "Coach Tasha Reed",
-      email: "coach.b@example.com",
-      role: Role.COACH,
-      teamId: teamB.id,
-    },
+    data: { name: "Coach Tasha Reed", email: "coach.b@example.com", role: Role.COACH, teamId: teamB.id },
   });
 
   await createPlayers(teamA.id, teamAPlayers);
   await createPlayers(teamB.id, teamBPlayers);
 
-  // Back-dated journals for a few already-onboarded Team A players.
-  const journalTargets = [
-    { email: "jordan.carter@example.com", count: 12 },
-    { email: "malik.johnson@example.com", count: 9 },
-    { email: "tyler.nguyen@example.com", count: 7 },
-  ];
-  let totalCheckIns = 0;
-  for (const t of journalTargets) {
-    totalCheckIns += await seedCheckIns(t.email, t.count);
+  // Placeholder quest definitions.
+  const quests = [];
+  for (const q of QUESTS) {
+    quests.push(await prisma.quest.create({ data: q }));
   }
 
-  const [coachCount, playerCount, onboardedCount] = await Promise.all([
+  // Back-dated check-ins and quest logs for a few already-onboarded Team A
+  // players. Different counts give the leaderboard a realistic spread.
+  let totalCheckIns = 0;
+  let totalQuestLogs = 0;
+  const activity = [
+    { email: "jordan.carter@example.com", checkIns: 12, quests: 13 },
+    { email: "malik.johnson@example.com", checkIns: 9, quests: 8 },
+    { email: "tyler.nguyen@example.com", checkIns: 7, quests: 4 },
+  ];
+  for (const a of activity) {
+    totalCheckIns += await seedCheckIns(a.email, a.checkIns);
+    totalQuestLogs += await seedQuestLogs(a.email, quests, a.quests);
+  }
+
+  // Recompute each player's cached points total = sum of their ledger, so the
+  // cache exactly matches the source of truth (check-ins + quests).
+  const players = await prisma.user.findMany({
+    where: { role: Role.PLAYER },
+    select: { id: true, profile: { select: { id: true } } },
+  });
+  for (const p of players) {
+    if (!p.profile) continue;
+    const agg = await prisma.pointsLedger.aggregate({
+      where: { userId: p.id },
+      _sum: { amount: true },
+    });
+    await prisma.playerProfile.update({
+      where: { userId: p.id },
+      data: { points: agg._sum.amount ?? 0 },
+    });
+  }
+
+  const [coachCount, playerCount, onboardedCount, questCount] = await Promise.all([
     prisma.user.count({ where: { role: Role.COACH } }),
     prisma.user.count({ where: { role: Role.PLAYER } }),
     prisma.playerProfile.count(),
+    prisma.quest.count(),
   ]);
   const notOnboardedNames = [...teamAPlayers, ...teamBPlayers]
     .filter((p) => p.onboarded === false)
@@ -229,17 +267,17 @@ async function main() {
   console.log(
     `  Players onboarded: ${onboardedCount} · not yet onboarded: ${playerCount - onboardedCount} (${notOnboardedNames.join(", ")})`,
   );
+  console.log(`  Quests:  ${questCount} placeholder daily quests`);
   console.log(
-    `  Back-dated check-ins: ${totalCheckIns} across Jordan Carter, Malik Johnson, Tyler Nguyen`,
+    `  Back-dated: ${totalCheckIns} check-ins + ${totalQuestLogs} quest logs across Jordan Carter, Malik Johnson, Tyler Nguyen`,
   );
   console.log("");
   console.log(
     'Run `npm run dev`, then use the bottom-left "Dev: switch user" menu. Switch to',
   );
   console.log(
-    "Jordan Carter to see a populated journal + points history, or an onboarded",
+    "Jordan Carter for a populated journal/points/quests, or visit /leaderboard.",
   );
-  console.log("player with no entry today to test the daily check-in.");
 }
 
 main()

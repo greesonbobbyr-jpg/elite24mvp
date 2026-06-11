@@ -39,7 +39,7 @@ export function PointsHistory({
                 className="flex items-center justify-between py-2 text-sm"
               >
                 <span>
-                  <span className="font-semibold text-emerald-700">
+                  <span className="font-semibold text-red-500">
                     +{entry.amount}
                   </span>{" "}
                   <span className="text-zinc-600 dark:text-zinc-300">

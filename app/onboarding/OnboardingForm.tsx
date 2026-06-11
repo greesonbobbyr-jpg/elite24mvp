@@ -6,7 +6,7 @@ import { completeOnboarding, type OnboardingState } from "./actions";
 const initialState: OnboardingState = {};
 
 const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-900";
+  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700 dark:bg-zinc-900";
 const labelClass = "mb-1 block text-sm font-medium";
 
 export function OnboardingForm() {
@@ -20,7 +20,7 @@ export function OnboardingForm() {
       {/* The Dream — required */}
       <div>
         <label htmlFor="dream" className={labelClass}>
-          Your dream <span className="text-emerald-600">★</span>
+          Your dream <span className="text-red-600">★</span>
         </label>
         <textarea
           id="dream"
@@ -111,7 +111,7 @@ export function OnboardingForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+        className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
       >
         {pending ? "Saving…" : "Let's go"}
       </button>

@@ -1,20 +1,18 @@
 @import "tailwindcss";
 
+/* Brand theme (CLAUDE.md section 9): black base, white text throughout. The
+   <html> element carries a `dark` class; this custom variant makes Tailwind's
+   `dark:` utilities respond to that class so surface styles apply everywhere. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a; /* black base */
+  --foreground: #ffffff; /* white text */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

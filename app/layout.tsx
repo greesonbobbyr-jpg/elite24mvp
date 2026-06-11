@@ -37,10 +37,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // `dark` forces the brand's black theme app-wide (CLAUDE.md section 9).
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="dark h-full antialiased">
       <body className="flex min-h-full flex-col">
         {children}
+        {/* Always-present Elite24 mark — the fixed brand frame (section 9). */}
+        <footer className="border-t border-zinc-900 py-4 text-center text-xs text-zinc-500">
+          Powered by{" "}
+          <span className="font-semibold text-red-500">Elite 24 MVP</span>
+        </footer>
         <DevSwitcherSlot />
       </body>
     </html>

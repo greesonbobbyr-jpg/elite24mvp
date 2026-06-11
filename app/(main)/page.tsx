@@ -2,9 +2,11 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { getTodaysEntry, todayKey } from "@/lib/journal";
 import { listLedger, getPointsTotal, POINTS_PER_CHECKIN } from "@/lib/points";
+import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
 import { quoteForDay } from "@/lib/quotes";
 import { CheckInForm } from "./CheckInForm";
 import { PointsHistory } from "./PointsHistory";
+import { QuestList } from "./QuestList";
 
 function formatHeight(inches: number | null | undefined): string | null {
   if (inches == null) return null;
@@ -18,13 +20,13 @@ export default async function Home() {
   if (!user) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+        <span className="rounded-full bg-red-600/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-400">
           Dev build
         </span>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           Elite24MVP
         </h1>
-        <p className="max-w-sm text-sm text-zinc-500">
+        <p className="max-w-sm text-sm text-zinc-400">
           No user selected. Use the <strong>Dev: switch user</strong> menu in the
           bottom-left corner to view the app as a coach or a player.
         </p>
@@ -32,32 +34,40 @@ export default async function Home() {
     );
   }
 
-  // Coaches don't do check-ins (player-only loop).
+  // Coaches don't do check-ins (player-only loop), but can view the leaderboard.
   if (user.role === "COACH") {
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
         <header className="flex flex-col gap-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+          <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
             Viewing as
           </span>
           <h1 className="text-3xl font-bold tracking-tight">{user.name}</h1>
-          <p className="text-sm text-zinc-500">Coach · {user.team.name}</p>
+          <p className="text-sm text-zinc-400">Coach · {user.team.name}</p>
         </header>
-        <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-          <p className="text-sm text-zinc-500">
+        <section className="rounded-xl border border-zinc-800 p-5">
+          <p className="text-sm text-zinc-400">
             Coach view. Team roster and coaching tools arrive in later phases.
           </p>
         </section>
+        <Link
+          href="/leaderboard"
+          className="text-sm font-medium text-red-500 hover:underline"
+        >
+          View team leaderboard →
+        </Link>
       </main>
     );
   }
 
   // Player (guaranteed onboarded by the (main) layout gate).
   const profile = user.profile;
-  const [todaysEntry, ledger, points] = await Promise.all([
+  const [todaysEntry, ledger, points, quests, completedIds] = await Promise.all([
     getTodaysEntry(user.id),
     listLedger(user.id),
     getPointsTotal(user.id),
+    listActiveQuests(),
+    getTodaysCompletedQuestIds(user.id),
   ]);
   const quote = quoteForDay(todayKey());
   const height = formatHeight(profile?.heightInches);
@@ -65,23 +75,23 @@ export default async function Home() {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
       <header className="flex flex-col gap-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+        <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
           Viewing as
         </span>
         <h1 className="text-2xl font-bold tracking-tight">{user.name}</h1>
-        <p className="text-sm text-zinc-500">Player · {user.team.name}</p>
+        <p className="text-sm text-zinc-400">Player · {user.team.name}</p>
       </header>
 
       {/* Daily check-in (the core loop) */}
-      <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-        <p className="text-sm italic text-zinc-500">&ldquo;{quote}&rdquo;</p>
+      <section className="rounded-xl border border-zinc-800 p-5">
+        <p className="text-sm italic text-zinc-400">&ldquo;{quote}&rdquo;</p>
         <h2 className="mt-3 text-lg font-semibold">
           What will you work on today?
         </h2>
         {todaysEntry ? (
           <div className="mt-2">
             <p className="whitespace-pre-wrap text-sm">{todaysEntry.reflection}</p>
-            <p className="mt-3 text-xs font-semibold text-emerald-700">
+            <p className="mt-3 text-xs font-semibold text-red-500">
               ✓ Checked in today (+{POINTS_PER_CHECKIN} points)
             </p>
           </div>
@@ -92,20 +102,25 @@ export default async function Home() {
         )}
       </section>
 
+      {/* Today's quests */}
+      <QuestList quests={quests} completedIds={completedIds} />
+
       {/* Points total with expandable history */}
       <PointsHistory total={points} entries={ledger} />
 
-      <Link
-        href="/journal"
-        className="text-sm font-medium text-emerald-700 hover:underline"
-      >
-        View your journal →
-      </Link>
+      <div className="flex gap-4 text-sm font-medium text-red-500">
+        <Link href="/journal" className="hover:underline">
+          View your journal →
+        </Link>
+        <Link href="/leaderboard" className="hover:underline">
+          Leaderboard →
+        </Link>
+      </div>
 
       {/* The Dream — motivation */}
       {profile?.dream && (
-        <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <section className="rounded-xl border border-zinc-800 p-5">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             The Dream
           </h2>
           <p className="mt-1 text-lg font-medium">{profile.dream}</p>
@@ -137,8 +152,8 @@ export default async function Home() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-zinc-100 px-3 py-2 dark:bg-zinc-900">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+    <div className="rounded-lg bg-zinc-900 px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
         {label}
       </div>
       <div className="text-base font-semibold">{value}</div>

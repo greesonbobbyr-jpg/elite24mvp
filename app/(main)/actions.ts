@@ -60,3 +60,50 @@ export async function submitCheckIn(
   revalidatePath("/");
   return {};
 }
+
+// Logs that the current player completed a quest today. Same transactional
+// shape as submitCheckIn: create the QuestLog, write a PointsLedger row
+// (source QUEST, amount = the quest's points), and bump the cached total. The
+// @@unique([userId, questId, day]) guarantees one log per quest per day.
+export async function logQuest(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+
+  const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
+  if (!Number.isInteger(questId)) return;
+
+  const quest = await prisma.quest.findUnique({ where: { id: questId } });
+  if (!quest || !quest.active) return;
+
+  try {
+    await prisma.$transaction([
+      prisma.questLog.create({
+        data: { userId: user.id, questId: quest.id, day: todayKey() },
+      }),
+      prisma.pointsLedger.create({
+        data: {
+          userId: user.id,
+          amount: quest.points,
+          reason: quest.title,
+          source: PointsSource.QUEST,
+        },
+      }),
+      prisma.playerProfile.update({
+        where: { userId: user.id },
+        data: { points: { increment: quest.points } },
+      }),
+    ]);
+  } catch (error) {
+    // Unique violation = already logged this quest today. No-op success.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      revalidatePath("/");
+      return;
+    }
+    throw error;
+  }
+
+  revalidatePath("/");
+}
