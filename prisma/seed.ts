@@ -179,6 +179,58 @@ async function seedQuestLogs(
   return offsets.length;
 }
 
+// Sample notifications from Coach Marcus Bell to Team A, with a spread of reads
+// so the coach's "Read by X of Y" view looks real. `readers` lists the player
+// emails who have confirmed reading each notification.
+const NOTIFICATIONS = [
+  {
+    title: "Practice moved to 5 PM Thursday",
+    body: "Hey team — this week's Thursday practice moves to 5:00 PM at the main gym. Be on time and ready to work.",
+    daysAgo: 6,
+    readers: ["jordan.carter@example.com", "malik.johnson@example.com", "tyler.nguyen@example.com", "diego.ramirez@example.com"],
+  },
+  {
+    title: "Bring a water bottle every session",
+    body: "Reminder: bring a full water bottle to every practice and workout. Hydration is part of the work.",
+    daysAgo: 3,
+    readers: ["jordan.carter@example.com", "malik.johnson@example.com"],
+  },
+  {
+    title: "Great hustle on Saturday",
+    body: "Proud of the effort in the scrimmage. Let's carry that energy into this week's quests and check-ins.",
+    daysAgo: 1,
+    readers: ["jordan.carter@example.com"],
+  },
+];
+
+async function seedNotifications() {
+  const coach = await prisma.user.findUnique({
+    where: { email: "coach.a@example.com" },
+  });
+  if (!coach) return 0;
+
+  for (const n of NOTIFICATIONS) {
+    const notification = await prisma.notification.create({
+      data: {
+        teamId: coach.teamId,
+        authorId: coach.id,
+        title: n.title,
+        body: n.body,
+        createdAt: daysAgo(n.daysAgo),
+      },
+    });
+    for (const email of n.readers) {
+      const player = await prisma.user.findUnique({ where: { email } });
+      if (player) {
+        await prisma.notificationRead.create({
+          data: { notificationId: notification.id, userId: player.id },
+        });
+      }
+    }
+  }
+  return NOTIFICATIONS.length;
+}
+
 async function main() {
   // Safety: only ever seed a local SQLite (file:) dev database (section 7).
   const url = process.env.DATABASE_URL ?? "";
@@ -192,6 +244,8 @@ async function main() {
   // Reset (safe to re-run): delete children before parents.
   await prisma.pointsLedger.deleteMany();
   await prisma.questLog.deleteMany();
+  await prisma.notificationRead.deleteMany();
+  await prisma.notification.deleteMany();
   await prisma.journalEntry.deleteMany();
   await prisma.playerProfile.deleteMany();
   await prisma.user.deleteMany();
@@ -230,6 +284,8 @@ async function main() {
     totalCheckIns += await seedCheckIns(a.email, a.checkIns);
     totalQuestLogs += await seedQuestLogs(a.email, quests, a.quests);
   }
+
+  const totalNotifications = await seedNotifications();
 
   // Recompute each player's cached points total = sum of their ledger, so the
   // cache exactly matches the source of truth (check-ins + quests).
@@ -270,6 +326,9 @@ async function main() {
   console.log(`  Quests:  ${questCount} placeholder daily quests`);
   console.log(
     `  Back-dated: ${totalCheckIns} check-ins + ${totalQuestLogs} quest logs across Jordan Carter, Malik Johnson, Tyler Nguyen`,
+  );
+  console.log(
+    `  Notifications: ${totalNotifications} from Coach Marcus Bell to Team A (with a spread of reads)`,
   );
   console.log("");
   console.log(

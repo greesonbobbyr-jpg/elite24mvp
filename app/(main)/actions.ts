@@ -107,3 +107,68 @@ export async function logQuest(formData: FormData): Promise<void> {
 
   revalidatePath("/");
 }
+
+export type NotificationState = { error?: string };
+
+// A coach posts a notification to their OWN team only.
+export async function postNotification(
+  _prevState: NotificationState,
+  formData: FormData,
+): Promise<NotificationState> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "COACH") {
+    return { error: "Only a coach can post notifications." };
+  }
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (title === "" || body === "") {
+    return { error: "Add a title and a message." };
+  }
+
+  await prisma.notification.create({
+    data: { teamId: user.teamId, authorId: user.id, title, body },
+  });
+  revalidatePath("/notifications");
+  revalidatePath("/");
+  return {};
+}
+
+// A player confirms they've read a notification. One per player per
+// notification (DB unique). Team-private: a player can only confirm a
+// notification posted to their own team.
+export async function confirmRead(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+
+  const notificationId = Number.parseInt(
+    String(formData.get("notificationId") ?? ""),
+    10,
+  );
+  if (!Number.isInteger(notificationId)) return;
+
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+    select: { teamId: true },
+  });
+  if (!notification || notification.teamId !== user.teamId) return;
+
+  try {
+    await prisma.notificationRead.create({
+      data: { notificationId, userId: user.id },
+    });
+  } catch (error) {
+    // Unique violation = already confirmed. No-op success.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      revalidatePath("/notifications");
+      revalidatePath("/");
+      return;
+    }
+    throw error;
+  }
+
+  revalidatePath("/notifications");
+  revalidatePath("/");
+}

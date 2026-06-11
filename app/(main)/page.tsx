@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getTodaysEntry, todayKey } from "@/lib/journal";
 import { listLedger, getPointsTotal, POINTS_PER_CHECKIN } from "@/lib/points";
 import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
+import { countUnreadForPlayer } from "@/lib/notifications";
 import { quoteForDay } from "@/lib/quotes";
 import { CheckInForm } from "./CheckInForm";
 import { PointsHistory } from "./PointsHistory";
@@ -50,25 +51,29 @@ export default async function Home() {
             Coach view. Team roster and coaching tools arrive in later phases.
           </p>
         </section>
-        <Link
-          href="/leaderboard"
-          className="text-sm font-medium text-red-500 hover:underline"
-        >
-          View team leaderboard →
-        </Link>
+        <div className="flex flex-wrap gap-4 text-sm font-medium text-red-500">
+          <Link href="/leaderboard" className="hover:underline">
+            Team leaderboard →
+          </Link>
+          <Link href="/notifications" className="hover:underline">
+            Team notifications →
+          </Link>
+        </div>
       </main>
     );
   }
 
   // Player (guaranteed onboarded by the (main) layout gate).
   const profile = user.profile;
-  const [todaysEntry, ledger, points, quests, completedIds] = await Promise.all([
-    getTodaysEntry(user.id),
-    listLedger(user.id),
-    getPointsTotal(user.id),
-    listActiveQuests(),
-    getTodaysCompletedQuestIds(user.id),
-  ]);
+  const [todaysEntry, ledger, points, quests, completedIds, unreadCount] =
+    await Promise.all([
+      getTodaysEntry(user.id),
+      listLedger(user.id),
+      getPointsTotal(user.id),
+      listActiveQuests(),
+      getTodaysCompletedQuestIds(user.id),
+      countUnreadForPlayer(user.id, user.teamId),
+    ]);
   const quote = quoteForDay(todayKey());
   const height = formatHeight(profile?.heightInches);
 
@@ -108,12 +113,15 @@ export default async function Home() {
       {/* Points total with expandable history */}
       <PointsHistory total={points} entries={ledger} />
 
-      <div className="flex gap-4 text-sm font-medium text-red-500">
+      <div className="flex flex-wrap gap-4 text-sm font-medium text-red-500">
         <Link href="/journal" className="hover:underline">
-          View your journal →
+          Journal →
         </Link>
         <Link href="/leaderboard" className="hover:underline">
           Leaderboard →
+        </Link>
+        <Link href="/notifications" className="hover:underline">
+          Notifications{unreadCount > 0 ? ` (${unreadCount})` : ""} →
         </Link>
       </div>
 

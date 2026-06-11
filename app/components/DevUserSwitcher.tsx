@@ -1,5 +1,3 @@
-import { switchUser, clearUser } from "@/app/dev/switch-user";
-
 type Role = "COACH" | "PLAYER";
 
 type SwitcherTeam = {
@@ -10,7 +8,8 @@ type SwitcherTeam = {
 
 // Dev-only widget (rendered only when NODE_ENV !== "production"; see layout).
 // Lets the owner instantly view the app as any seeded coach or player without
-// logging in. Server component — each entry posts to a server action.
+// logging in. Each entry is a plain link to the /dev/switch route handler,
+// which sets the session cookie and redirects home (robust in dev).
 export function DevUserSwitcher({
   teams,
   currentUserId,
@@ -40,39 +39,32 @@ export function DevUserSwitcher({
             {team.users.map((user) => {
               const active = user.id === currentUserId;
               return (
-                <form key={user.id} action={switchUser}>
-                  <input type="hidden" name="userId" value={user.id} />
-                  <button
-                    type="submit"
-                    className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                      active
-                        ? "bg-red-600/20 font-semibold"
-                        : ""
-                    }`}
-                  >
-                    <span>{user.name}</span>
-                    <span className="ml-2 rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
-                      {user.role === "COACH" ? "Coach" : "Player"}
-                    </span>
-                  </button>
-                </form>
+                <a
+                  key={user.id}
+                  href={`/dev/switch?userId=${user.id}`}
+                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                    active ? "bg-red-600/20 font-semibold" : ""
+                  }`}
+                >
+                  <span>{user.name}</span>
+                  <span className="ml-2 rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
+                    {user.role === "COACH" ? "Coach" : "Player"}
+                  </span>
+                </a>
               );
             })}
           </div>
         ))}
 
         {currentUserId !== null && (
-          <form
-            action={clearUser}
-            className="border-t border-zinc-200 pt-2 dark:border-zinc-700"
-          >
-            <button
-              type="submit"
-              className="w-full rounded-md px-2 py-1.5 text-left text-xs text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          <div className="border-t border-zinc-200 pt-2 dark:border-zinc-700">
+            <a
+              href="/dev/switch?clear=1"
+              className="block w-full rounded-md px-2 py-1.5 text-left text-xs text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               Sign out (clear selection)
-            </button>
-          </form>
+            </a>
+          </div>
         )}
       </div>
     </details>
