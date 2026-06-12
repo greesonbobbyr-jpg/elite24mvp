@@ -58,6 +58,9 @@ export default async function Home() {
           <Link href="/notifications" className="hover:underline">
             Team notifications →
           </Link>
+          <Link href="/library" className="hover:underline">
+            Playbook →
+          </Link>
         </div>
       </main>
     );
@@ -122,6 +125,9 @@ export default async function Home() {
         </Link>
         <Link href="/notifications" className="hover:underline">
           Notifications{unreadCount > 0 ? ` (${unreadCount})` : ""} →
+        </Link>
+        <Link href="/library" className="hover:underline">
+          Playbook →
         </Link>
       </div>
 
