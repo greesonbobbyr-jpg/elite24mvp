@@ -44,6 +44,7 @@ model Team {
 
   users         User[]
   notifications Notification[]
+  teamMessages  TeamMessage[]
 }
 
 // A user is either a COACH (team admin) or a PLAYER. Both belong to one team.
@@ -71,6 +72,9 @@ model User {
   // Notifications a coach has authored, and a player's read-confirmations.
   authoredNotifications Notification[]     @relation("NotificationAuthor")
   notificationReads     NotificationRead[]
+
+  // Team message board posts this user has authored.
+  teamMessages TeamMessage[]
 }
 
 // Player-only data: the required Dream plus structured "Your Brand" stats.
@@ -94,6 +98,9 @@ model PlayerProfile {
 
   favoritePlayer String?
   favoriteTeam   String?
+
+  // A single highlight reel — a PASTED LINK only (no upload/hosting, section 5).
+  highlightUrl String?
 
   // Convenience cache of the player's total points. The PointsLedger is the
   // source of truth; this is kept in sync in the same transaction as each
@@ -214,4 +221,21 @@ model NotificationRead {
 
   @@unique([notificationId, userId])
   @@index([userId])
+}
+
+// A text post on a team's message board (CLAUDE.md §2/§3). Belongs to exactly
+// one team (team-scoped, §3.2). Text only — no images/attachments. Soft-deleted
+// via deletedAt for coach moderation / author removal (kept rather than hard-
+// deleted so removals are auditable for a kids' space, §3.1).
+model TeamMessage {
+  id        Int       @id @default(autoincrement())
+  teamId    Int
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  authorId  Int
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  @@index([teamId])
 }

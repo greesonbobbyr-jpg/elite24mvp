@@ -1,22 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
+import { getTeamRanking } from "@/lib/leaderboard";
 
 // Single-team leaderboard. STRICTLY the current user's own team — no other team
 // is queried or shown (CLAUDE.md section 3.2 / 3.5). A coach views their own
-// team read-only (only players are ranked).
+// team read-only. Each name links to that player's team-facing brand page
+// (same team only).
 export default async function LeaderboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const players = await prisma.user.findMany({
-    where: { teamId: user.teamId, role: "PLAYER" },
-    include: { profile: { select: { points: true } } },
-  });
-  const ranked = players
-    .map((p) => ({ id: p.id, name: p.name, points: p.profile?.points ?? 0 }))
-    .sort((a, b) => b.points - a.points);
+  const ranked = await getTeamRanking(user.teamId);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
@@ -47,12 +42,13 @@ export default async function LeaderboardPage() {
                 <span className="w-6 text-right text-sm font-bold tabular-nums text-zinc-500">
                   {index + 1}
                 </span>
-                <span
-                  className={`text-sm ${isMe ? "font-bold text-red-500" : ""}`}
+                <Link
+                  href={`/brand/${player.id}`}
+                  className={`text-sm hover:underline ${isMe ? "font-bold text-red-500" : ""}`}
                 >
                   {player.name}
                   {isMe ? " (you)" : ""}
-                </span>
+                </Link>
               </div>
               <span className="text-sm font-semibold tabular-nums">
                 {player.points}

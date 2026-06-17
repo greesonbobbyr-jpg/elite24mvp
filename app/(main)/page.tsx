@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { NavMenu } from "./NavMenu";
 import { getCurrentUser } from "@/lib/session";
 import { getTodaysEntry, todayKey } from "@/lib/journal";
 import { listLedger, getPointsTotal, POINTS_PER_CHECKIN } from "@/lib/points";
@@ -51,17 +51,14 @@ export default async function Home() {
             Coach view. Team roster and coaching tools arrive in later phases.
           </p>
         </section>
-        <div className="flex flex-wrap gap-4 text-sm font-medium text-red-500">
-          <Link href="/leaderboard" className="hover:underline">
-            Team leaderboard →
-          </Link>
-          <Link href="/notifications" className="hover:underline">
-            Team notifications →
-          </Link>
-          <Link href="/library" className="hover:underline">
-            Playbook →
-          </Link>
-        </div>
+        <NavMenu
+          links={[
+            { href: "/leaderboard", label: "Team leaderboard" },
+            { href: "/notifications", label: "Team notifications" },
+            { href: "/board", label: "Team Board" },
+            { href: "/library", label: "Playbook" },
+          ]}
+        />
       </main>
     );
   }
@@ -116,20 +113,20 @@ export default async function Home() {
       {/* Points total with expandable history */}
       <PointsHistory total={points} entries={ledger} />
 
-      <div className="flex flex-wrap gap-4 text-sm font-medium text-red-500">
-        <Link href="/journal" className="hover:underline">
-          Journal →
-        </Link>
-        <Link href="/leaderboard" className="hover:underline">
-          Leaderboard →
-        </Link>
-        <Link href="/notifications" className="hover:underline">
-          Notifications{unreadCount > 0 ? ` (${unreadCount})` : ""} →
-        </Link>
-        <Link href="/library" className="hover:underline">
-          Playbook →
-        </Link>
-      </div>
+      <NavMenu
+        links={[
+          { href: `/brand/${user.id}`, label: "Your Brand" },
+          { href: "/journal", label: "Journal" },
+          { href: "/leaderboard", label: "Leaderboard" },
+          {
+            href: "/notifications",
+            label:
+              unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications",
+          },
+          { href: "/board", label: "Team Board" },
+          { href: "/library", label: "Playbook" },
+        ]}
+      />
 
       {/* The Dream — motivation */}
       {profile?.dream && (

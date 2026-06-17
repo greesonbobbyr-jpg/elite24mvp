@@ -36,14 +36,15 @@ type PlayerSeed = {
   apg: number;
   favoritePlayer: string;
   favoriteTeam: string;
+  highlightUrl?: string; // pasted video link (placeholder in the seed)
   // Defaults to true. When false, the player is created without a profile so
   // they must complete onboarding in the app.
   onboarded?: boolean;
 };
 
 const teamAPlayers: PlayerSeed[] = [
-  { name: "Jordan Carter", email: "jordan.carter@example.com", dream: "Play Division I basketball and earn a full scholarship.", heightInches: 70, position: "Point Guard", jerseyNumber: 3, ppg: 14.2, rpg: 3.1, apg: 5.4, favoritePlayer: "Stephen Curry", favoriteTeam: "Golden State Warriors" },
-  { name: "Malik Johnson", email: "malik.johnson@example.com", dream: "Earn a spot in my varsity team's starting five this season.", heightInches: 74, position: "Forward", jerseyNumber: 21, ppg: 11.5, rpg: 7.8, apg: 1.9, favoritePlayer: "LeBron James", favoriteTeam: "Los Angeles Lakers" },
+  { name: "Jordan Carter", email: "jordan.carter@example.com", dream: "Play Division I basketball and earn a full scholarship.", heightInches: 70, position: "Point Guard", jerseyNumber: 3, ppg: 14.2, rpg: 3.1, apg: 5.4, favoritePlayer: "Stephen Curry", favoriteTeam: "Golden State Warriors", highlightUrl: "https://www.youtube.com/watch?v=3qH2bQF4yGo" },
+  { name: "Malik Johnson", email: "malik.johnson@example.com", dream: "Earn a spot in my varsity team's starting five this season.", heightInches: 74, position: "Forward", jerseyNumber: 21, ppg: 11.5, rpg: 7.8, apg: 1.9, favoritePlayer: "LeBron James", favoriteTeam: "Los Angeles Lakers", highlightUrl: "https://youtu.be/H4iY3hVjnoc" },
   { name: "Tyler Nguyen", email: "tyler.nguyen@example.com", dream: "Become the best on-ball defender on my team.", heightInches: 71, position: "Shooting Guard", jerseyNumber: 5, ppg: 8.3, rpg: 2.4, apg: 4.1, favoritePlayer: "Jrue Holiday", favoriteTeam: "Boston Celtics" },
   { name: "Andre Washington", email: "andre.washington@example.com", dream: "Dunk in a real game by the end of the year.", heightInches: 76, position: "Center", jerseyNumber: 34, ppg: 9.9, rpg: 9.2, apg: 1.2, favoritePlayer: "Giannis Antetokounmpo", favoriteTeam: "Milwaukee Bucks", onboarded: false },
   { name: "Diego Ramirez", email: "diego.ramirez@example.com", dream: "Lead my team in assists and run the offense.", heightInches: 69, position: "Point Guard", jerseyNumber: 11, ppg: 7.1, rpg: 2.0, apg: 6.0, favoritePlayer: "Chris Paul", favoriteTeam: "Phoenix Suns" },
@@ -128,6 +129,7 @@ async function createPlayers(teamId: number, players: PlayerSeed[]) {
                   assistsPerGame: p.apg,
                   favoritePlayer: p.favoritePlayer,
                   favoriteTeam: p.favoriteTeam,
+                  highlightUrl: p.highlightUrl ?? null,
                   onboardedAt: new Date(),
                 },
               },
@@ -231,6 +233,42 @@ async function seedNotifications() {
   return NOTIFICATIONS.length;
 }
 
+// Placeholder text messages on Team A's board, from the coach + a few players,
+// back-dated so the order looks real. Clearly demo content.
+const TEAM_A_MESSAGES = [
+  { email: "coach.a@example.com", body: "Great energy at practice today. Same time tomorrow — be early.", hoursAgo: 44 },
+  { email: "jordan.carter@example.com", body: "Anyone want to get extra shots up before practice?", hoursAgo: 30 },
+  { email: "malik.johnson@example.com", body: "I'm in. I'll be there 20 minutes early.", hoursAgo: 29 },
+  { email: "tyler.nguyen@example.com", body: "Coach, are we doing conditioning tomorrow?", hoursAgo: 22 },
+  { email: "coach.a@example.com", body: "Yes — wear good shoes, we'll finish with sprints.", hoursAgo: 21 },
+  { email: "diego.ramirez@example.com", body: "Let's get after it. LFG team.", hoursAgo: 4 },
+];
+
+function hoursAgo(n: number): Date {
+  const d = new Date();
+  d.setMinutes(0, 0, 0);
+  d.setHours(d.getHours() - n);
+  return d;
+}
+
+async function seedTeamMessages() {
+  let count = 0;
+  for (const m of TEAM_A_MESSAGES) {
+    const author = await prisma.user.findUnique({ where: { email: m.email } });
+    if (!author) continue;
+    await prisma.teamMessage.create({
+      data: {
+        teamId: author.teamId,
+        authorId: author.id,
+        body: m.body,
+        createdAt: hoursAgo(m.hoursAgo),
+      },
+    });
+    count++;
+  }
+  return count;
+}
+
 async function main() {
   // Safety: only ever seed a local SQLite (file:) dev database (section 7).
   const url = process.env.DATABASE_URL ?? "";
@@ -246,6 +284,7 @@ async function main() {
   await prisma.questLog.deleteMany();
   await prisma.notificationRead.deleteMany();
   await prisma.notification.deleteMany();
+  await prisma.teamMessage.deleteMany();
   await prisma.journalEntry.deleteMany();
   await prisma.playerProfile.deleteMany();
   await prisma.user.deleteMany();
@@ -286,6 +325,7 @@ async function main() {
   }
 
   const totalNotifications = await seedNotifications();
+  const totalMessages = await seedTeamMessages();
 
   // Recompute each player's cached points total = sum of their ledger, so the
   // cache exactly matches the source of truth (check-ins + quests).
@@ -330,6 +370,7 @@ async function main() {
   console.log(
     `  Notifications: ${totalNotifications} from Coach Marcus Bell to Team A (with a spread of reads)`,
   );
+  console.log(`  Team board: ${totalMessages} messages on Team A`);
   console.log("");
   console.log(
     'Run `npm run dev`, then use the bottom-left "Dev: switch user" menu. Switch to',
