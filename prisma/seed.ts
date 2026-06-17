@@ -236,13 +236,64 @@ async function seedNotifications() {
 // Placeholder text messages on Team A's board, from the coach + a few players,
 // back-dated so the order looks real. Clearly demo content.
 const TEAM_A_MESSAGES = [
-  { email: "coach.a@example.com", body: "Great energy at practice today. Same time tomorrow — be early.", hoursAgo: 44 },
-  { email: "jordan.carter@example.com", body: "Anyone want to get extra shots up before practice?", hoursAgo: 30 },
-  { email: "malik.johnson@example.com", body: "I'm in. I'll be there 20 minutes early.", hoursAgo: 29 },
-  { email: "tyler.nguyen@example.com", body: "Coach, are we doing conditioning tomorrow?", hoursAgo: 22 },
-  { email: "coach.a@example.com", body: "Yes — wear good shoes, we'll finish with sprints.", hoursAgo: 21 },
-  { email: "diego.ramirez@example.com", body: "Let's get after it. LFG team.", hoursAgo: 4 },
-];
+  {
+    email: "coach.a@example.com", type: "REGULAR", hoursAgo: 46,
+    body: "Great energy at practice today 🔥 Same time tomorrow — be early.",
+    reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "tyler.nguyen@example.com", type: "THUMBS_UP" }],
+    comments: [],
+  },
+  {
+    email: "coach.a@example.com", type: "DISCUSSION", hoursAgo: 40,
+    body: "Discussion of the Day: Who's the GOAT — Jordan or LeBron? 🐐 Drop your take.",
+    reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "malik.johnson@example.com", type: "THUMBS_UP" }, { email: "tyler.nguyen@example.com", type: "HEART" }, { email: "diego.ramirez@example.com", type: "THUMBS_UP" }],
+    comments: [
+      { email: "jordan.carter@example.com", hoursAgo: 39, body: "MJ all day. 6-0 in the Finals, never lost. 🐐" },
+      { email: "malik.johnson@example.com", hoursAgo: 38, body: "Bron — longevity and makes everyone better. 🔥" },
+      { email: "tyler.nguyen@example.com", hoursAgo: 37, body: "Killer instinct was different. MJ. 💯" },
+      { email: "diego.ramirez@example.com", hoursAgo: 36, body: "Kareem?? 😅 …fine, LeBron." },
+    ],
+  },
+  {
+    email: "jordan.carter@example.com", type: "REGULAR", hoursAgo: 39,
+    body: "MJ. 6-0 in the Finals. 🏀🐐",
+    reactions: [{ email: "malik.johnson@example.com", type: "THUMBS_UP" }, { email: "diego.ramirez@example.com", type: "HEART" }],
+    comments: [],
+  },
+  {
+    email: "malik.johnson@example.com", type: "REGULAR", hoursAgo: 38,
+    body: "LeBron — longevity and all-around game. 💪",
+    reactions: [{ email: "tyler.nguyen@example.com", type: "THUMBS_UP" }],
+    comments: [],
+  },
+  {
+    email: "coach.a@example.com", type: "CHALLENGE", hoursAgo: 30,
+    body: "Challenge of the Week: 500 made free throws by Sunday. Track 'em. 🎯",
+    reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "malik.johnson@example.com", type: "HEART" }, { email: "tyler.nguyen@example.com", type: "THUMBS_UP" }],
+    comments: [
+      { email: "malik.johnson@example.com", hoursAgo: 29, body: "Already at 200 makes 🎯" },
+    ],
+  },
+  {
+    email: "tyler.nguyen@example.com", type: "REGULAR", hoursAgo: 28,
+    body: "I'm in. Already at 120 makes. 🙌",
+    reactions: [{ email: "coach.a@example.com", type: "HEART" }, { email: "jordan.carter@example.com", type: "THUMBS_UP" }],
+    comments: [],
+  },
+  {
+    email: "coach.a@example.com", type: "SPOTLIGHT", hoursAgo: 20,
+    body: "Coach's Spotlight: Tyler locked up on defense all week 💪🔥 Keep leading.",
+    reactions: [{ email: "jordan.carter@example.com", type: "HEART" }, { email: "malik.johnson@example.com", type: "HEART" }, { email: "diego.ramirez@example.com", type: "THUMBS_UP" }],
+    comments: [
+      { email: "jordan.carter@example.com", hoursAgo: 19, body: "Well deserved, Tyler 🔒💪" },
+    ],
+  },
+  {
+    email: "diego.ramirez@example.com", type: "REGULAR", hoursAgo: 4,
+    body: "Let's get after it. LFG team 💯🏀",
+    reactions: [{ email: "tyler.nguyen@example.com", type: "THUMBS_UP" }, { email: "coach.a@example.com", type: "THUMBS_UP" }],
+    comments: [],
+  },
+] as const;
 
 function hoursAgo(n: number): Date {
   const d = new Date();
@@ -252,21 +303,45 @@ function hoursAgo(n: number): Date {
 }
 
 async function seedTeamMessages() {
-  let count = 0;
+  let messageCount = 0;
+  let reactionCount = 0;
+  let commentCount = 0;
   for (const m of TEAM_A_MESSAGES) {
     const author = await prisma.user.findUnique({ where: { email: m.email } });
     if (!author) continue;
-    await prisma.teamMessage.create({
+    const created = await prisma.teamMessage.create({
       data: {
         teamId: author.teamId,
         authorId: author.id,
         body: m.body,
+        type: m.type,
         createdAt: hoursAgo(m.hoursAgo),
       },
     });
-    count++;
+    messageCount++;
+    for (const r of m.reactions) {
+      const reactor = await prisma.user.findUnique({ where: { email: r.email } });
+      if (!reactor) continue;
+      await prisma.messageReaction.create({
+        data: { messageId: created.id, userId: reactor.id, reactionType: r.type },
+      });
+      reactionCount++;
+    }
+    for (const c of m.comments) {
+      const commenter = await prisma.user.findUnique({ where: { email: c.email } });
+      if (!commenter) continue;
+      await prisma.messageComment.create({
+        data: {
+          messageId: created.id,
+          authorId: commenter.id,
+          body: c.body,
+          createdAt: hoursAgo(c.hoursAgo),
+        },
+      });
+      commentCount++;
+    }
   }
-  return count;
+  return { messageCount, reactionCount, commentCount };
 }
 
 async function main() {
@@ -284,6 +359,8 @@ async function main() {
   await prisma.questLog.deleteMany();
   await prisma.notificationRead.deleteMany();
   await prisma.notification.deleteMany();
+  await prisma.messageReaction.deleteMany();
+  await prisma.messageComment.deleteMany();
   await prisma.teamMessage.deleteMany();
   await prisma.journalEntry.deleteMany();
   await prisma.playerProfile.deleteMany();
@@ -325,7 +402,7 @@ async function main() {
   }
 
   const totalNotifications = await seedNotifications();
-  const totalMessages = await seedTeamMessages();
+  const board = await seedTeamMessages();
 
   // Recompute each player's cached points total = sum of their ledger, so the
   // cache exactly matches the source of truth (check-ins + quests).
@@ -370,7 +447,9 @@ async function main() {
   console.log(
     `  Notifications: ${totalNotifications} from Coach Marcus Bell to Team A (with a spread of reads)`,
   );
-  console.log(`  Team board: ${totalMessages} messages on Team A`);
+  console.log(
+    `  Team board: ${board.messageCount} messages + ${board.reactionCount} reactions + ${board.commentCount} comments on Team A`,
+  );
   console.log("");
   console.log(
     'Run `npm run dev`, then use the bottom-left "Dev: switch user" menu. Switch to',

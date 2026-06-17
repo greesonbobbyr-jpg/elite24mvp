@@ -73,8 +73,10 @@ model User {
   authoredNotifications Notification[]     @relation("NotificationAuthor")
   notificationReads     NotificationRead[]
 
-  // Team message board posts this user has authored.
-  teamMessages TeamMessage[]
+  // Team message board posts this user has authored, and reactions they've made.
+  teamMessages     TeamMessage[]
+  messageReactions MessageReaction[]
+  messageComments  MessageComment[]
 }
 
 // Player-only data: the required Dream plus structured "Your Brand" stats.
@@ -227,15 +229,63 @@ model NotificationRead {
 // one team (team-scoped, §3.2). Text only — no images/attachments. Soft-deleted
 // via deletedAt for coach moderation / author removal (kept rather than hard-
 // deleted so removals are auditable for a kids' space, §3.1).
+// `type` is REGULAR for everyone's normal messages; the colored special types
+// (Discussion/Challenge/Spotlight) are coach-only, enforced in the post action.
 model TeamMessage {
-  id        Int       @id @default(autoincrement())
+  id        Int         @id @default(autoincrement())
   teamId    Int
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team      Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
   authorId  Int
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   body      String
-  createdAt DateTime  @default(now())
+  type      MessageType @default(REGULAR)
+  createdAt DateTime    @default(now())
   deletedAt DateTime?
 
+  reactions MessageReaction[]
+  comments  MessageComment[]
+
   @@index([teamId])
+}
+
+enum MessageType {
+  REGULAR
+  DISCUSSION // blue  — "Discussion of the Day" (coach only)
+  CHALLENGE  // green — "Challenge of the Week" (coach only)
+  SPOTLIGHT  // red   — "Coach's Spotlight" (coach only)
+}
+
+enum ReactionType {
+  THUMBS_UP
+  HEART
+}
+
+// A 👍 / ❤️ reaction by a team member on a board message. One of each type per
+// user per message (see @@unique). Team-scoped (verified in the action).
+model MessageReaction {
+  id           Int          @id @default(autoincrement())
+  messageId    Int
+  message      TeamMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId       Int
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactionType ReactionType
+  createdAt    DateTime     @default(now())
+
+  @@unique([messageId, userId, reactionType])
+  @@index([messageId])
+}
+
+// A flat, one-level text comment on a board message. References a message (never
+// another comment). Soft-deleted via deletedAt for coach / author moderation.
+model MessageComment {
+  id        Int         @id @default(autoincrement())
+  messageId Int
+  message   TeamMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  authorId  Int
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime    @default(now())
+  deletedAt DateTime?
+
+  @@index([messageId])
 }
