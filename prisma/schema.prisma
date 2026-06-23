@@ -239,6 +239,10 @@ model TeamMessage {
   author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   body      String
   type      MessageType @default(REGULAR)
+  // References a curated GIF id from lib/gifs.ts (NOT a DB relation — the registry
+  // lives in code). Validated against the registry server-side on every post, so a
+  // message can never point at an arbitrary/external image. Null = no GIF.
+  gifId     String?
   createdAt DateTime    @default(now())
   deletedAt DateTime?
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
+import { isValidGifId } from "@/lib/gifs";
 
 export type BoardState = { error?: string; ok?: boolean };
 
@@ -21,8 +22,18 @@ export async function postMessage(
     return { error: "Only a team member can post." };
   }
   const body = String(formData.get("body") ?? "").trim();
-  if (body === "") {
-    return { error: "Write a message first." };
+
+  // A GIF, if attached, must be one of the curated registry ids — never an
+  // arbitrary/external reference. Reject anything unknown before storing.
+  const rawGifId = String(formData.get("gifId") ?? "").trim();
+  if (rawGifId !== "" && !isValidGifId(rawGifId)) {
+    return { error: "Unknown GIF." };
+  }
+  const gifId = rawGifId === "" ? null : rawGifId;
+
+  // A message may be text and/or a GIF, but not empty.
+  if (body === "" && !gifId) {
+    return { error: "Write a message or pick a GIF." };
   }
 
   const rawType = String(formData.get("type") ?? "REGULAR");
@@ -32,7 +43,7 @@ export async function postMessage(
       : "REGULAR";
 
   await prisma.teamMessage.create({
-    data: { teamId: user.teamId, authorId: user.id, body, type },
+    data: { teamId: user.teamId, authorId: user.id, body, type, gifId },
   });
   revalidatePath("/board");
   return { ok: true };

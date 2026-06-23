@@ -7,6 +7,7 @@ import { deleteMessage, toggleReaction, deleteComment } from "./actions";
 import { MessageComposer } from "./MessageComposer";
 import { CommentForm } from "./CommentForm";
 import { TYPE_META, type MessageType } from "./message-types";
+import { getGif } from "@/lib/gifs";
 
 // The team's message board. Team-private: only the current user's own team is
 // queried and posted to (CLAUDE.md section 3.2). Anyone on the team can post and
@@ -21,7 +22,7 @@ export default async function BoardPage() {
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Team board</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Team Circle</h1>
           <p className="text-sm text-zinc-500">{user.team.name}</p>
         </div>
         <Link href="/" className="text-sm font-medium text-red-500 hover:underline">
@@ -74,9 +75,23 @@ export default async function BoardPage() {
                     {formatDateTime(message.createdAt)}
                   </span>
                 </div>
-                <p className={`mt-1 whitespace-pre-wrap text-sm ${meta.text}`}>
-                  {message.body}
-                </p>
+                {message.body.trim() !== "" && (
+                  <p className={`mt-1 whitespace-pre-wrap text-sm ${meta.text}`}>
+                    {message.body}
+                  </p>
+                )}
+                {(() => {
+                  // Only renders a GIF that still exists in the curated registry.
+                  const gif = getGif(message.gifId);
+                  return gif ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={gif.file}
+                      alt={gif.label}
+                      className="mt-2 max-h-48 rounded-lg border border-zinc-800"
+                    />
+                  ) : null;
+                })()}
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <ReactionButton

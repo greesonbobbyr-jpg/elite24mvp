@@ -55,7 +55,7 @@ export default async function Home() {
           links={[
             { href: "/leaderboard", label: "Team leaderboard" },
             { href: "/notifications", label: "Team notifications" },
-            { href: "/board", label: "Team Board" },
+            { href: "/board", label: "Team Circle" },
             { href: "/library", label: "Playbook" },
           ]}
         />
@@ -123,7 +123,7 @@ export default async function Home() {
             label:
               unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications",
           },
-          { href: "/board", label: "Team Board" },
+          { href: "/board", label: "Team Circle" },
           { href: "/library", label: "Playbook" },
         ]}
       />
