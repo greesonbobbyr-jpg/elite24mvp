@@ -10,6 +10,17 @@ export function listTeamNotifications(teamId: number) {
   });
 }
 
+// The oldest TIME OUT for this player's team that they have NOT acknowledged, or
+// null. Team-scoped (teamId) + per-player (no read by userId). Drives the layout
+// takeover — strictly the player's own team (CLAUDE.md section 3.2).
+export function getActiveTimeout(userId: number, teamId: number) {
+  return prisma.notification.findFirst({
+    where: { teamId, isTimeout: true, reads: { none: { userId } } },
+    orderBy: { createdAt: "asc" },
+    include: { author: { select: { name: true } } },
+  });
+}
+
 // Coach read-status: each team notification plus the player names who have
 // confirmed reading it and those who have not yet (Y = the team's player roster).
 export async function getTeamReadStatus(teamId: number) {
@@ -37,6 +48,7 @@ export async function getTeamReadStatus(teamId: number) {
       id: n.id,
       title: n.title,
       body: n.body,
+      isTimeout: n.isTimeout,
       authorName: n.author.name,
       createdAt: n.createdAt,
       readCount: read.length,

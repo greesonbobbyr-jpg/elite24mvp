@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { postNotification, type NotificationState } from "../actions";
+import { WhistleIcon } from "@/app/components/WhistleIcon";
 
 const initialState: NotificationState = {};
 const fieldClass =
@@ -12,11 +13,14 @@ export function NotificationComposer() {
     postNotification,
     initialState,
   );
+  const [isTimeout, setIsTimeout] = useState(false);
 
   return (
     <form
       action={formAction}
-      className="flex flex-col gap-3 rounded-xl border border-zinc-800 p-5"
+      className={`flex flex-col gap-3 rounded-xl border p-5 ${
+        isTimeout ? "border-red-600 bg-red-950/20" : "border-zinc-800"
+      }`}
     >
       <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
         Post to your team
@@ -28,13 +32,44 @@ export function NotificationComposer() {
         placeholder="Write a note to your team…"
         className={fieldClass}
       />
+
+      {/* TIME OUT toggle — an obviously-urgent kind of notification that takes
+          over players' screens until acknowledged. Posts `isTimeout` as "on". */}
+      <label className="flex cursor-pointer items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="isTimeout"
+          checked={isTimeout}
+          onChange={(e) => setIsTimeout(e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-red-600"
+        />
+        <span>
+          <span className="inline-flex items-center gap-1.5 font-semibold text-red-500">
+            <WhistleIcon className="h-4 w-4" />
+            Send as TIME OUT
+          </span>
+          <span className="block text-xs text-zinc-500">
+            Urgent — takes over every player&apos;s screen until they acknowledge it.
+          </span>
+        </span>
+      </label>
+
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
         className="self-start rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
       >
-        {pending ? "Posting…" : "Post to team"}
+        {pending ? (
+          "Posting…"
+        ) : isTimeout ? (
+          <span className="inline-flex items-center gap-1.5">
+            <WhistleIcon className="h-4 w-4" />
+            Send TIME OUT to team
+          </span>
+        ) : (
+          "Post to team"
+        )}
       </button>
     </form>
   );

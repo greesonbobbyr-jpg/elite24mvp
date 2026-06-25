@@ -204,6 +204,9 @@ model Notification {
   author    User     @relation("NotificationAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   title     String
   body      String
+  // Urgent "TIME OUT" takeover that covers a player's app until acknowledged
+  // (acknowledgement reuses NotificationRead). Default = a normal notification.
+  isTimeout Boolean  @default(false)
   createdAt DateTime @default(now())
 
   reads NotificationRead[]

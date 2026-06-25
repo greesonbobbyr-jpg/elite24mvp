@@ -124,9 +124,11 @@ export async function postNotification(
   if (title === "" || body === "") {
     return { error: "Add a title and a message." };
   }
+  // Urgent takeover flag — coach-only is already enforced above.
+  const isTimeout = formData.get("isTimeout") === "on";
 
   await prisma.notification.create({
-    data: { teamId: user.teamId, authorId: user.id, title, body },
+    data: { teamId: user.teamId, authorId: user.id, title, body, isTimeout },
   });
   revalidatePath("/notifications");
   revalidatePath("/");

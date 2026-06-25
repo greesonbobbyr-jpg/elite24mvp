@@ -9,6 +9,7 @@ import {
 import { formatDate } from "@/lib/format";
 import { confirmRead } from "../actions";
 import { NotificationComposer } from "./NotificationComposer";
+import { WhistleIcon } from "@/app/components/WhistleIcon";
 
 export default async function NotificationsPage() {
   const user = await getCurrentUser();
@@ -37,7 +38,10 @@ export default async function NotificationsPage() {
             {items.map((n) => (
               <li key={n.id} className="rounded-xl border border-zinc-800 p-5">
                 <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="font-semibold">{n.title}</h2>
+                  <h2 className="font-semibold">
+                    {n.isTimeout && <TimeoutBadge />}
+                    {n.title}
+                  </h2>
                   <span className="shrink-0 text-xs text-zinc-500">
                     {formatDate(n.createdAt)}
                   </span>
@@ -90,7 +94,10 @@ export default async function NotificationsPage() {
             return (
               <li key={n.id} className="rounded-xl border border-zinc-800 p-5">
                 <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="font-semibold">{n.title}</h2>
+                  <h2 className="font-semibold">
+                    {n.isTimeout && <TimeoutBadge />}
+                    {n.title}
+                  </h2>
                   <span className="shrink-0 text-xs text-zinc-500">
                     {formatDate(n.createdAt)}
                   </span>
@@ -122,5 +129,15 @@ export default async function NotificationsPage() {
         </ol>
       )}
     </main>
+  );
+}
+
+// Small red badge marking a notification as an urgent TIME OUT.
+function TimeoutBadge() {
+  return (
+    <span className="mr-2 inline-flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-white">
+      <WhistleIcon className="h-3 w-3" />
+      Time Out
+    </span>
   );
 }

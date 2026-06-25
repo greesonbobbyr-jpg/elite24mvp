@@ -35,15 +35,15 @@ export function QuestList({
                 <p className="text-xs text-zinc-500">{quest.description}</p>
               </div>
               {completed ? (
-                <span className="shrink-0 rounded-full bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300">
+                <span className="flex h-9 w-32 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-zinc-800 text-xs font-semibold text-zinc-300">
                   ✓ Done +{quest.points}
                 </span>
               ) : (
-                <form action={logQuest}>
+                <form action={logQuest} className="shrink-0">
                   <input type="hidden" name="questId" value={quest.id} />
                   <button
                     type="submit"
-                    className="shrink-0 rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+                    className="flex h-9 w-32 items-center justify-center whitespace-nowrap rounded-full bg-red-600 text-xs font-semibold text-white hover:bg-red-700"
                   >
                     Mark done +{quest.points}
                   </button>

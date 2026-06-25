@@ -189,19 +189,32 @@ const NOTIFICATIONS = [
     title: "Practice moved to 5 PM Thursday",
     body: "Hey team — this week's Thursday practice moves to 5:00 PM at the main gym. Be on time and ready to work.",
     daysAgo: 6,
+    isTimeout: false,
     readers: ["jordan.carter@example.com", "malik.johnson@example.com", "tyler.nguyen@example.com", "diego.ramirez@example.com"],
   },
   {
     title: "Bring a water bottle every session",
     body: "Reminder: bring a full water bottle to every practice and workout. Hydration is part of the work.",
     daysAgo: 3,
+    isTimeout: false,
     readers: ["jordan.carter@example.com", "malik.johnson@example.com"],
   },
   {
     title: "Great hustle on Saturday",
     body: "Proud of the effort in the scrimmage. Let's carry that energy into this week's quests and check-ins.",
     daysAgo: 1,
+    isTimeout: false,
     readers: ["jordan.carter@example.com"],
+  },
+  {
+    // Urgent TIME OUT takeover. Acknowledged by Tyler + Diego; left UNREAD by
+    // Jordan + Malik so switching to them shows the full-screen takeover, and the
+    // coach's "Read by X of Y" view shows a realistic mix.
+    title: "Practice moved to 5 PM TODAY",
+    body: "Heads up — today's practice is moved up to 5:00 PM at the main gym. Eat early, be on time. Acknowledge so I know you saw this.",
+    daysAgo: 0,
+    isTimeout: true,
+    readers: ["tyler.nguyen@example.com", "diego.ramirez@example.com"],
   },
 ];
 
@@ -218,6 +231,7 @@ async function seedNotifications() {
         authorId: coach.id,
         title: n.title,
         body: n.body,
+        isTimeout: n.isTimeout,
         createdAt: daysAgo(n.daysAgo),
       },
     });
