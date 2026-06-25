@@ -1,19 +1,11 @@
 import { NavMenu } from "./NavMenu";
 import { getCurrentUser } from "@/lib/session";
 import { getTodaysEntry, todayKey } from "@/lib/journal";
-import { listLedger, getPointsTotal, POINTS_PER_CHECKIN } from "@/lib/points";
-import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
+import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { countUnreadForPlayer } from "@/lib/notifications";
 import { storyForDay } from "@/lib/mindset";
 import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
-import { PointsHistory } from "./PointsHistory";
-import { QuestList } from "./QuestList";
-
-function formatHeight(inches: number | null | undefined): string | null {
-  if (inches == null) return null;
-  return `${Math.floor(inches / 12)}'${inches % 12}"`;
-}
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -64,19 +56,15 @@ export default async function Home() {
     );
   }
 
-  // Player (guaranteed onboarded by the (main) layout gate).
+  // Player (guaranteed onboarded by the (main) layout gate). Quests + points live
+  // on /quests; profile basics live on the Brand page. This page stays focused on
+  // the Dream, the daily Mindset story, and the check-in/journal.
   const profile = user.profile;
-  const [todaysEntry, ledger, points, quests, completedIds, unreadCount] =
-    await Promise.all([
-      getTodaysEntry(user.id),
-      listLedger(user.id),
-      getPointsTotal(user.id),
-      listActiveQuests(),
-      getTodaysCompletedQuestIds(user.id),
-      countUnreadForPlayer(user.id, user.teamId),
-    ]);
+  const [todaysEntry, unreadCount] = await Promise.all([
+    getTodaysEntry(user.id),
+    countUnreadForPlayer(user.id, user.teamId),
+  ]);
   const story = storyForDay(todayKey());
-  const height = formatHeight(profile?.heightInches);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
@@ -88,14 +76,38 @@ export default async function Home() {
         <p className="text-sm text-zinc-400">Player · {user.team.name}</p>
       </header>
 
-      {/* Daily mindset moment — story of the day + placeholder Listen */}
+      <NavMenu
+        links={[
+          { href: `/brand/${user.id}`, label: "Your Brand" },
+          { href: "/journal", label: "Journal" },
+          { href: "/quests", label: "Daily Quests" },
+          { href: "/leaderboard", label: "Leaderboard" },
+          {
+            href: "/notifications",
+            label:
+              unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications",
+          },
+          { href: "/board", label: "Team Circle" },
+          { href: "/library", label: "Playbook" },
+        ]}
+      />
+
+      {/* The Dream — prominent at the top */}
+      {profile?.dream && (
+        <section className="rounded-xl border border-zinc-800 p-5">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-red-500">
+            The Dream
+          </h2>
+          <p className="mt-1 text-xl font-semibold">{profile.dream}</p>
+        </section>
+      )}
+
+      {/* Daily mindset moment — collapsible story of the day + Listen */}
       <MindsetCard title={story.title} body={story.body} />
 
       {/* Daily check-in (the core loop) */}
       <section className="rounded-xl border border-zinc-800 p-5">
-        <h2 className="text-lg font-semibold">
-          What will you work on today?
-        </h2>
+        <h2 className="text-lg font-semibold">What will you work on today?</h2>
         {todaysEntry ? (
           <div className="mt-2">
             <p className="whitespace-pre-wrap text-sm">{todaysEntry.reflection}</p>
@@ -109,68 +121,6 @@ export default async function Home() {
           </div>
         )}
       </section>
-
-      {/* Today's quests */}
-      <QuestList quests={quests} completedIds={completedIds} />
-
-      {/* Points total with expandable history */}
-      <PointsHistory total={points} entries={ledger} />
-
-      <NavMenu
-        links={[
-          { href: `/brand/${user.id}`, label: "Your Brand" },
-          { href: "/journal", label: "Journal" },
-          { href: "/leaderboard", label: "Leaderboard" },
-          {
-            href: "/notifications",
-            label:
-              unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications",
-          },
-          { href: "/board", label: "Team Circle" },
-          { href: "/library", label: "Playbook" },
-        ]}
-      />
-
-      {/* The Dream — motivation */}
-      {profile?.dream && (
-        <section className="rounded-xl border border-zinc-800 p-5">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            The Dream
-          </h2>
-          <p className="mt-1 text-lg font-medium">{profile.dream}</p>
-        </section>
-      )}
-
-      {/* Profile basics */}
-      {profile && (
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {profile.position && <Stat label="Position" value={profile.position} />}
-          {height && <Stat label="Height" value={height} />}
-          {profile.jerseyNumber != null && (
-            <Stat label="Jersey" value={`#${profile.jerseyNumber}`} />
-          )}
-          {profile.pointsPerGame != null && (
-            <Stat label="PPG" value={String(profile.pointsPerGame)} />
-          )}
-          {profile.reboundsPerGame != null && (
-            <Stat label="RPG" value={String(profile.reboundsPerGame)} />
-          )}
-          {profile.assistsPerGame != null && (
-            <Stat label="APG" value={String(profile.assistsPerGame)} />
-          )}
-        </section>
-      )}
     </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-zinc-900 px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-        {label}
-      </div>
-      <div className="text-base font-semibold">{value}</div>
-    </div>
   );
 }
