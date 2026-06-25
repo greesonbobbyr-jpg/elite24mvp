@@ -4,8 +4,9 @@ import { getTodaysEntry, todayKey } from "@/lib/journal";
 import { listLedger, getPointsTotal, POINTS_PER_CHECKIN } from "@/lib/points";
 import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
 import { countUnreadForPlayer } from "@/lib/notifications";
-import { quoteForDay } from "@/lib/quotes";
+import { storyForDay } from "@/lib/mindset";
 import { CheckInForm } from "./CheckInForm";
+import { MindsetCard } from "./MindsetCard";
 import { PointsHistory } from "./PointsHistory";
 import { QuestList } from "./QuestList";
 
@@ -74,7 +75,7 @@ export default async function Home() {
       getTodaysCompletedQuestIds(user.id),
       countUnreadForPlayer(user.id, user.teamId),
     ]);
-  const quote = quoteForDay(todayKey());
+  const story = storyForDay(todayKey());
   const height = formatHeight(profile?.heightInches);
 
   return (
@@ -87,10 +88,12 @@ export default async function Home() {
         <p className="text-sm text-zinc-400">Player · {user.team.name}</p>
       </header>
 
+      {/* Daily mindset moment — story of the day + placeholder Listen */}
+      <MindsetCard title={story.title} body={story.body} />
+
       {/* Daily check-in (the core loop) */}
       <section className="rounded-xl border border-zinc-800 p-5">
-        <p className="text-sm italic text-zinc-400">&ldquo;{quote}&rdquo;</p>
-        <h2 className="mt-3 text-lg font-semibold">
+        <h2 className="text-lg font-semibold">
           What will you work on today?
         </h2>
         {todaysEntry ? (
