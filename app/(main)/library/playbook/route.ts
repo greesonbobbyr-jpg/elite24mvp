@@ -13,7 +13,7 @@ async function loadPlaybook(): Promise<Buffer | null> {
   if (cachedFile) return cachedFile;
   try {
     cachedFile = await fs.readFile(
-      path.join(process.cwd(), "content", "e24playbook.pdf"),
+      path.join(process.cwd(), "content", "e24playbookV2.pdf"),
     );
     return cachedFile;
   } catch {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   const download = request.nextUrl.searchParams.get("download") !== null;
   const headers: Record<string, string> = {
     "Content-Type": "application/pdf",
-    "Content-Disposition": `${download ? "attachment" : "inline"}; filename="e24playbook.pdf"`,
+    "Content-Disposition": `${download ? "attachment" : "inline"}; filename="e24playbookV2.pdf"`,
     "Accept-Ranges": "bytes",
     // Private document — never cached by shared/proxy caches.
     "Cache-Control": "private, max-age=0, must-revalidate",
