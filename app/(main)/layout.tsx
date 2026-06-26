@@ -1,17 +1,22 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
-import { getActiveTimeout } from "@/lib/notifications";
+import { getActiveTimeout, countUnreadForPlayer } from "@/lib/notifications";
 import { TimeoutTakeover } from "./TimeoutTakeover";
+import { NavMenu } from "./NavMenu";
+import { IdentityChip } from "./IdentityChip";
+
+type NavLink = { href: string; label: string };
 
 // Gate for the main app: a Player must finish onboarding before using anything
 // here. Coaches and "no user selected" pass through (CLAUDE.md section 2).
 // The /onboarding route lives outside this group, so it is never gated.
 //
-// This server component wraps every main route, so it is the right place to
-// enforce the app-wide TIME OUT takeover: an onboarded player with an
-// unacknowledged TIME OUT for their own team sees the overlay on any page and
-// immediately on load/login, until they acknowledge it.
+// This server component wraps every main route, so it hosts:
+//  - the app-wide top header bar (logo left, nav menu right), and
+//  - the app-wide TIME OUT takeover for a player with an unacknowledged urgent
+//    notification (covers the header too, via its fixed z-50 overlay).
 export default async function MainLayout({
   children,
 }: {
@@ -28,8 +33,50 @@ export default async function MainLayout({
       ? await getActiveTimeout(user.id, user.teamId)
       : null;
 
+  // Nav links — same role-based set as before, now built here so the menu lives
+  // in the shared header bar instead of floating on the home page only.
+  let links: NavLink[] = [];
+  if (user?.role === "PLAYER") {
+    const unreadCount = await countUnreadForPlayer(user.id, user.teamId);
+    links = [
+      { href: `/brand/${user.id}`, label: "Your Brand" },
+      { href: "/journal", label: "Journal" },
+      { href: "/quests", label: "Daily Quests" },
+      { href: "/leaderboard", label: "Leaderboard" },
+      {
+        href: "/notifications",
+        label:
+          unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications",
+      },
+      { href: "/board", label: "Team Circle" },
+      { href: "/library", label: "Playbook" },
+    ];
+  } else if (user?.role === "COACH") {
+    links = [
+      { href: "/leaderboard", label: "Team leaderboard" },
+      { href: "/notifications", label: "Team notifications" },
+      { href: "/board", label: "Team Circle" },
+      { href: "/library", label: "Playbook" },
+    ];
+  }
+
   return (
     <>
+      <header className="relative flex items-center justify-between border-b border-zinc-900 px-3 py-2.5">
+        {/* left: player/coach identity chip (the one new link) */}
+        {user ? <IdentityChip user={user} /> : <span />}
+        {/* center: brand anchor — the E24 logo image (not a link) */}
+        <Image
+          src="/logo.png"
+          alt="Elite 24 MVP"
+          width={36}
+          height={36}
+          className="pointer-events-none absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2"
+          priority
+        />
+        {/* right: hamburger menu (unchanged) */}
+        {user ? <NavMenu links={links} /> : <span />}
+      </header>
       {children}
       {timeout && <TimeoutTakeover notification={timeout} />}
     </>

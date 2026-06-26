@@ -47,26 +47,22 @@ export function MindsetCard({
     setExpanded(false);
   }
 
-  // --- Collapsed teaser: title only, no spoilers ---
+  // --- Collapsed teaser: slim one-line strip (title only, no spoilers) ---
   if (!expanded) {
     return (
-      <section className="rounded-xl border border-red-600/40 bg-red-950/10 transition hover:-translate-y-0.5 hover:border-red-500/60 active:scale-[0.99]">
+      <section className="rounded-xl border border-red-600/40 bg-gradient-to-r from-red-950/25 to-zinc-950/40 transition hover:-translate-y-0.5 hover:border-red-500/60 active:scale-[0.99]">
         <button
           type="button"
           onClick={() => setExpanded(true)}
           aria-expanded={false}
-          className="group flex w-full items-center justify-between gap-3 p-5 text-left"
+          className="group flex w-full items-center gap-3 px-4 py-3 text-left"
         >
-          <span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
-              1-Minute Mindset
-            </span>
-            <span className="mt-1 block text-xl font-bold text-white">
-              {title}
-            </span>
-            <span className="mt-1 block text-xs text-zinc-500">
-              Tap to read or listen
-            </span>
+          <span aria-hidden className="shrink-0 text-base">
+            🏀
+          </span>
+          <span className="e24-eyebrow shrink-0">1-Minute Mindset</span>
+          <span className="min-w-0 flex-1 truncate font-semibold text-white">
+            {title}
           </span>
           <span
             className="shrink-0 text-lg text-red-500/70 transition-transform group-hover:rotate-90"

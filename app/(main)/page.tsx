@@ -1,8 +1,6 @@
-import { NavMenu } from "./NavMenu";
 import { getCurrentUser } from "@/lib/session";
 import { getTodaysEntry, todayKey } from "@/lib/journal";
 import { POINTS_PER_CHECKIN } from "@/lib/points";
-import { countUnreadForPlayer } from "@/lib/notifications";
 import { storyForDay } from "@/lib/mindset";
 import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
@@ -45,14 +43,6 @@ export default async function Home() {
             Coach view. Team roster and coaching tools arrive in later phases.
           </p>
         </Card>
-        <NavMenu
-          links={[
-            { href: "/leaderboard", label: "Team leaderboard" },
-            { href: "/notifications", label: "Team notifications" },
-            { href: "/board", label: "Team Circle" },
-            { href: "/library", label: "Playbook" },
-          ]}
-        />
       </main>
     );
   }
@@ -61,53 +51,29 @@ export default async function Home() {
   // on /quests; profile basics live on the Brand page. This page stays focused on
   // the Dream, the daily Mindset story, and the check-in/journal.
   const profile = user.profile;
-  const [todaysEntry, unreadCount] = await Promise.all([
-    getTodaysEntry(user.id),
-    countUnreadForPlayer(user.id, user.teamId),
-  ]);
+  const todaysEntry = await getTodaysEntry(user.id);
   const story = storyForDay(todayKey());
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
-      <header className="flex flex-col gap-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
-          Viewing as
-        </span>
-        <h1 className="text-2xl font-bold tracking-tight">{user.name}</h1>
-        <p className="text-sm text-zinc-400">Player · {user.team.name}</p>
-      </header>
-
-      <NavMenu
-        links={[
-          { href: `/brand/${user.id}`, label: "Your Brand" },
-          { href: "/journal", label: "Journal" },
-          { href: "/quests", label: "Daily Quests" },
-          { href: "/leaderboard", label: "Leaderboard" },
-          {
-            href: "/notifications",
-            label:
-              unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications",
-          },
-          { href: "/board", label: "Team Circle" },
-          { href: "/library", label: "Playbook" },
-        ]}
-      />
-
-      {/* The Dream — prominent at the top */}
+    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
+      {/* The Dream — the material hero */}
       {profile?.dream && (
-        <Card>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-red-500">
-            The Dream
-          </h2>
-          <p className="mt-1 text-xl font-semibold">{profile.dream}</p>
+        <Card variant="material">
+          <span
+            aria-hidden
+            className="absolute inset-y-0 left-0 w-1.5 bg-red-600 shadow-[0_0_12px_rgba(220,38,38,0.8)]"
+          />
+          <div className="relative z-10">
+            <h2 className="e24-eyebrow">My Dream</h2>
+            <p className="mt-1 text-xl font-bold leading-snug text-white">
+              {profile.dream}
+            </p>
+          </div>
         </Card>
       )}
 
-      {/* Daily mindset moment — collapsible story of the day + Listen */}
-      <MindsetCard title={story.title} body={story.body} />
-
-      {/* Daily check-in (the core loop) */}
-      <Card>
+      {/* Daily check-in (the core loop) — the main act */}
+      <Card className="bg-gradient-to-b from-zinc-900/60 to-zinc-950 shadow-lg shadow-black/40">
         <h2 className="text-lg font-semibold">What will you work on today?</h2>
         {todaysEntry ? (
           <div className="mt-3">
@@ -124,6 +90,9 @@ export default async function Home() {
           </div>
         )}
       </Card>
+
+      {/* Daily mindset moment — slim collapsible strip */}
+      <MindsetCard title={story.title} body={story.body} />
     </main>
   );
 }

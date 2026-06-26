@@ -21,7 +21,7 @@ export function NavMenu({ links }: { links: NavLink[] }) {
   }, [open]);
 
   return (
-    <div ref={ref} className="fixed right-4 top-4 z-50">
+    <div ref={ref} className="relative">
       <button
         type="button"
         aria-label="Menu"
@@ -45,7 +45,7 @@ export function NavMenu({ links }: { links: NavLink[] }) {
       </button>
 
       {open && (
-        <nav className="e24-reveal absolute right-0 mt-2 w-52 origin-top-right overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-xl shadow-black/40">
+        <nav className="e24-reveal absolute right-0 z-50 mt-2 w-52 origin-top-right overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-xl shadow-black/40">
           {links.map((link) => (
             <Link
               key={link.href + link.label}
