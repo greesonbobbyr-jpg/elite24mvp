@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { submitCheckIn, type CheckInState } from "./actions";
+import { Button } from "@/app/components/ui/Button";
 
 const initialState: CheckInState = {};
 
@@ -18,16 +19,12 @@ export function CheckInForm() {
         required
         rows={4}
         placeholder="e.g. 100 free throws, then work on my left hand."
-        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700 dark:bg-zinc-900"
+        className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
       />
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      <button
-        type="submit"
-        disabled={pending}
-        className="self-start rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-      >
+      <Button type="submit" size="lg" disabled={pending} className="w-full">
         {pending ? "Saving…" : "Check in"}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -6,6 +6,7 @@ import { countUnreadForPlayer } from "@/lib/notifications";
 import { storyForDay } from "@/lib/mindset";
 import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
+import { Card } from "@/app/components/ui/Card";
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -39,11 +40,11 @@ export default async function Home() {
           <h1 className="text-3xl font-bold tracking-tight">{user.name}</h1>
           <p className="text-sm text-zinc-400">Coach · {user.team.name}</p>
         </header>
-        <section className="rounded-xl border border-zinc-800 p-5">
+        <Card>
           <p className="text-sm text-zinc-400">
             Coach view. Team roster and coaching tools arrive in later phases.
           </p>
-        </section>
+        </Card>
         <NavMenu
           links={[
             { href: "/leaderboard", label: "Team leaderboard" },
@@ -94,25 +95,27 @@ export default async function Home() {
 
       {/* The Dream — prominent at the top */}
       {profile?.dream && (
-        <section className="rounded-xl border border-zinc-800 p-5">
+        <Card>
           <h2 className="text-xs font-semibold uppercase tracking-wide text-red-500">
             The Dream
           </h2>
           <p className="mt-1 text-xl font-semibold">{profile.dream}</p>
-        </section>
+        </Card>
       )}
 
       {/* Daily mindset moment — collapsible story of the day + Listen */}
       <MindsetCard title={story.title} body={story.body} />
 
       {/* Daily check-in (the core loop) */}
-      <section className="rounded-xl border border-zinc-800 p-5">
+      <Card>
         <h2 className="text-lg font-semibold">What will you work on today?</h2>
         {todaysEntry ? (
-          <div className="mt-2">
-            <p className="whitespace-pre-wrap text-sm">{todaysEntry.reflection}</p>
-            <p className="mt-3 text-xs font-semibold text-red-500">
-              ✓ Checked in today (+{POINTS_PER_CHECKIN} points)
+          <div className="mt-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/15 px-3 py-1 text-xs font-semibold text-red-400">
+              ✓ Checked in today · +{POINTS_PER_CHECKIN}
+            </span>
+            <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-200">
+              {todaysEntry.reflection}
             </p>
           </div>
         ) : (
@@ -120,7 +123,7 @@ export default async function Home() {
             <CheckInForm />
           </div>
         )}
-      </section>
+      </Card>
     </main>
   );
 }

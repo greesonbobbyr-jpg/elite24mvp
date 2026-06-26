@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { speaker } from "@/lib/speech";
+import { Button } from "@/app/components/ui/Button";
+import { cardAccent } from "@/app/components/ui/Card";
 
 // The daily Mindset "story of the day" on the check-in page. Starts COLLAPSED,
 // showing only "1-Minute Mindset" + the title — deliberately NOT the player or
@@ -48,12 +50,12 @@ export function MindsetCard({
   // --- Collapsed teaser: title only, no spoilers ---
   if (!expanded) {
     return (
-      <section className="rounded-xl border border-red-600/40 bg-red-950/10">
+      <section className="rounded-xl border border-red-600/40 bg-red-950/10 transition hover:-translate-y-0.5 hover:border-red-500/60 active:scale-[0.99]">
         <button
           type="button"
           onClick={() => setExpanded(true)}
           aria-expanded={false}
-          className="flex w-full items-center justify-between gap-3 p-5 text-left"
+          className="group flex w-full items-center justify-between gap-3 p-5 text-left"
         >
           <span>
             <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
@@ -66,7 +68,10 @@ export function MindsetCard({
               Tap to read or listen
             </span>
           </span>
-          <span className="shrink-0 text-lg text-zinc-500" aria-hidden>
+          <span
+            className="shrink-0 text-lg text-red-500/70 transition-transform group-hover:rotate-90"
+            aria-hidden
+          >
             ▸
           </span>
         </button>
@@ -76,21 +81,22 @@ export function MindsetCard({
 
   // --- Expanded: full story + read/listen ---
   return (
-    <section className="rounded-xl border border-red-600/40 bg-red-950/10 p-5">
+    <section className={`${cardAccent} e24-reveal`}>
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
           1-Minute Mindset
         </span>
         <div className="flex shrink-0 items-center gap-2">
           {supported ? (
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="sm"
               onClick={listen}
               aria-pressed={playing}
-              className="flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
             >
               {playing ? "■ Stop" : "▶ Listen"}
-            </button>
+            </Button>
           ) : (
             <span className="text-[10px] text-zinc-500">
               Listen unavailable in this browser
@@ -100,7 +106,7 @@ export function MindsetCard({
             type="button"
             onClick={collapse}
             aria-label="Collapse"
-            className="rounded-full px-1.5 py-1 text-sm text-zinc-500 hover:text-zinc-300"
+            className="rounded-full px-1.5 py-1 text-sm text-zinc-500 transition hover:text-zinc-300 active:scale-95"
           >
             ▴
           </button>

@@ -21,3 +21,32 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
 }
+
+/* The one shared motion convention: a soft reveal for content that appears
+   (Mindset expanded story, the nav dropdown). Pairs with inline Tailwind
+   hover-lift / active:scale on tappable elements. Kept short + gentle. */
+@keyframes e24-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.e24-reveal {
+  animation: e24-reveal 180ms ease-out both;
+}
+
+/* Respect users who prefer less motion (child-safe / accessible). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

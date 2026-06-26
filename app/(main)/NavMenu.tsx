@@ -27,7 +27,7 @@ export function NavMenu({ links }: { links: NavLink[] }) {
         aria-label="Menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-800 bg-black text-white hover:border-red-500"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-800 bg-black text-white transition hover:border-red-500 hover:text-red-400 active:scale-95"
       >
         <svg
           width="18"
@@ -45,13 +45,13 @@ export function NavMenu({ links }: { links: NavLink[] }) {
       </button>
 
       {open && (
-        <nav className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-lg">
+        <nav className="e24-reveal absolute right-0 mt-2 w-52 origin-top-right overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-xl shadow-black/40">
           {links.map((link) => (
             <Link
               key={link.href + link.label}
               href={link.href}
               onClick={() => setOpen(false)}
-              className="block px-4 py-2.5 text-sm font-medium text-white hover:bg-red-600/20 hover:text-red-400"
+              className="block px-4 py-3 text-sm font-medium text-white transition hover:bg-red-600/20 hover:text-red-400"
             >
               {link.label}
             </Link>
