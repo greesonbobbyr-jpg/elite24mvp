@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { LIBRARY_ENTRIES } from "@/lib/library";
 import { PdfViewerLoader } from "./PdfViewerLoader";
+import { cardDefault } from "@/app/components/ui/Card";
 
 // The team's reference library. Under (main) so the onboarding gate + footer
 // apply; both coaches and players can view (it's the team's shared method).
@@ -25,10 +26,7 @@ export default async function LibraryPage() {
       </header>
 
       {LIBRARY_ENTRIES.map((entry) => (
-        <section
-          key={entry.slug}
-          className="flex flex-col gap-3 rounded-xl border border-zinc-800 p-5"
-        >
+        <section key={entry.slug} className={`flex flex-col gap-3 ${cardDefault}`}>
           <div>
             <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
               Team playbook
@@ -42,13 +40,13 @@ export default async function LibraryPage() {
               href={entry.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+              className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-[0.97]"
             >
               Open in new tab
             </a>
             <a
               href={`${entry.href}?download=1`}
-              className="rounded-full border border-zinc-700 px-4 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800"
+              className="rounded-full border border-zinc-700 px-4 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-800 active:scale-[0.97]"
             >
               Download
             </a>

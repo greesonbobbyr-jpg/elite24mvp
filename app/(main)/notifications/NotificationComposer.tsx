@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { postNotification, type NotificationState } from "../actions";
 import { WhistleIcon } from "@/app/components/WhistleIcon";
+import { Button } from "@/app/components/ui/Button";
 
 const initialState: NotificationState = {};
 const fieldClass =
@@ -18,8 +19,8 @@ export function NotificationComposer() {
   return (
     <form
       action={formAction}
-      className={`flex flex-col gap-3 rounded-xl border p-5 ${
-        isTimeout ? "border-red-600 bg-red-950/20" : "border-zinc-800"
+      className={`flex flex-col gap-3 rounded-xl border p-5 transition ${
+        isTimeout ? "border-red-600 bg-red-950/20" : "border-zinc-800 bg-zinc-950/40"
       }`}
     >
       <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
@@ -55,11 +56,7 @@ export function NotificationComposer() {
       </label>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      <button
-        type="submit"
-        disabled={pending}
-        className="self-start rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-      >
+      <Button type="submit" disabled={pending} className="self-start">
         {pending ? (
           "Posting…"
         ) : isTimeout ? (
@@ -70,7 +67,7 @@ export function NotificationComposer() {
         ) : (
           "Post to team"
         )}
-      </button>
+      </Button>
     </form>
   );
 }

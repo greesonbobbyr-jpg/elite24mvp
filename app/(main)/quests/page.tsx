@@ -5,6 +5,7 @@ import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
 import { listLedger, getPointsTotal } from "@/lib/points";
 import { QuestList } from "../QuestList";
 import { PointsHistory } from "../PointsHistory";
+import { Card } from "@/app/components/ui/Card";
 
 // Daily quests + points history, on their own page (relocated from the home
 // check-in page). Player-private; the (main) layout enforces onboarding + footer.
@@ -28,11 +29,11 @@ export default async function QuestsPage() {
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
         {header}
-        <section className="rounded-xl border border-zinc-800 p-5">
+        <Card>
           <p className="text-sm text-zinc-400">
             Daily quests are part of the player loop.
           </p>
-        </section>
+        </Card>
       </main>
     );
   }

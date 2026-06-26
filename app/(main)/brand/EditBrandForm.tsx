@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { updateBrand, type BrandState } from "./actions";
+import { Button } from "@/app/components/ui/Button";
+import { cardDefault } from "@/app/components/ui/Card";
 
 const initialState: BrandState = {};
 const fieldClass =
@@ -27,7 +29,7 @@ export function EditBrandForm({ profile }: { profile: EditableProfile }) {
   );
 
   return (
-    <details className="rounded-xl border border-zinc-800 p-5">
+    <details className={cardDefault}>
       <summary className="cursor-pointer select-none text-sm font-semibold text-red-500">
         Edit my brand
       </summary>
@@ -83,13 +85,9 @@ export function EditBrandForm({ profile }: { profile: EditableProfile }) {
 
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="self-start rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-        >
+        <Button type="submit" disabled={pending} className="self-start">
           {pending ? "Saving…" : "Save"}
-        </button>
+        </Button>
       </form>
     </details>
   );

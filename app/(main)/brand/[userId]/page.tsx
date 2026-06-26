@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getTeamRanking } from "@/lib/leaderboard";
 import { EditBrandForm } from "../EditBrandForm";
+import { Card } from "@/app/components/ui/Card";
 
 function formatHeight(inches: number | null): string | null {
   if (inches == null) return null;
@@ -61,12 +62,12 @@ export default async function BrandPage({
       </header>
 
       {/* The Dream */}
-      <section className="rounded-xl border border-zinc-800 p-5">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+      <Card>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-red-500">
           The Dream
         </h2>
         <p className="mt-1 text-lg font-medium">{profile.dream}</p>
-      </section>
+      </Card>
 
       {/* Points + standing */}
       <section className="grid grid-cols-2 gap-3">
@@ -100,8 +101,8 @@ export default async function BrandPage({
 
       {/* Highlight — a pasted link only */}
       {profile.highlightUrl && (
-        <section className="rounded-xl border border-zinc-800 p-5">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        <Card>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-red-500">
             Highlight
           </h2>
           <a
@@ -112,7 +113,7 @@ export default async function BrandPage({
           >
             {profile.highlightUrl}
           </a>
-        </section>
+        </Card>
       )}
 
       {/* Journal link — owner only (journals stay private) */}
@@ -133,7 +134,7 @@ export default async function BrandPage({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-zinc-900 px-3 py-2">
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
       <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
         {label}
       </div>

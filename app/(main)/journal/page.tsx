@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { listEntries } from "@/lib/journal";
 import { formatDayKey } from "@/lib/format";
+import { cardDefault } from "@/app/components/ui/Card";
 
 // The player's private journal timeline (newest first). Coaches and "no user"
 // have no journal, so they go back to the app.
@@ -30,10 +31,7 @@ export default async function JournalPage() {
       ) : (
         <ol className="flex flex-col gap-4">
           {entries.map((entry) => (
-            <li
-              key={entry.id}
-              className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-            >
+            <li key={entry.id} className={cardDefault}>
               <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 {formatDayKey(entry.day)}
               </div>

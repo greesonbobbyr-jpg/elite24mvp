@@ -113,7 +113,7 @@ export default async function BoardPage() {
                       <input type="hidden" name="messageId" value={message.id} />
                       <button
                         type="submit"
-                        className="text-xs text-zinc-500 hover:text-red-500 hover:underline"
+                        className="text-xs text-zinc-500 transition hover:text-red-500 hover:underline"
                       >
                         Delete
                       </button>
@@ -161,7 +161,7 @@ export default async function BoardPage() {
                               />
                               <button
                                 type="submit"
-                                className="text-[10px] text-zinc-500 hover:text-red-500 hover:underline"
+                                className="text-[10px] text-zinc-500 transition hover:text-red-500 hover:underline"
                               >
                                 Delete
                               </button>
@@ -203,7 +203,7 @@ function ReactionButton({
       <input type="hidden" name="reactionType" value={reactionType} />
       <button
         type="submit"
-        className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
+        className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition active:scale-95 ${
           active
             ? "border-red-500 bg-red-600/20 text-white"
             : "border-zinc-700 text-zinc-400 hover:border-zinc-500"

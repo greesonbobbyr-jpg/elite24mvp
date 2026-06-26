@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { postMessage, type BoardState } from "./actions";
 import { TYPE_META, TAB_TYPES, SHORT_LABEL, type MessageType } from "./message-types";
 import { GIFS, getGif } from "@/lib/gifs";
+import { Button } from "@/app/components/ui/Button";
 
 const initialState: BoardState = {};
 const EMOJIS = ["🏀", "🔥", "💪", "🐐", "⛹️", "🏆", "👏", "🎯", "💯", "🙌"];
@@ -37,7 +38,7 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition active:scale-95 ${
                   active
                     ? `border-transparent ${TYPE_META[t].activeTab}`
                     : TYPE_META[t].idleTab
@@ -98,7 +99,7 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
         <button
           type="button"
           onClick={() => setShowGifPicker((s) => !s)}
-          className={`ml-1 rounded-md border px-2 py-1 text-xs font-medium ${
+          className={`ml-1 rounded-md border px-2 py-1 text-xs font-medium transition active:scale-95 ${
             showGifPicker
               ? "border-red-500 text-red-400"
               : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
@@ -147,13 +148,9 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
       )}
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      <button
-        type="submit"
-        disabled={pending}
-        className="self-end rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-      >
+      <Button type="submit" disabled={pending} className="self-end">
         {pending ? "Posting…" : "Post"}
-      </button>
+      </Button>
     </form>
   );
 }

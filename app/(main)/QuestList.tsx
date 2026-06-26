@@ -1,4 +1,5 @@
 import { logQuest } from "./actions";
+import { Card } from "@/app/components/ui/Card";
 
 type Quest = {
   id: number;
@@ -20,7 +21,7 @@ export function QuestList({
   const done = new Set(completedIds);
 
   return (
-    <section className="rounded-xl border border-zinc-800 p-5">
+    <Card>
       <h2 className="text-lg font-semibold">Today&apos;s quests</h2>
       <ul className="mt-3 flex flex-col gap-3">
         {quests.map((quest) => {
@@ -43,7 +44,7 @@ export function QuestList({
                   <input type="hidden" name="questId" value={quest.id} />
                   <button
                     type="submit"
-                    className="flex h-9 w-32 items-center justify-center whitespace-nowrap rounded-full bg-red-600 text-xs font-semibold text-white hover:bg-red-700"
+                    className="flex h-9 w-32 items-center justify-center whitespace-nowrap rounded-full bg-red-600 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-[0.97]"
                   >
                     Mark done +{quest.points}
                   </button>
@@ -53,6 +54,6 @@ export function QuestList({
           );
         })}
       </ul>
-    </section>
+    </Card>
   );
 }

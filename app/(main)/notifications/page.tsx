@@ -10,6 +10,8 @@ import { formatDate } from "@/lib/format";
 import { confirmRead } from "../actions";
 import { NotificationComposer } from "./NotificationComposer";
 import { WhistleIcon } from "@/app/components/WhistleIcon";
+import { Button } from "@/app/components/ui/Button";
+import { cardDefault } from "@/app/components/ui/Card";
 
 export default async function NotificationsPage() {
   const user = await getCurrentUser();
@@ -36,7 +38,7 @@ export default async function NotificationsPage() {
         ) : (
           <ol className="flex flex-col gap-4">
             {items.map((n) => (
-              <li key={n.id} className="rounded-xl border border-zinc-800 p-5">
+              <li key={n.id} className={cardDefault}>
                 <div className="flex items-baseline justify-between gap-3">
                   <h2 className="font-semibold">
                     {n.isTimeout && <TimeoutBadge />}
@@ -92,7 +94,7 @@ export default async function NotificationsPage() {
           {notifications.map((n) => {
             const isRead = readIds.has(n.id);
             return (
-              <li key={n.id} className="rounded-xl border border-zinc-800 p-5">
+              <li key={n.id} className={cardDefault}>
                 <div className="flex items-baseline justify-between gap-3">
                   <h2 className="font-semibold">
                     {n.isTimeout && <TimeoutBadge />}
@@ -114,12 +116,9 @@ export default async function NotificationsPage() {
                   ) : (
                     <form action={confirmRead}>
                       <input type="hidden" name="notificationId" value={n.id} />
-                      <button
-                        type="submit"
-                        className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
-                      >
+                      <Button type="submit" size="sm">
                         I&apos;ve read this
-                      </button>
+                      </Button>
                     </form>
                   )}
                 </div>

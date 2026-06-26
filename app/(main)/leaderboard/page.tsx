@@ -28,14 +28,14 @@ export default async function LeaderboardPage() {
         </Link>
       </header>
 
-      <ol className="overflow-hidden rounded-xl border border-zinc-800">
+      <ol className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/40">
         {ranked.map((player, index) => {
           const isMe = player.id === user.id;
           return (
             <li
               key={player.id}
-              className={`flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3 last:border-b-0 ${
-                isMe ? "bg-red-600/10" : ""
+              className={`flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3 transition last:border-b-0 ${
+                isMe ? "bg-red-600/10" : "hover:bg-white/[0.03]"
               }`}
             >
               <div className="flex items-center gap-3">
