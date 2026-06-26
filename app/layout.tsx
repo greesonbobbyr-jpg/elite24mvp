@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
@@ -43,9 +44,18 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col">
         {children}
         {/* Always-present Elite24 mark — the fixed brand frame (section 9). */}
-        <footer className="border-t border-zinc-900 py-4 text-center text-xs text-zinc-500">
-          Powered by{" "}
-          <span className="font-semibold text-red-500">Elite 24 MVP</span>
+        <footer className="flex flex-col items-center gap-2 border-t border-zinc-900 py-5 text-center text-xs text-zinc-500">
+          <Image
+            src="/logo.png"
+            alt="Elite 24 MVP"
+            width={40}
+            height={40}
+            className="h-10 w-10"
+          />
+          <span>
+            Powered by{" "}
+            <span className="font-semibold text-red-500">Elite 24 MVP</span>
+          </span>
         </footer>
         <DevSwitcherSlot />
       </body>
