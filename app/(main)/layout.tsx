@@ -39,17 +39,16 @@ export default async function MainLayout({
   let links: NavLink[] = [];
   if (user?.role === "PLAYER") {
     const unreadCount = await countUnreadForPlayer(user.id, user.teamId);
+    // Overflow links only — Home/Team Circle/Quests live in the bottom tab bar.
     links = [
       { href: `/brand/${user.id}`, label: "Your Brand" },
       { href: "/journal", label: "Journal" },
-      { href: "/quests", label: "Daily Quests" },
       { href: "/leaderboard", label: "Leaderboard" },
       {
         href: "/notifications",
         label:
           unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications",
       },
-      { href: "/board", label: "Team Circle" },
       { href: "/library", label: "Playbook" },
     ];
   } else if (user?.role === "COACH") {
