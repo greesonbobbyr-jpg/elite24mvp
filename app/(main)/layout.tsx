@@ -6,6 +6,7 @@ import { getActiveTimeout, countUnreadForPlayer } from "@/lib/notifications";
 import { TimeoutTakeover } from "./TimeoutTakeover";
 import { NavMenu } from "./NavMenu";
 import { IdentityChip } from "./IdentityChip";
+import { PlayerTabBar } from "./PlayerTabBar";
 
 type NavLink = { href: string; label: string };
 
@@ -78,6 +79,8 @@ export default async function MainLayout({
         {user ? <NavMenu links={links} /> : <span />}
       </header>
       {children}
+      {/* Player-only bottom tab bar (z-40, below the TIME OUT takeover). */}
+      {user?.role === "PLAYER" && <PlayerTabBar />}
       {timeout && <TimeoutTakeover notification={timeout} />}
     </>
   );

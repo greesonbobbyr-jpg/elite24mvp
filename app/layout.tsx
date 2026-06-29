@@ -41,7 +41,9 @@ export default function RootLayout({
   // `dark` forces the brand's black theme app-wide (CLAUDE.md section 9).
   return (
     <html lang="en" className="dark h-full antialiased">
-      <body className="flex min-h-full flex-col">
+      {/* pb-16 reserves space so the global footer + page content clear the
+          player bottom tab bar (rendered in the (main) layout). */}
+      <body className="flex min-h-full flex-col pb-16">
         {children}
         {/* Always-present Elite24 mark — the fixed brand frame (section 9). */}
         <footer className="flex flex-col items-center gap-2 border-t border-zinc-900 py-5 text-center text-xs text-zinc-500">
