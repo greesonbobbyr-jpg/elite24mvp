@@ -5,6 +5,7 @@ import { listLedger, getPointsTotal } from "@/lib/points";
 import { todayKey } from "@/lib/journal";
 import { QuestList } from "../QuestList";
 import { PointsHistory } from "../PointsHistory";
+import { AnimatedTotal } from "../AnimatedTotal";
 import { Card } from "@/app/components/ui/Card";
 
 // Daily quests + points, the player's "Mission Board". Player-private; the (main)
@@ -54,9 +55,7 @@ export default async function QuestsPage() {
       <Card variant="material">
         <div className="relative z-10 flex items-start justify-between gap-3">
           <div>
-            <p className="text-5xl font-black leading-none text-white">
-              {points.toLocaleString()}
-            </p>
+            <AnimatedTotal value={points} />
             <p className="e24-eyebrow mt-2">Total Points</p>
           </div>
           {pointsToday > 0 && (

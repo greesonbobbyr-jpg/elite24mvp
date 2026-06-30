@@ -1,4 +1,5 @@
-import { logQuest, undoQuest } from "./actions";
+import { undoQuest } from "./actions";
+import { MarkDoneButton } from "./MarkDoneButton";
 
 type Quest = {
   id: number;
@@ -57,7 +58,7 @@ export function QuestList({
             key={quest.id}
             className={`flex items-center gap-3 rounded-xl border p-4 transition ${
               completed
-                ? "border-amber-500/40 bg-gradient-to-r from-amber-950/20 to-zinc-950"
+                ? "border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-zinc-950"
                 : "border-zinc-800 bg-zinc-950/40"
             }`}
           >
@@ -65,7 +66,7 @@ export function QuestList({
             <span
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ring-1 ${
                 completed
-                  ? "bg-amber-500/15 text-amber-400 ring-amber-500/40"
+                  ? "bg-[#d4af37]/15 text-[#d4af37] ring-[#d4af37]/40"
                   : "bg-red-600/15 text-red-500 ring-red-600/30"
               }`}
             >
@@ -94,9 +95,9 @@ export function QuestList({
                   type="submit"
                   title="Tap to undo"
                   aria-label={`Undo ${quest.title}`}
-                  className="relative flex h-12 w-24 flex-col items-center justify-center rounded-xl border border-amber-500/40 bg-amber-500/15 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.45)] transition hover:bg-amber-500/25 active:scale-[0.97]"
+                  className="relative flex h-12 w-24 flex-col items-center justify-center rounded-xl border border-[#d4af37]/40 bg-[#d4af37]/15 text-[#e8c766] shadow-[0_0_12px_rgba(212,175,55,0.5)] transition hover:bg-[#d4af37]/25 active:scale-[0.97]"
                 >
-                  <IconUndo className="absolute right-1.5 top-1.5 h-3 w-3 text-amber-400/70" />
+                  <IconUndo className="absolute right-1.5 top-1.5 h-3 w-3 text-[#d4af37]/70" />
                   <span className="text-xs font-bold uppercase tracking-wide leading-none">
                     Done
                   </span>
@@ -106,20 +107,7 @@ export function QuestList({
                 </button>
               </form>
             ) : (
-              <form action={logQuest} className="shrink-0">
-                <input type="hidden" name="questId" value={quest.id} />
-                <button
-                  type="submit"
-                  className="flex h-12 w-24 flex-col items-center justify-center rounded-xl bg-gradient-to-b from-red-500 to-red-700 text-white shadow-md shadow-red-900/40 transition hover:from-red-500 hover:to-red-600 active:scale-[0.97]"
-                >
-                  <span className="text-xs font-bold uppercase tracking-wide leading-none">
-                    Mark done
-                  </span>
-                  <span className="mt-0.5 text-[11px] font-semibold leading-none">
-                    +{quest.points}
-                  </span>
-                </button>
-              </form>
+              <MarkDoneButton questId={quest.id} points={quest.points} />
             )}
           </li>
         );
