@@ -1,36 +1,27 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
 import { listLedger, getPointsTotal } from "@/lib/points";
+import { todayKey } from "@/lib/journal";
 import { QuestList } from "../QuestList";
 import { PointsHistory } from "../PointsHistory";
 import { Card } from "@/app/components/ui/Card";
 
-// Daily quests + points history, on their own page (relocated from the home
-// check-in page). Player-private; the (main) layout enforces onboarding + footer.
-// Quest/points behavior is unchanged — this only moves where they're shown.
+// Daily quests + points, the player's "Mission Board". Player-private; the (main)
+// layout enforces onboarding + footer. Styling only — quest/points behavior is
+// unchanged; the hero total, "+N today", and progress are derived from data the
+// page already loads (no new queries).
 export default async function QuestsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const header = (
-    <header className="flex items-center justify-between">
-      <h1 className="text-2xl font-bold tracking-tight">Daily Quests</h1>
-      <Link href="/" className="text-sm font-medium text-red-500 hover:underline">
-        ← Home
-      </Link>
-    </header>
-  );
-
-  // Coaches don't log quests or earn points (player-only loop) — same as before,
-  // they just never had this UI. Show a short note instead of a logging view.
+  // Coaches don't log quests or earn points (player-only loop).
   if (user.role === "COACH") {
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
-        {header}
-        <Card>
-          <p className="text-sm text-zinc-400">
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
+        <h1 className="e24-eyebrow">Daily Quests</h1>
+        <Card variant="material">
+          <p className="relative z-10 text-sm text-zinc-300">
             Daily quests are part of the player loop.
           </p>
         </Card>
@@ -45,9 +36,55 @@ export default async function QuestsPage() {
     listLedger(user.id),
   ]);
 
+  // Derived display only (no new queries):
+  const done = new Set(completedIds);
+  const totalCount = quests.length;
+  const doneCount = quests.filter((q) => done.has(q.id)).length;
+  const today = todayKey();
+  const pointsToday = ledger
+    .filter((e) => todayKey(new Date(e.createdAt)) === today)
+    .reduce((sum, e) => sum + e.amount, 0);
+  const pct = totalCount > 0 ? (doneCount / totalCount) * 100 : 0;
+
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
-      {header}
+    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
+      <h1 className="e24-eyebrow">Daily Quests</h1>
+
+      {/* Points-total hero */}
+      <Card variant="material">
+        <div className="relative z-10 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-5xl font-black leading-none text-white">
+              {points.toLocaleString()}
+            </p>
+            <p className="e24-eyebrow mt-2">Total Points</p>
+          </div>
+          {pointsToday > 0 && (
+            <span className="shrink-0 text-sm font-bold text-amber-400">
+              +{pointsToday} today
+            </span>
+          )}
+        </div>
+      </Card>
+
+      {/* Today's progress */}
+      {totalCount > 0 && (
+        <div>
+          <div className="flex items-baseline justify-between">
+            <span className="e24-eyebrow">Today&apos;s Progress</span>
+            <span className="text-xs font-semibold text-zinc-400">
+              {doneCount} / {totalCount} DONE
+            </span>
+          </div>
+          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-red-500 to-red-600 transition-[width]"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <QuestList quests={quests} completedIds={completedIds} />
       <PointsHistory total={points} entries={ledger} />
     </main>

@@ -18,11 +18,11 @@ export function PointsHistory({
   entries: LedgerRow[];
 }) {
   return (
-    <details className="rounded-xl border border-zinc-800 bg-zinc-950/40">
-      <summary className="flex cursor-pointer list-none select-none items-center justify-between rounded-xl px-5 py-3 transition hover:bg-white/[0.03]">
-        <span className="text-sm font-medium text-zinc-500">Points</span>
+    <details className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/60 to-zinc-950 shadow-lg shadow-black/30">
+      <summary className="flex cursor-pointer list-none select-none items-center justify-between rounded-2xl px-5 py-3.5 transition hover:bg-white/[0.03]">
+        <span className="e24-eyebrow">Points</span>
         <span className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold">{total}</span>
+          <span className="text-2xl font-bold text-white">{total}</span>
           <span className="text-xs font-normal text-zinc-400">history ▾</span>
         </span>
       </summary>
