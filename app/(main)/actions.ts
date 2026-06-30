@@ -76,23 +76,26 @@ export async function logQuest(formData: FormData): Promise<void> {
   if (!quest || !quest.active) return;
 
   try {
-    await prisma.$transaction([
-      prisma.questLog.create({
+    // Interactive transaction so the ledger row can link back to the created
+    // QuestLog (questLogId) — undoQuest uses that link to reverse the exact row.
+    await prisma.$transaction(async (tx) => {
+      const log = await tx.questLog.create({
         data: { userId: user.id, questId: quest.id, day: todayKey() },
-      }),
-      prisma.pointsLedger.create({
+      });
+      await tx.pointsLedger.create({
         data: {
           userId: user.id,
           amount: quest.points,
           reason: quest.title,
           source: PointsSource.QUEST,
+          questLogId: log.id,
         },
-      }),
-      prisma.playerProfile.update({
+      });
+      await tx.playerProfile.update({
         where: { userId: user.id },
         data: { points: { increment: quest.points } },
-      }),
-    ]);
+      });
+    });
   } catch (error) {
     // Unique violation = already logged this quest today. No-op success.
     if (
@@ -105,6 +108,42 @@ export async function logQuest(formData: FormData): Promise<void> {
     throw error;
   }
 
+  revalidatePath("/quests");
+  revalidatePath("/");
+}
+
+// Undo today's completion of a quest for the CURRENT player only — the mirror of
+// logQuest. Removes today's QuestLog and (via the questLogId cascade) the exact
+// PointsLedger row it created, and decrements the cached total by that amount —
+// all in one transaction. Scoped to the current user + this quest + TODAY, so it
+// can never touch another player's completion. Not-completed = harmless no-op.
+export async function undoQuest(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+
+  const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
+  if (!Number.isInteger(questId)) return;
+
+  const day = todayKey();
+  await prisma.$transaction(async (tx) => {
+    const log = await tx.questLog.findUnique({
+      where: { userId_questId_day: { userId: user.id, questId, day } },
+      include: { pointsLedger: true },
+    });
+    if (!log) return; // not completed today — nothing to undo
+
+    const amount = log.pointsLedger?.amount ?? 0;
+    // Deleting the log cascades its linked PointsLedger row (questLogId).
+    await tx.questLog.delete({ where: { id: log.id } });
+    if (amount > 0) {
+      await tx.playerProfile.update({
+        where: { userId: user.id },
+        data: { points: { decrement: amount } },
+      });
+    }
+  });
+
+  revalidatePath("/quests");
   revalidatePath("/");
 }
 

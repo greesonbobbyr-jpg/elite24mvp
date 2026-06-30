@@ -151,6 +151,12 @@ model PointsLedger {
   source    PointsSource
   createdAt DateTime     @default(now())
 
+  // The quest completion that awarded this row (null for non-quest sources like
+  // the daily check-in). 1:1 — set by logQuest, used by undoQuest. onDelete:
+  // Cascade so undeleting a completion (deleting its QuestLog) removes this row.
+  questLogId Int?      @unique
+  questLog   QuestLog? @relation(fields: [questLogId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
@@ -188,6 +194,10 @@ model QuestLog {
   day       String      // calendar day "YYYY-MM-DD" (server-local time)
   status    QuestStatus @default(APPROVED)
   createdAt DateTime    @default(now())
+
+  // The points-ledger row this completion created (set by logQuest). Cascade-
+  // deleted with the log on undo.
+  pointsLedger PointsLedger?
 
   @@unique([userId, questId, day])
   @@index([userId])
