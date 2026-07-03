@@ -7,7 +7,7 @@ import { Button } from "@/app/components/ui/Button";
 
 const initialState: NotificationState = {};
 const fieldClass =
-  "w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-red-500";
+  "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
 
 export function NotificationComposer() {
   const [state, formAction, pending] = useActionState(
@@ -19,24 +19,28 @@ export function NotificationComposer() {
   return (
     <form
       action={formAction}
-      className={`flex flex-col gap-3 rounded-xl border p-5 transition ${
-        isTimeout ? "border-red-600 bg-red-950/20" : "border-zinc-800 bg-zinc-950/40"
+      className={`e24-surface flex flex-col gap-3 rounded-2xl border p-5 transition ${
+        isTimeout
+          ? "border-red-500/70 shadow-[0_0_24px_rgba(220,38,38,0.35)]"
+          : "border-red-600/30"
       }`}
     >
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-        Post to your team
-      </h2>
-      <input name="title" placeholder="Title" className={fieldClass} />
+      <h2 className="e24-eyebrow relative z-10">Post to your team</h2>
+      <input
+        name="title"
+        placeholder="Title"
+        className={`relative z-10 ${fieldClass}`}
+      />
       <textarea
         name="body"
         rows={3}
         placeholder="Write a note to your team…"
-        className={fieldClass}
+        className={`relative z-10 ${fieldClass}`}
       />
 
       {/* TIME OUT toggle — an obviously-urgent kind of notification that takes
           over players' screens until acknowledged. Posts `isTimeout` as "on". */}
-      <label className="flex cursor-pointer items-start gap-2 text-sm">
+      <label className="relative z-10 flex cursor-pointer items-start gap-2 text-sm">
         <input
           type="checkbox"
           name="isTimeout"
@@ -55,8 +59,10 @@ export function NotificationComposer() {
         </span>
       </label>
 
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      <Button type="submit" disabled={pending} className="self-start">
+      {state.error && (
+        <p className="relative z-10 text-sm text-red-500">{state.error}</p>
+      )}
+      <Button type="submit" disabled={pending} className="relative z-10 self-start">
         {pending ? (
           "Posting…"
         ) : isTimeout ? (
