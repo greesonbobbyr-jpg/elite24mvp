@@ -2,17 +2,18 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { postMessage, type BoardState } from "./actions";
-import { TYPE_META, TAB_TYPES, SHORT_LABEL, type MessageType } from "./message-types";
 import { GIFS, getGif } from "@/lib/gifs";
 import { Button } from "@/app/components/ui/Button";
 
 const initialState: BoardState = {};
 const EMOJIS = ["🏀", "🔥", "💪", "🐐", "⛹️", "🏆", "👏", "🎯", "💯", "🙌"];
 
-export function MessageComposer({ isCoach }: { isCoach: boolean }) {
+// Composer for a plain team message (all messages are REGULAR now — the colored
+// coach "type" tabs were removed). Keeps the emoji inserter and the curated 🎬
+// GIF picker (app-controlled registry only — no search, no upload, no GIPHY).
+export function MessageComposer() {
   const [state, formAction, pending] = useActionState(postMessage, initialState);
   const [body, setBody] = useState("");
-  const [type, setType] = useState<MessageType>("REGULAR");
   const [gifId, setGifId] = useState<string | null>(null);
   const [showGifPicker, setShowGifPicker] = useState(false);
 
@@ -28,29 +29,10 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
   const selectedGif = getGif(gifId);
 
   return (
-    <form action={formAction} className="flex flex-col gap-2">
-      {isCoach && (
-        <div className="flex flex-wrap gap-2">
-          {TAB_TYPES.map((t) => {
-            const active = type === t;
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setType(t)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition active:scale-95 ${
-                  active
-                    ? `border-transparent ${TYPE_META[t].activeTab}`
-                    : TYPE_META[t].idleTab
-                }`}
-              >
-                {SHORT_LABEL[t]}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <input type="hidden" name="type" value={type} />
+    <form
+      action={formAction}
+      className="e24-surface flex flex-col gap-2 rounded-2xl border border-red-600/30 p-4"
+    >
       <input type="hidden" name="gifId" value={gifId ?? ""} />
 
       {/* GIF-only posts are allowed, so the textarea is not `required`; the
@@ -61,12 +43,12 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder="Message your team…"
-        className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-red-500"
+        className="relative z-10 w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500"
       />
 
       {/* Selected-GIF chip with a remove control. */}
       {selectedGif && (
-        <div className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 p-2">
+        <div className="relative z-10 flex items-center gap-2 rounded-lg border border-red-600/25 bg-black/40 p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selectedGif.file}
@@ -84,14 +66,14 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="relative z-10 flex flex-wrap items-center gap-1">
         {EMOJIS.map((emoji) => (
           <button
             key={emoji}
             type="button"
             aria-label={`Add ${emoji}`}
             onClick={() => setBody((b) => b + emoji)}
-            className="rounded-md px-1.5 py-1 text-lg leading-none hover:bg-zinc-800"
+            className="rounded-md px-1.5 py-1 text-lg leading-none hover:bg-white/10"
           >
             {emoji}
           </button>
@@ -102,7 +84,7 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
           className={`ml-1 rounded-md border px-2 py-1 text-xs font-medium transition active:scale-95 ${
             showGifPicker
               ? "border-red-500 text-red-400"
-              : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+              : "border-white/15 text-zinc-400 hover:border-white/30"
           }`}
         >
           🎬 GIF
@@ -112,7 +94,7 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
       {/* Curated GIF picker. Reads only from the app-controlled registry — no
           search, no upload. Empty until GIFs are added to lib/gifs.ts. */}
       {showGifPicker && (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+        <div className="relative z-10 rounded-lg border border-red-600/20 bg-black/40 p-3">
           {GIFS.length === 0 ? (
             <p className="text-xs text-zinc-500">No GIFs available yet.</p>
           ) : (
@@ -127,7 +109,7 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
                     className={`flex flex-col items-center gap-1 rounded-lg border p-1.5 ${
                       active
                         ? "border-red-500 bg-red-600/10"
-                        : "border-zinc-700 hover:border-zinc-500"
+                        : "border-white/15 hover:border-white/30"
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -147,8 +129,10 @@ export function MessageComposer({ isCoach }: { isCoach: boolean }) {
         </div>
       )}
 
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      <Button type="submit" disabled={pending} className="self-end">
+      {state.error && (
+        <p className="relative z-10 text-sm text-red-500">{state.error}</p>
+      )}
+      <Button type="submit" disabled={pending} className="relative z-10 self-end">
         {pending ? "Posting…" : "Post"}
       </Button>
     </form>

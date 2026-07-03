@@ -275,10 +275,15 @@ enum MessageType {
 enum ReactionType {
   THUMBS_UP
   HEART
+  LAUGH
+  WOW
+  SAD
+  PRAY
 }
 
-// A 👍 / ❤️ reaction by a team member on a board message. One of each type per
-// user per message (see @@unique). Team-scoped (verified in the action).
+// A Messenger-style reaction by a team member on a board message. ONE reaction
+// per user per message (see @@unique) — picking a new face replaces the old one.
+// Team-scoped (verified in the action).
 model MessageReaction {
   id           Int          @id @default(autoincrement())
   messageId    Int
@@ -288,7 +293,7 @@ model MessageReaction {
   reactionType ReactionType
   createdAt    DateTime     @default(now())
 
-  @@unique([messageId, userId, reactionType])
+  @@unique([messageId, userId])
   @@index([messageId])
 }
 

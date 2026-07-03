@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ReactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
@@ -75,8 +76,19 @@ export async function deleteMessage(formData: FormData): Promise<void> {
   revalidatePath("/board");
 }
 
-// Toggle a 👍/❤️ reaction by the current team member on a message of THEIR team.
-// One of each type per user per message — toggling removes it.
+// Set/replace/remove the current team member's reaction on a message of THEIR
+// team, Messenger-style: ONE reaction per person per message. Picking a face
+// creates it, picking a different face replaces it, picking the same face again
+// removes it. Team-scoping + permissions unchanged.
+const REACTION_TYPES = new Set([
+  "THUMBS_UP",
+  "HEART",
+  "LAUGH",
+  "WOW",
+  "SAD",
+  "PRAY",
+]);
+
 export async function toggleReaction(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user || (user.role !== "COACH" && !isOnboarded(user))) return;
@@ -84,7 +96,7 @@ export async function toggleReaction(formData: FormData): Promise<void> {
   const messageId = Number.parseInt(String(formData.get("messageId") ?? ""), 10);
   if (!Number.isInteger(messageId)) return;
   const reactionType = String(formData.get("reactionType") ?? "");
-  if (reactionType !== "THUMBS_UP" && reactionType !== "HEART") return;
+  if (!REACTION_TYPES.has(reactionType)) return;
 
   const message = await prisma.teamMessage.findUnique({
     where: { id: messageId },
@@ -93,17 +105,21 @@ export async function toggleReaction(formData: FormData): Promise<void> {
   if (!message || message.deletedAt) return;
   if (message.teamId !== user.teamId) return; // never another team's board
 
+  // One row per (message, user) — reactionType is what changes.
   const existing = await prisma.messageReaction.findUnique({
-    where: {
-      messageId_userId_reactionType: { messageId, userId: user.id, reactionType },
-    },
+    where: { messageId_userId: { messageId, userId: user.id } },
   });
-  if (existing) {
-    await prisma.messageReaction.delete({ where: { id: existing.id } });
-  } else {
+  if (!existing) {
     await prisma.messageReaction.create({
-      data: { messageId, userId: user.id, reactionType },
+      data: { messageId, userId: user.id, reactionType: reactionType as ReactionType },
     });
+  } else if (existing.reactionType !== reactionType) {
+    await prisma.messageReaction.update({
+      where: { id: existing.id },
+      data: { reactionType: reactionType as ReactionType },
+    });
+  } else {
+    await prisma.messageReaction.delete({ where: { id: existing.id } });
   }
   revalidatePath("/board");
 }

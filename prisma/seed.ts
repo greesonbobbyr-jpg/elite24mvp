@@ -253,13 +253,13 @@ const TEAM_A_MESSAGES = [
   {
     email: "coach.a@example.com", type: "REGULAR", hoursAgo: 46,
     body: "Great energy at practice today 🔥 Same time tomorrow — be early.",
-    reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "tyler.nguyen@example.com", type: "THUMBS_UP" }],
+    reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "tyler.nguyen@example.com", type: "PRAY" }],
     comments: [],
   },
   {
     email: "coach.a@example.com", type: "DISCUSSION", hoursAgo: 40,
     body: "Discussion of the Day: Who's the GOAT — Jordan or LeBron? 🐐 Drop your take.",
-    reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "malik.johnson@example.com", type: "THUMBS_UP" }, { email: "tyler.nguyen@example.com", type: "HEART" }, { email: "diego.ramirez@example.com", type: "THUMBS_UP" }],
+    reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "malik.johnson@example.com", type: "LAUGH" }, { email: "tyler.nguyen@example.com", type: "HEART" }, { email: "diego.ramirez@example.com", type: "WOW" }],
     comments: [
       { email: "jordan.carter@example.com", hoursAgo: 39, body: "MJ all day. 6-0 in the Finals, never lost. 🐐" },
       { email: "malik.johnson@example.com", hoursAgo: 38, body: "Bron — longevity and makes everyone better. 🔥" },
@@ -270,19 +270,19 @@ const TEAM_A_MESSAGES = [
   {
     email: "jordan.carter@example.com", type: "REGULAR", hoursAgo: 39,
     body: "MJ. 6-0 in the Finals. 🏀🐐",
-    reactions: [{ email: "malik.johnson@example.com", type: "THUMBS_UP" }, { email: "diego.ramirez@example.com", type: "HEART" }],
+    reactions: [{ email: "malik.johnson@example.com", type: "PRAY" }, { email: "diego.ramirez@example.com", type: "HEART" }],
     comments: [],
   },
   {
     email: "malik.johnson@example.com", type: "REGULAR", hoursAgo: 38,
     body: "LeBron — longevity and all-around game. 💪",
-    reactions: [{ email: "tyler.nguyen@example.com", type: "THUMBS_UP" }],
+    reactions: [{ email: "tyler.nguyen@example.com", type: "SAD" }],
     comments: [],
   },
   {
     email: "coach.a@example.com", type: "CHALLENGE", hoursAgo: 30,
     body: "Challenge of the Week: 500 made free throws by Sunday. Track 'em. 🎯",
-    reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "malik.johnson@example.com", type: "HEART" }, { email: "tyler.nguyen@example.com", type: "THUMBS_UP" }],
+    reactions: [{ email: "jordan.carter@example.com", type: "PRAY" }, { email: "malik.johnson@example.com", type: "HEART" }, { email: "tyler.nguyen@example.com", type: "THUMBS_UP" }],
     comments: [
       { email: "malik.johnson@example.com", hoursAgo: 29, body: "Already at 200 makes 🎯" },
     ],
@@ -290,13 +290,13 @@ const TEAM_A_MESSAGES = [
   {
     email: "tyler.nguyen@example.com", type: "REGULAR", hoursAgo: 28,
     body: "I'm in. Already at 120 makes. 🙌",
-    reactions: [{ email: "coach.a@example.com", type: "HEART" }, { email: "jordan.carter@example.com", type: "THUMBS_UP" }],
+    reactions: [{ email: "coach.a@example.com", type: "PRAY" }, { email: "jordan.carter@example.com", type: "WOW" }],
     comments: [],
   },
   {
     email: "coach.a@example.com", type: "SPOTLIGHT", hoursAgo: 20,
     body: "Coach's Spotlight: Tyler locked up on defense all week 💪🔥 Keep leading.",
-    reactions: [{ email: "jordan.carter@example.com", type: "HEART" }, { email: "malik.johnson@example.com", type: "HEART" }, { email: "diego.ramirez@example.com", type: "THUMBS_UP" }],
+    reactions: [{ email: "jordan.carter@example.com", type: "HEART" }, { email: "malik.johnson@example.com", type: "PRAY" }, { email: "diego.ramirez@example.com", type: "LAUGH" }],
     comments: [
       { email: "jordan.carter@example.com", hoursAgo: 19, body: "Well deserved, Tyler 🔒💪" },
     ],
@@ -304,7 +304,7 @@ const TEAM_A_MESSAGES = [
   {
     email: "diego.ramirez@example.com", type: "REGULAR", hoursAgo: 4,
     body: "Let's get after it. LFG team 💯🏀",
-    reactions: [{ email: "tyler.nguyen@example.com", type: "THUMBS_UP" }, { email: "coach.a@example.com", type: "THUMBS_UP" }],
+    reactions: [{ email: "tyler.nguyen@example.com", type: "LAUGH" }, { email: "coach.a@example.com", type: "PRAY" }],
     comments: [],
   },
 ] as const;
