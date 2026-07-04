@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(npm run dev)"
+      "PowerShell(npm run dev)",
+      "PowerShell(npx prisma migrate deploy 2>&1)",
+      "PowerShell(npx prisma generate 2>&1)",
+      "PowerShell(\"---- generate ----\")",
+      "Bash(git rm *)",
+      "PowerShell(npx prisma db seed 2>&1)",
+      "Bash(npm run *)"
     ]
   }
 }
