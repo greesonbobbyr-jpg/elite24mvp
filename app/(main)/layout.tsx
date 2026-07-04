@@ -7,6 +7,7 @@ import { TimeoutTakeover } from "./TimeoutTakeover";
 import { NavMenu } from "./NavMenu";
 import { IdentityChip } from "./IdentityChip";
 import { PlayerTabBar } from "./PlayerTabBar";
+import { CoachTabBar } from "./CoachTabBar";
 
 type NavLink = { href: string; label: string };
 
@@ -52,11 +53,11 @@ export default async function MainLayout({
       { href: "/library", label: "Playbook" },
     ];
   } else if (user?.role === "COACH") {
+    // Overflow only — Home/Team Circle/Alerts live in the coach bottom tab bar.
     links = [
       { href: "/leaderboard", label: "Team leaderboard" },
-      { href: "/notifications", label: "Team notifications" },
-      { href: "/board", label: "Team Circle" },
       { href: "/library", label: "Playbook" },
+      // Team Settings (branding/roster) will live here in a later chunk — no link yet.
     ];
   }
 
@@ -78,8 +79,9 @@ export default async function MainLayout({
         {user ? <NavMenu links={links} /> : <span />}
       </header>
       {children}
-      {/* Player-only bottom tab bar (z-40, below the TIME OUT takeover). */}
+      {/* Role bottom tab bars (z-40, below the TIME OUT takeover). */}
       {user?.role === "PLAYER" && <PlayerTabBar />}
+      {user?.role === "COACH" && <CoachTabBar />}
       {timeout && <TimeoutTakeover notification={timeout} />}
     </>
   );
