@@ -1,0 +1,9 @@
+Emoji graphics in this folder are from Twemoji.
+
+Copyright 2019 Twitter, Inc and other contributors.
+Graphics licensed under CC-BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/jdecked/twemoji
+
+Attribution required. Before shipping to real users, surface this credit in an
+app "About/Credits" screen (e.g. "Emoji by Twemoji, CC-BY 4.0"). If you prefer to
+avoid the attribution requirement, swap these for Noto Emoji (Apache-2.0).

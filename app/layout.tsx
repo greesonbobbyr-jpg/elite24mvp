@@ -1,9 +1,18 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { Roboto } from "next/font/google";
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
 import { DevUserSwitcher } from "@/app/components/DevUserSwitcher";
+import { HomeFooter } from "@/app/components/HomeFooter";
+
+// App-wide type: Roboto (self-hosted by next/font — no external request).
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700", "900"],
+  variable: "--font-roboto",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Elite24MVP",
@@ -40,25 +49,13 @@ export default function RootLayout({
 }>) {
   // `dark` forces the brand's black theme app-wide (CLAUDE.md section 9).
   return (
-    <html lang="en" className="dark h-full antialiased">
+    <html lang="en" className={`${roboto.variable} dark h-full antialiased`}>
       {/* pb-16 reserves space so the global footer + page content clear the
           player bottom tab bar (rendered in the (main) layout). */}
       <body className="flex min-h-full flex-col pb-16">
         {children}
-        {/* Always-present Elite24 mark — the fixed brand frame (section 9). */}
-        <footer className="flex flex-col items-center gap-2 border-t border-zinc-900 py-5 text-center text-xs text-zinc-500">
-          <Image
-            src="/logo.png"
-            alt="Elite 24 MVP"
-            width={40}
-            height={40}
-            className="h-10 w-10"
-          />
-          <span>
-            Powered by{" "}
-            <span className="font-semibold text-red-500">Elite 24 MVP</span>
-          </span>
-        </footer>
+        {/* Elite24 "Powered by" mark — rendered on the Home route only. */}
+        <HomeFooter />
         <DevSwitcherSlot />
       </body>
     </html>

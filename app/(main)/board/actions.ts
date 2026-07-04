@@ -43,8 +43,22 @@ export async function postMessage(
       ? (rawType as "DISCUSSION" | "CHALLENGE" | "SPOTLIGHT")
       : "REGULAR";
 
+  // Optional Messenger-style reply target. Only honored if it's a live message
+  // on the SAME team (team-private); anything else is ignored (posts as normal).
+  const rawReplyTo = Number.parseInt(String(formData.get("replyToId") ?? ""), 10);
+  let replyToId: number | null = null;
+  if (Number.isInteger(rawReplyTo)) {
+    const parent = await prisma.teamMessage.findUnique({
+      where: { id: rawReplyTo },
+      select: { teamId: true, deletedAt: true },
+    });
+    if (parent && !parent.deletedAt && parent.teamId === user.teamId) {
+      replyToId = rawReplyTo;
+    }
+  }
+
   await prisma.teamMessage.create({
-    data: { teamId: user.teamId, authorId: user.id, body, type, gifId },
+    data: { teamId: user.teamId, authorId: user.id, body, type, gifId, replyToId },
   });
   revalidatePath("/board");
   return { ok: true };
@@ -121,63 +135,5 @@ export async function toggleReaction(formData: FormData): Promise<void> {
   } else {
     await prisma.messageReaction.delete({ where: { id: existing.id } });
   }
-  revalidatePath("/board");
-}
-
-// Any team member may post a flat TEXT comment on a message of THEIR team.
-export async function postComment(
-  _prevState: BoardState,
-  formData: FormData,
-): Promise<BoardState> {
-  const user = await getCurrentUser();
-  if (!user || (user.role !== "COACH" && !isOnboarded(user))) {
-    return { error: "Only a team member can comment." };
-  }
-  const messageId = Number.parseInt(String(formData.get("messageId") ?? ""), 10);
-  if (!Number.isInteger(messageId)) return { error: "Invalid message." };
-  const body = String(formData.get("body") ?? "").trim();
-  if (body === "") return { error: "Write a comment first." };
-
-  const message = await prisma.teamMessage.findUnique({
-    where: { id: messageId },
-    select: { teamId: true, deletedAt: true },
-  });
-  if (!message || message.deletedAt) return { error: "Message not found." };
-  if (message.teamId !== user.teamId) return { error: "Not your team." }; // team-scoped
-
-  await prisma.messageComment.create({
-    data: { messageId, authorId: user.id, body },
-  });
-  revalidatePath("/board");
-  return { ok: true };
-}
-
-// The team coach may delete ANY comment on their team; a player only their OWN.
-// Strictly same team (checked via the parent message). Soft delete.
-export async function deleteComment(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user) return;
-
-  const commentId = Number.parseInt(String(formData.get("commentId") ?? ""), 10);
-  if (!Number.isInteger(commentId)) return;
-
-  const comment = await prisma.messageComment.findUnique({
-    where: { id: commentId },
-    select: {
-      authorId: true,
-      deletedAt: true,
-      message: { select: { teamId: true } },
-    },
-  });
-  if (!comment || comment.deletedAt) return;
-  if (comment.message.teamId !== user.teamId) return; // never another team
-
-  const allowed = user.role === "COACH" || comment.authorId === user.id;
-  if (!allowed) return;
-
-  await prisma.messageComment.update({
-    where: { id: commentId },
-    data: { deletedAt: new Date() },
-  });
   revalidatePath("/board");
 }

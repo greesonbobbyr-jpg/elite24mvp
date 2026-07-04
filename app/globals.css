@@ -18,8 +18,8 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  font-family: var(--font-roboto), system-ui, -apple-system, "Segoe UI",
+    Helvetica, Arial, sans-serif;
 }
 
 /* The one shared motion convention: a soft reveal for content that appears
@@ -38,6 +38,24 @@ body {
 
 .e24-reveal {
   animation: e24-reveal 180ms ease-out both;
+}
+
+/* Brief red highlight when you jump from a reply to the original message. */
+@keyframes msg-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+  15% {
+    box-shadow:
+      0 0 0 3px rgba(239, 68, 68, 0.75),
+      0 0 20px rgba(239, 68, 68, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+.msg-pulse {
+  animation: msg-pulse 1.2s ease-out 2;
 }
 
 /* --- The "material": the app's premium brand surface (CLAUDE.md §9). A
@@ -75,6 +93,30 @@ body {
   position: absolute;
   inset: 0;
   background: linear-gradient(105deg, rgba(255, 255, 255, 0.06) 0%, transparent 38%);
+  pointer-events: none;
+}
+
+/* Chat-bubble material: a compact cousin of .e24-surface for OTHER people's
+   messages. A vivid red→black diagonal gradient with a soft top-left glow and a
+   thin light inset ring, plus a diagonal sheen — but NO concentric court-arc
+   rings (too busy at bubble scale). The lighter red end keeps white text legible
+   and stops stacked bubbles from reading as one dark mass. Content sits in a
+   `relative z-10` layer. */
+.e24-bubble {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(248, 113, 113, 0.35), transparent 55%),
+    linear-gradient(135deg, #b91c1c 0%, #7f1d1d 55%, #450a0a 100%);
+  box-shadow:
+    0 6px 18px -10px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.e24-bubble::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0.1) 0%, transparent 40%);
   pointer-events: none;
 }
 

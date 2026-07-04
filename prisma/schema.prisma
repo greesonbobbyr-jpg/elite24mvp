@@ -76,7 +76,6 @@ model User {
   // Team message board posts this user has authored, and reactions they've made.
   teamMessages     TeamMessage[]
   messageReactions MessageReaction[]
-  messageComments  MessageComment[]
 }
 
 // Player-only data: the required Dream plus structured "Your Brand" stats.
@@ -256,13 +255,19 @@ model TeamMessage {
   // lives in code). Validated against the registry server-side on every post, so a
   // message can never point at an arbitrary/external image. Null = no GIF.
   gifId     String?
+  // Messenger-style reply: this message answers another message on the same team
+  // (set + validated in postMessage). Null = not a reply. SetNull on parent delete
+  // so a reply survives (the quote just shows "original removed").
+  replyToId Int?
+  replyTo   TeamMessage?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   TeamMessage[] @relation("MessageReplies")
   createdAt DateTime    @default(now())
   deletedAt DateTime?
 
   reactions MessageReaction[]
-  comments  MessageComment[]
 
   @@index([teamId])
+  @@index([replyToId])
 }
 
 enum MessageType {
@@ -294,20 +299,5 @@ model MessageReaction {
   createdAt    DateTime     @default(now())
 
   @@unique([messageId, userId])
-  @@index([messageId])
-}
-
-// A flat, one-level text comment on a board message. References a message (never
-// another comment). Soft-deleted via deletedAt for coach / author moderation.
-model MessageComment {
-  id        Int         @id @default(autoincrement())
-  messageId Int
-  message   TeamMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  authorId  Int
-  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  body      String
-  createdAt DateTime    @default(now())
-  deletedAt DateTime?
-
   @@index([messageId])
 }

@@ -248,64 +248,77 @@ async function seedNotifications() {
 }
 
 // Placeholder text messages on Team A's board, from the coach + a few players,
-// back-dated so the order looks real. Clearly demo content.
+// back-dated so the order looks real. Clearly demo content. `key` marks a message
+// that gets replied to; `replyToKey` makes an entry a Messenger-style reply to
+// that earlier message (→ replyToId). Entries stay ordered oldest-first so a
+// reply always follows its parent.
 const TEAM_A_MESSAGES = [
   {
     email: "coach.a@example.com", type: "REGULAR", hoursAgo: 46,
     body: "Great energy at practice today 🔥 Same time tomorrow — be early.",
     reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "tyler.nguyen@example.com", type: "PRAY" }],
-    comments: [],
   },
   {
+    key: "goat",
     email: "coach.a@example.com", type: "DISCUSSION", hoursAgo: 40,
     body: "Discussion of the Day: Who's the GOAT — Jordan or LeBron? 🐐 Drop your take.",
     reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "malik.johnson@example.com", type: "LAUGH" }, { email: "tyler.nguyen@example.com", type: "HEART" }, { email: "diego.ramirez@example.com", type: "WOW" }],
-    comments: [
-      { email: "jordan.carter@example.com", hoursAgo: 39, body: "MJ all day. 6-0 in the Finals, never lost. 🐐" },
-      { email: "malik.johnson@example.com", hoursAgo: 38, body: "Bron — longevity and makes everyone better. 🔥" },
-      { email: "tyler.nguyen@example.com", hoursAgo: 37, body: "Killer instinct was different. MJ. 💯" },
-      { email: "diego.ramirez@example.com", hoursAgo: 36, body: "Kareem?? 😅 …fine, LeBron." },
-    ],
+  },
+  {
+    replyToKey: "goat",
+    email: "jordan.carter@example.com", type: "REGULAR", hoursAgo: 39.9,
+    body: "MJ all day. 6-0 in the Finals, never lost. 🐐",
+    reactions: [{ email: "coach.a@example.com", type: "THUMBS_UP" }],
+  },
+  {
+    replyToKey: "goat",
+    email: "malik.johnson@example.com", type: "REGULAR", hoursAgo: 39.7,
+    body: "Bron — longevity and makes everyone better. 🔥",
+    reactions: [{ email: "tyler.nguyen@example.com", type: "HEART" }],
   },
   {
     email: "jordan.carter@example.com", type: "REGULAR", hoursAgo: 39,
     body: "MJ. 6-0 in the Finals. 🏀🐐",
     reactions: [{ email: "malik.johnson@example.com", type: "PRAY" }, { email: "diego.ramirez@example.com", type: "HEART" }],
-    comments: [],
   },
   {
     email: "malik.johnson@example.com", type: "REGULAR", hoursAgo: 38,
     body: "LeBron — longevity and all-around game. 💪",
     reactions: [{ email: "tyler.nguyen@example.com", type: "SAD" }],
-    comments: [],
   },
   {
+    key: "challenge",
     email: "coach.a@example.com", type: "CHALLENGE", hoursAgo: 30,
     body: "Challenge of the Week: 500 made free throws by Sunday. Track 'em. 🎯",
     reactions: [{ email: "jordan.carter@example.com", type: "PRAY" }, { email: "malik.johnson@example.com", type: "HEART" }, { email: "tyler.nguyen@example.com", type: "THUMBS_UP" }],
-    comments: [
-      { email: "malik.johnson@example.com", hoursAgo: 29, body: "Already at 200 makes 🎯" },
-    ],
+  },
+  {
+    replyToKey: "challenge",
+    email: "malik.johnson@example.com", type: "REGULAR", hoursAgo: 29,
+    body: "Already at 200 makes 🎯",
+    reactions: [],
   },
   {
     email: "tyler.nguyen@example.com", type: "REGULAR", hoursAgo: 28,
     body: "I'm in. Already at 120 makes. 🙌",
     reactions: [{ email: "coach.a@example.com", type: "PRAY" }, { email: "jordan.carter@example.com", type: "WOW" }],
-    comments: [],
   },
   {
+    key: "spotlight",
     email: "coach.a@example.com", type: "SPOTLIGHT", hoursAgo: 20,
     body: "Coach's Spotlight: Tyler locked up on defense all week 💪🔥 Keep leading.",
     reactions: [{ email: "jordan.carter@example.com", type: "HEART" }, { email: "malik.johnson@example.com", type: "PRAY" }, { email: "diego.ramirez@example.com", type: "LAUGH" }],
-    comments: [
-      { email: "jordan.carter@example.com", hoursAgo: 19, body: "Well deserved, Tyler 🔒💪" },
-    ],
+  },
+  {
+    replyToKey: "spotlight",
+    email: "jordan.carter@example.com", type: "REGULAR", hoursAgo: 19,
+    body: "Well deserved, Tyler 🔒💪",
+    reactions: [{ email: "tyler.nguyen@example.com", type: "PRAY" }],
   },
   {
     email: "diego.ramirez@example.com", type: "REGULAR", hoursAgo: 4,
     body: "Let's get after it. LFG team 💯🏀",
     reactions: [{ email: "tyler.nguyen@example.com", type: "LAUGH" }, { email: "coach.a@example.com", type: "PRAY" }],
-    comments: [],
   },
 ] as const;
 
@@ -319,20 +332,30 @@ function hoursAgo(n: number): Date {
 async function seedTeamMessages() {
   let messageCount = 0;
   let reactionCount = 0;
-  let commentCount = 0;
+  let replyCount = 0;
+  const keyToId = new Map<string, number>();
   for (const m of TEAM_A_MESSAGES) {
     const author = await prisma.user.findUnique({ where: { email: m.email } });
     if (!author) continue;
+
+    const replyToKey = "replyToKey" in m ? m.replyToKey : undefined;
+    const key = "key" in m ? m.key : undefined;
+    const replyToId = replyToKey ? keyToId.get(replyToKey) ?? null : null;
+
     const created = await prisma.teamMessage.create({
       data: {
         teamId: author.teamId,
         authorId: author.id,
         body: m.body,
         type: m.type,
+        replyToId,
         createdAt: hoursAgo(m.hoursAgo),
       },
     });
     messageCount++;
+    if (replyToKey) replyCount++;
+    if (key) keyToId.set(key, created.id);
+
     for (const r of m.reactions) {
       const reactor = await prisma.user.findUnique({ where: { email: r.email } });
       if (!reactor) continue;
@@ -341,21 +364,8 @@ async function seedTeamMessages() {
       });
       reactionCount++;
     }
-    for (const c of m.comments) {
-      const commenter = await prisma.user.findUnique({ where: { email: c.email } });
-      if (!commenter) continue;
-      await prisma.messageComment.create({
-        data: {
-          messageId: created.id,
-          authorId: commenter.id,
-          body: c.body,
-          createdAt: hoursAgo(c.hoursAgo),
-        },
-      });
-      commentCount++;
-    }
   }
-  return { messageCount, reactionCount, commentCount };
+  return { messageCount, reactionCount, replyCount };
 }
 
 async function main() {
@@ -374,7 +384,8 @@ async function main() {
   await prisma.notificationRead.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.messageReaction.deleteMany();
-  await prisma.messageComment.deleteMany();
+  // Break reply self-references before deleting messages (FK-safe).
+  await prisma.teamMessage.updateMany({ data: { replyToId: null } });
   await prisma.teamMessage.deleteMany();
   await prisma.journalEntry.deleteMany();
   await prisma.playerProfile.deleteMany();
@@ -462,7 +473,7 @@ async function main() {
     `  Notifications: ${totalNotifications} from Coach Marcus Bell to Team A (with a spread of reads)`,
   );
   console.log(
-    `  Team board: ${board.messageCount} messages + ${board.reactionCount} reactions + ${board.commentCount} comments on Team A`,
+    `  Team board: ${board.messageCount} messages (${board.replyCount} replies) + ${board.reactionCount} reactions on Team A`,
   );
   console.log("");
   console.log(

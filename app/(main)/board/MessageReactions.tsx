@@ -3,32 +3,41 @@
 import { useEffect, useRef, useState } from "react";
 import { toggleReaction } from "./actions";
 import { REACTION_FACES } from "./reactions";
+import { useReply } from "./ReplyProvider";
 
-// Messenger-style reactions for one message. Resting = compact pills (emoji +
-// count) for the reaction types that exist; the user's own pick is highlighted.
-// Hover (desktop) / tap or long-press (touch) reveals a bar of all 6 faces to
-// pick from — each face submits the server action (create / replace / remove is
-// resolved server-side). Progressive enhancement: every face + pill is a real
-// <form action={toggleReaction}>, so it works even before the reveal JS runs.
-// Reveal animation uses .e24-reveal, which the globals reduced-motion guard
-// neutralizes.
+// Messenger-style reactions + interactions for one message. This WRAPS the bubble
+// (children). Interactions:
+//  - TAP/click the bubble → toggle its timestamp, shown centered ABOVE it.
+//  - HOVER (desktop) / LONG-PRESS (touch) → the 6-face picker + Reply.
+// Existing reactions show as ONE badge tucked on the bubble's bottom-RIGHT corner
+// (always right, like Messenger): the distinct emojis + the TOTAL count when
+// there's more than one. Picking a face submits the server action unchanged.
 export function MessageReactions({
   messageId,
   counts,
   myType,
-  align = "left",
+  authorName,
+  snippet,
+  time,
+  children,
 }: {
   messageId: number;
   counts: Record<string, number>;
   myType: string | null;
-  align?: "left" | "right";
+  authorName: string;
+  snippet: string;
+  time: string;
+  children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [showTime, setShowTime] = useState(false);
+  const { setReplyingTo } = useReply();
   const wrapRef = useRef<HTMLDivElement>(null);
   const pressTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
   const longFired = useRef(false);
 
-  // Close when tapping/clicking outside.
+  // Close the picker when tapping/clicking outside.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
@@ -39,6 +48,17 @@ export function MessageReactions({
     document.addEventListener("pointerdown", onDown);
     return () => document.removeEventListener("pointerdown", onDown);
   }, [open]);
+
+  // Desktop hover: open immediately, but close on a short delay so the cursor can
+  // travel across the small gap up to the floating picker without it vanishing.
+  const openHover = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  const scheduleClose = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setOpen(false), 260);
+  };
 
   const startPress = () => {
     longFired.current = false;
@@ -53,84 +73,92 @@ export function MessageReactions({
   };
 
   const existing = REACTION_FACES.filter((f) => (counts[f.type] ?? 0) > 0);
-
-  const Face = ({ type, emoji }: { type: string; emoji: string }) => (
-    <form action={toggleReaction} onSubmit={() => setOpen(false)}>
-      <input type="hidden" name="messageId" value={messageId} />
-      <input type="hidden" name="reactionType" value={type} />
-      <button
-        type="submit"
-        aria-label={type}
-        className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition hover:scale-110 active:scale-95 ${
-          myType === type ? "bg-red-600/30 ring-1 ring-red-500" : "hover:bg-white/10"
-        }`}
-      >
-        {emoji}
-      </button>
-    </form>
-  );
+  const total = existing.reduce((n, f) => n + (counts[f.type] ?? 0), 0);
 
   return (
     <div
       ref={wrapRef}
-      className={`relative flex flex-wrap items-center gap-1.5 ${
-        align === "right" ? "justify-end" : ""
-      }`}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      className={`relative w-fit ${existing.length > 0 ? "mb-3" : ""}`}
+      onMouseEnter={openHover}
+      onMouseLeave={scheduleClose}
+      onPointerDown={startPress}
+      onPointerUp={cancelPress}
+      onPointerLeave={cancelPress}
     >
-      {/* resting pills — one per existing reaction type */}
-      {existing.map((f) => (
-        <form action={toggleReaction} key={f.type}>
-          <input type="hidden" name="messageId" value={messageId} />
-          <input type="hidden" name="reactionType" value={f.type} />
-          <button
-            type="submit"
-            className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs tabular-nums transition active:scale-95 ${
-              myType === f.type
-                ? "border-red-500 bg-red-600/20 text-white"
-                : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/25"
-            }`}
-          >
-            <span className="text-sm leading-none">{f.emoji}</span>
-            <span>{counts[f.type]}</span>
-          </button>
-        </form>
-      ))}
+      {/* timestamp — revealed above the message on tap (Messenger-style) */}
+      {showTime && (
+        <div className="e24-reveal mb-1 px-1 text-center text-[10px] font-medium text-zinc-500">
+          {time}
+        </div>
+      )}
 
-      {/* add-reaction trigger (tap / long-press / hover) */}
-      <button
-        type="button"
-        aria-label="Add reaction"
+      {/* the bubble — tapping toggles the timestamp (unless a long-press just
+          opened the picker) */}
+      <div
         onClick={() => {
           if (longFired.current) {
             longFired.current = false;
-            return; // long-press already opened it — don't toggle shut
+            return;
           }
-          setOpen((o) => !o);
+          setShowTime((t) => !t);
         }}
-        onPointerDown={startPress}
-        onPointerUp={cancelPress}
-        onPointerLeave={cancelPress}
-        className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs transition active:scale-95 ${
-          open
-            ? "border-red-500 text-red-400"
-            : "border-white/10 text-zinc-500 hover:border-white/25 hover:text-zinc-300"
-        }`}
       >
-        <span aria-hidden>☺</span>
-      </button>
+        {children}
+      </div>
 
-      {/* the 6-face picker bar */}
+      {/* reaction badge — always the bottom-RIGHT corner */}
+      {existing.length > 0 && (
+        <div className="absolute -bottom-3 right-2 z-20 flex items-center gap-1 rounded-full bg-zinc-800/95 px-1.5 py-0.5 shadow-md ring-1 ring-black/40">
+          <span className="flex items-center gap-0.5">
+            {existing.map((f) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={f.type} src={f.svg} alt="" className="h-4 w-4" />
+            ))}
+          </span>
+          {total > 1 && (
+            <span className="px-0.5 text-xs font-semibold tabular-nums text-zinc-100">
+              {total}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* the 6-face picker + Reply (hover / long-press), anchored right */}
       {open && (
-        <div
-          className={`e24-reveal absolute bottom-full z-20 mb-1.5 flex gap-0.5 rounded-full border border-red-600/30 bg-zinc-950/95 p-1 shadow-xl shadow-black/50 backdrop-blur ${
-            align === "right" ? "right-0" : "left-0"
-          }`}
-        >
+        <div className="e24-reveal absolute bottom-full right-0 z-30 mb-1.5 flex items-center gap-0.5 rounded-full border border-red-600/30 bg-zinc-950/95 p-1 shadow-xl shadow-black/50 backdrop-blur">
           {REACTION_FACES.map((f) => (
-            <Face key={f.type} type={f.type} emoji={f.emoji} />
+            <form
+              action={toggleReaction}
+              key={f.type}
+              onSubmit={() => setOpen(false)}
+            >
+              <input type="hidden" name="messageId" value={messageId} />
+              <input type="hidden" name="reactionType" value={f.type} />
+              <button
+                type="submit"
+                aria-label={f.type}
+                className={`flex h-8 w-8 items-center justify-center rounded-full transition hover:scale-110 active:scale-95 ${
+                  myType === f.type ? "bg-white/15" : "hover:bg-white/10"
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={f.svg} alt="" className="h-6 w-6" />
+              </button>
+            </form>
           ))}
+
+          <span className="mx-0.5 w-px self-stretch bg-white/10" />
+          <button
+            type="button"
+            aria-label="Reply"
+            onClick={() => {
+              setReplyingTo({ id: messageId, authorName, snippet });
+              setOpen(false);
+            }}
+            className="flex h-8 items-center gap-1 rounded-full px-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/10"
+          >
+            ↩ Reply
+          </button>
         </div>
       )}
     </div>
