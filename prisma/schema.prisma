@@ -68,6 +68,7 @@ model User {
   journalEntries JournalEntry[]
   pointsLedger   PointsLedger[]
   questLogs      QuestLog[]
+  mindsetTakeaways MindsetTakeaway[]
 
   // Notifications a coach has authored, and a player's read-confirmations.
   authoredNotifications Notification[]     @relation("NotificationAuthor")
@@ -126,6 +127,23 @@ model JournalEntry {
   reflection String
   day        String   // calendar day "YYYY-MM-DD" (server-local time)
   createdAt  DateTime @default(now())
+
+  @@unique([userId, day])
+  @@index([userId])
+}
+
+// One row per player per day: the "1-Minute Mindset" takeaway they wrote after
+// the day's story. Keyed by (userId, day) like JournalEntry — the day ties it to
+// that day's story (storyForDay is deterministic). REQUIRED precondition for the
+// daily check-in (enforced in submitCheckIn). Unlike the private check-in
+// reflection, this is coach-visible BY DESIGN (shown on the coach drill-in).
+model MindsetTakeaway {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  day       String   // "YYYY-MM-DD" (server-local time)
+  createdAt DateTime @default(now())
 
   @@unique([userId, day])
   @@index([userId])

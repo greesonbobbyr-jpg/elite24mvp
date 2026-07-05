@@ -1,25 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { speaker } from "@/lib/speech";
+import { saveMindsetTakeaway, type TakeawayState } from "./actions";
 import { Button } from "@/app/components/ui/Button";
 import { cardAccent } from "@/app/components/ui/Card";
+
+const initialTakeaway: TakeawayState = {};
 
 // The daily Mindset "story of the day" on the check-in page. Starts COLLAPSED,
 // showing only "1-Minute Mindset" + the title — deliberately NOT the player or
 // the story, so who it's about stays a surprise. Tapping it expands to reveal
-// the story (read) plus a placeholder "Listen" button. The button depends only
-// on the `speaker` abstraction (lib/speech.ts) — swap that to change the voice.
+// the story (read) plus a placeholder "Listen" button and the required takeaway
+// field (the precondition that unlocks today's check-in). The Listen button
+// depends only on the `speaker` abstraction (lib/speech.ts).
 export function MindsetCard({
   title,
   body,
+  savedTakeaway = "",
 }: {
   title: string;
   body: string;
+  savedTakeaway?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [supported, setSupported] = useState(false);
+  const [takeaway, setTakeaway] = useState(savedTakeaway);
+  const [state, saveAction, saving] = useActionState(
+    saveMindsetTakeaway,
+    initialTakeaway,
+  );
 
   // Check support on the client only (no window access during SSR), and make
   // sure speech is stopped if the player navigates away mid-story.
@@ -114,6 +125,36 @@ export function MindsetCard({
       <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-200">
         {body}
       </p>
+
+      {/* Required takeaway — the precondition that unlocks today's check-in. */}
+      <form action={saveAction} className="mt-4 border-t border-white/10 pt-4">
+        <label htmlFor="mindset-takeaway" className="e24-eyebrow">
+          What&apos;d you take from this?
+        </label>
+        <textarea
+          id="mindset-takeaway"
+          name="text"
+          required
+          rows={2}
+          value={takeaway}
+          onChange={(e) => setTakeaway(e.target.value)}
+          placeholder="A few words on what stuck with you…"
+          className="mt-1.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
+        />
+        {state.error && <p className="mt-1 text-sm text-red-500">{state.error}</p>}
+        <div className="mt-2 flex items-center gap-3">
+          <Button type="submit" size="sm" disabled={saving}>
+            {saving
+              ? "Saving…"
+              : savedTakeaway || state.ok
+                ? "Update takeaway"
+                : "Save takeaway"}
+          </Button>
+          {(state.ok || (savedTakeaway !== "" && !state.error)) && (
+            <span className="text-xs font-medium text-green-400">✓ Saved</span>
+          )}
+        </div>
+      </form>
     </section>
   );
 }

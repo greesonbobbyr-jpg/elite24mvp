@@ -95,6 +95,7 @@ export type PlayerCoachView = {
   rank: number;
   total: number;
   checkedInAt: Date | null;
+  mindsetTakeaway: string | null;
   week: { checkins: number; questsDone: number; pointsEarned: number };
 };
 
@@ -125,11 +126,16 @@ export async function getPlayerCoachView(
   weekStart.setDate(weekStart.getDate() - 6);
   const weekStartKey = todayKey(weekStart);
 
-  const [todayEntry, checkins, questsDone, pointsAgg, ranking] =
+  const [todayEntry, todayTakeaway, checkins, questsDone, pointsAgg, ranking] =
     await Promise.all([
       prisma.journalEntry.findUnique({
         where: { userId_day: { userId: playerId, day: todayKey() } },
         select: { createdAt: true }, // status/time only — no reflection
+      }),
+      // Coach-visible BY DESIGN (unlike the private reflection).
+      prisma.mindsetTakeaway.findUnique({
+        where: { userId_day: { userId: playerId, day: todayKey() } },
+        select: { text: true },
       }),
       prisma.journalEntry.count({
         where: { userId: playerId, day: { gte: weekStartKey } },
@@ -160,6 +166,7 @@ export async function getPlayerCoachView(
       : 0,
     total: ranking.length,
     checkedInAt: todayEntry?.createdAt ?? null,
+    mindsetTakeaway: todayTakeaway?.text ?? null,
     week: {
       checkins,
       questsDone,

@@ -381,6 +381,11 @@ async function seedTodayActivity(
   for (const email of ["jordan.carter@example.com", "tyler.nguyen@example.com"]) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) continue;
+    // The Mindset takeaway is the precondition for the check-in — seed it too so
+    // the data is coherent and the coach drill-in has something to show.
+    await prisma.mindsetTakeaway.create({
+      data: { userId: user.id, day, text: "Show up before anyone else is awake.", createdAt: date },
+    });
     await prisma.journalEntry.create({
       data: { userId: user.id, reflection: "Locked in for today.", day, createdAt: date },
     });
@@ -418,6 +423,7 @@ async function main() {
 
   // Reset (safe to re-run): delete children before parents.
   await prisma.pointsLedger.deleteMany();
+  await prisma.mindsetTakeaway.deleteMany();
   await prisma.questLog.deleteMany();
   await prisma.notificationRead.deleteMany();
   await prisma.notification.deleteMany();

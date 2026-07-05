@@ -27,6 +27,18 @@ export async function submitCheckIn(
     return { error: "Write a little about what you'll work on today." };
   }
 
+  // Precondition: today's 1-Minute Mindset takeaway must be written first. This
+  // gates COMPLETION only — it does not change the reflection or the points below.
+  const takeaway = await prisma.mindsetTakeaway.findUnique({
+    where: { userId_day: { userId: user.id, day: todayKey() } },
+    select: { id: true },
+  });
+  if (!takeaway) {
+    return {
+      error: "Add your 1-Minute Mindset takeaway first — it's in the Mindset above.",
+    };
+  }
+
   try {
     await prisma.$transaction([
       prisma.journalEntry.create({
@@ -59,6 +71,34 @@ export async function submitCheckIn(
 
   revalidatePath("/");
   return {};
+}
+
+export type TakeawayState = { error?: string; ok?: boolean };
+
+// Saves (or edits) today's 1-Minute Mindset takeaway for the current player.
+// Separate from the check-in form — this is the precondition that unlocks it.
+// One per player per day (upsert on @@unique). Non-empty required.
+export async function saveMindsetTakeaway(
+  _prevState: TakeawayState,
+  formData: FormData,
+): Promise<TakeawayState> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) {
+    return { error: "Only a player can do this." };
+  }
+  const text = String(formData.get("text") ?? "").trim();
+  if (text === "") {
+    return { error: "Write a few words on what you took from it." };
+  }
+
+  const day = todayKey();
+  await prisma.mindsetTakeaway.upsert({
+    where: { userId_day: { userId: user.id, day } },
+    create: { userId: user.id, day, text },
+    update: { text },
+  });
+  revalidatePath("/");
+  return { ok: true };
 }
 
 // Logs that the current player completed a quest today. Same transactional

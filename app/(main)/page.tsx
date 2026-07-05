@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/session";
 import { getTodaysEntry, todayKey } from "@/lib/journal";
+import { getTodaysTakeaway } from "@/lib/mindset-takeaway";
 import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { storyForDay } from "@/lib/mindset";
 import { CheckInForm } from "./CheckInForm";
@@ -38,6 +39,7 @@ export default async function Home() {
   // the Dream, the daily Mindset story, and the check-in/journal.
   const profile = user.profile;
   const todaysEntry = await getTodaysEntry(user.id);
+  const takeaway = await getTodaysTakeaway(user.id);
   const story = storyForDay(todayKey());
 
   return (
@@ -78,7 +80,11 @@ export default async function Home() {
       </Card>
 
       {/* Daily mindset moment — slim collapsible strip */}
-      <MindsetCard title={story.title} body={story.body} />
+      <MindsetCard
+        title={story.title}
+        body={story.body}
+        savedTakeaway={takeaway?.text ?? ""}
+      />
     </main>
   );
 }

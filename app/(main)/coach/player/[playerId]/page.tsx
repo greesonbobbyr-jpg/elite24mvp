@@ -85,6 +85,23 @@ export default async function CoachPlayerPage({
         )}
       </section>
 
+      {/* Today's Mindset takeaway — coach-visible by design (NOT the private
+          check-in reflection). */}
+      <section>
+        <p className="e24-eyebrow mb-2">Today&apos;s Mindset takeaway</p>
+        {view.mindsetTakeaway ? (
+          <div className="e24-surface rounded-2xl border border-red-600/25 p-4">
+            <p className="relative z-10 whitespace-pre-wrap text-sm text-zinc-100">
+              {view.mindsetTakeaway}
+            </p>
+          </div>
+        ) : (
+          <p className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 text-sm text-zinc-500">
+            Not written yet
+          </p>
+        )}
+      </section>
+
       {/* This week */}
       <section>
         <p className="e24-eyebrow mb-2">This week</p>
@@ -106,18 +123,6 @@ export default async function CoachPlayerPage({
         </div>
       </section>
 
-      {/* Journal — locked */}
-      <section className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-zinc-400">
-          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-zinc-500" fill="currentColor" aria-hidden>
-            <path d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z" />
-          </svg>
-          Journal
-        </div>
-        <p className="mt-1 text-xs text-zinc-500">
-          Private to the player — not visible to coaches.
-        </p>
-      </section>
     </main>
   );
 }
