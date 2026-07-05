@@ -368,6 +368,44 @@ async function seedTeamMessages() {
   return { messageCount, reactionCount, replyCount };
 }
 
+// A couple of TODAY check-ins + quest completions so the coach dashboard demos
+// live counts — some players show green "checked in", the rest amber. Today is
+// free of back-dated rows (offsets start at 1), so there's no unique-key clash.
+async function seedTodayActivity(
+  quests: { id: number; title: string; points: number }[],
+) {
+  const date = daysAgo(0); // today (noon local)
+  const day = dayKeyOf(date);
+  let checkIns = 0;
+  let questLogs = 0;
+  for (const email of ["jordan.carter@example.com", "tyler.nguyen@example.com"]) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) continue;
+    await prisma.journalEntry.create({
+      data: { userId: user.id, reflection: "Locked in for today.", day, createdAt: date },
+    });
+    await prisma.pointsLedger.create({
+      data: { userId: user.id, amount: POINTS_PER_CHECKIN, reason: "Daily check-in", source: PointsSource.DAILY_CHECK_IN, createdAt: date },
+    });
+    checkIns++;
+  }
+  const jordan = await prisma.user.findUnique({
+    where: { email: "jordan.carter@example.com" },
+  });
+  if (jordan) {
+    for (const quest of quests.slice(0, 2)) {
+      await prisma.questLog.create({
+        data: { userId: jordan.id, questId: quest.id, day, createdAt: date },
+      });
+      await prisma.pointsLedger.create({
+        data: { userId: jordan.id, amount: quest.points, reason: quest.title, source: PointsSource.QUEST, createdAt: date },
+      });
+      questLogs++;
+    }
+  }
+  return { checkIns, questLogs };
+}
+
 async function main() {
   // Safety: only ever seed a local SQLite (file:) dev database (section 7).
   const url = process.env.DATABASE_URL ?? "";
@@ -425,6 +463,10 @@ async function main() {
     totalCheckIns += await seedCheckIns(a.email, a.checkIns);
     totalQuestLogs += await seedQuestLogs(a.email, quests, a.quests);
   }
+  // Live "today" activity so the coach dashboard shows real checked-in state.
+  const today = await seedTodayActivity(quests);
+  totalCheckIns += today.checkIns;
+  totalQuestLogs += today.questLogs;
 
   const totalNotifications = await seedNotifications();
   const board = await seedTeamMessages();

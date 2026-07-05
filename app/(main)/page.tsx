@@ -4,6 +4,7 @@ import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { storyForDay } from "@/lib/mindset";
 import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
+import { CoachHome } from "./CoachHome";
 import { Card } from "@/app/components/ui/Card";
 
 export default async function Home() {
@@ -27,24 +28,9 @@ export default async function Home() {
     );
   }
 
-  // Coaches don't do check-ins (player-only loop), but can view the leaderboard.
+  // Coaches get the team dashboard + roster (player-only daily loop lives below).
   if (user.role === "COACH") {
-    return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
-        <header className="flex flex-col gap-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
-            Viewing as
-          </span>
-          <h1 className="text-3xl font-bold tracking-tight">{user.name}</h1>
-          <p className="text-sm text-zinc-400">Coach · {user.team.name}</p>
-        </header>
-        <Card>
-          <p className="text-sm text-zinc-400">
-            Coach view. Team roster and coaching tools arrive in later phases.
-          </p>
-        </Card>
-      </main>
-    );
+    return <CoachHome user={user} />;
   }
 
   // Player (guaranteed onboarded by the (main) layout gate). Quests + points live

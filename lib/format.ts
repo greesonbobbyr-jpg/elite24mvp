@@ -29,3 +29,11 @@ export function formatDateTime(date: Date): string {
     minute: "2-digit",
   });
 }
+
+// A Date → e.g. "3:42 PM" (time only).
+export function formatTime(date: Date): string {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

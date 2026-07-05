@@ -136,6 +136,7 @@ model JournalEntry {
 enum PointsSource {
   DAILY_CHECK_IN
   QUEST
+  COACH_ADJUSTMENT // a coach's manual +/- veto (with a reason); see coach/actions
 }
 
 // The points ledger is the source of truth for a player's points: one row per

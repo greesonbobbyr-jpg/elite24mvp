@@ -1,0 +1,4 @@
+-- PointsSource gained COACH_ADJUSTMENT (a coach's manual +/- veto, with a reason).
+-- SQLite stores Prisma enums as TEXT with no CHECK constraint, so there is no DDL
+-- to apply; this migration keeps the migration history in step with the schema.
+-- The change takes effect via `prisma generate` (client types only).
