@@ -7,7 +7,11 @@
       "PowerShell(\"---- generate ----\")",
       "Bash(git rm *)",
       "PowerShell(npx prisma db seed 2>&1)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "PowerShell(npx tsx _adjcheck.ts)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git commit -q -m 'chore: update .claude/settings.json *)"
     ]
   }
 }
