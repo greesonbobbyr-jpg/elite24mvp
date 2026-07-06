@@ -119,6 +119,24 @@ function daysAgo(n: number): Date {
   return d;
 }
 
+// Players log in by username (coaches by email). Derive a simple username from
+// the first name, deduped across the whole run so it stays globally unique
+// (matches the app's join-flow rule: 3–20 chars of [a-z0-9_]).
+const usedUsernames = new Set<string>();
+function makeUsername(name: string): string {
+  const base = (name.split(/\s+/)[0] || "player")
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "");
+  let candidate = base || "player";
+  let n = 1;
+  while (usedUsernames.has(candidate)) {
+    n += 1;
+    candidate = `${base}${n}`;
+  }
+  usedUsernames.add(candidate);
+  return candidate;
+}
+
 async function createPlayers(
   teamId: number,
   players: PlayerSeed[],
@@ -130,6 +148,7 @@ async function createPlayers(
       data: {
         name: p.name,
         email: p.email,
+        username: makeUsername(p.name),
         role: Role.PLAYER,
         teamId,
         passwordHash,
@@ -546,9 +565,21 @@ async function main() {
   console.log(
     `  Team board: ${board.messageCount} messages (${board.replyCount} replies) + ${board.reactionCount} reactions on Team A`,
   );
+  const samplePlayers = await prisma.user.findMany({
+    where: { role: Role.PLAYER, username: { not: null } },
+    select: { username: true },
+    orderBy: { id: "asc" },
+    take: 3,
+  });
+  const sampleUsernames = samplePlayers
+    .map((p) => p.username)
+    .filter(Boolean)
+    .join(", ");
+
   console.log("");
-  console.log(`  Login (dev): any seeded email + password "${DEV_PASSWORD}"`);
-  console.log("    e.g. coach.a@example.com  (Coach Marcus Bell, Team A)");
+  console.log(`  Login (dev): password "${DEV_PASSWORD}" for everyone.`);
+  console.log("    Coach — by email, e.g. coach.a@example.com  (Coach Marcus Bell, Team A)");
+  console.log(`    Player — by username, e.g. ${sampleUsernames}`);
   console.log("");
   console.log(
     'Run `npm run dev`. Log in as a coach, or use the bottom-left "Dev: switch',

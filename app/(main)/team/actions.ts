@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { uniqueJoinCode } from "@/lib/joincode";
+import { readBranding } from "@/lib/branding";
 
 export type TeamSettingsState = { error?: string; ok?: boolean };
 
@@ -26,12 +27,14 @@ export async function updateTeam(
   if (!user || user.role !== "COACH") return { error: "Coaches only." };
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Team name can't be empty." };
-  const logoUrl = String(formData.get("logoUrl") ?? "").trim() || null;
-  const accentColor = String(formData.get("accentColor") ?? "").trim() || null;
+
+  const branding = readBranding(formData);
+  if ("error" in branding) return { error: branding.error };
+  const { logoUrl, primaryColor, secondaryColor } = branding.data;
 
   await prisma.team.update({
     where: { id: user.teamId },
-    data: { name, logoUrl, accentColor },
+    data: { name, logoUrl, primaryColor, secondaryColor },
   });
   revalidatePath("/team");
   revalidatePath("/"); // team name shows on the dashboard/header

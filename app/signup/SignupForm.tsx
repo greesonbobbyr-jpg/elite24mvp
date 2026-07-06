@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { signup, type SignupState } from "./actions";
+import { TeamBrandingFields } from "@/app/components/TeamBrandingFields";
 
 const initialState: SignupState = {};
 const field =
@@ -45,16 +46,7 @@ export function SignupForm() {
           <label htmlFor="teamName" className={label}>Team name</label>
           <input id="teamName" name="teamName" required placeholder="Team name" className={field} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="logoUrl" className={label}>Logo URL <span className="text-zinc-600">(optional)</span></label>
-            <input id="logoUrl" name="logoUrl" type="url" className={field} />
-          </div>
-          <div>
-            <label htmlFor="accentColor" className={label}>Accent <span className="text-zinc-600">(optional)</span></label>
-            <input id="accentColor" name="accentColor" className={field} />
-          </div>
-        </div>
+        <TeamBrandingFields />
       </div>
 
       {state.error && <p className="text-sm text-red-500">{state.error}</p>}

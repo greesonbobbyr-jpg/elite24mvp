@@ -18,7 +18,7 @@ export default async function LoginPage() {
         >
           Elite<span style={{ color: "#e1102a" }}>24</span>MVP
         </span>
-        <p className="mt-2 text-sm text-zinc-500">Coach sign in</p>
+        <p className="mt-2 text-sm text-zinc-500">Sign in</p>
       </div>
 
       <section className="e24-surface rounded-2xl border border-red-600/30 p-6">
@@ -27,12 +27,20 @@ export default async function LoginPage() {
         </div>
       </section>
 
-      <p className="text-center text-sm text-zinc-500">
-        New here?{" "}
-        <Link href="/signup" className="font-medium text-red-500 hover:underline">
-          Create a team
-        </Link>
-      </p>
+      <div className="flex flex-col gap-2 text-center text-sm text-zinc-500">
+        <p>
+          Have a team code?{" "}
+          <Link href="/join" className="font-medium text-red-500 hover:underline">
+            Join your team
+          </Link>
+        </p>
+        <p>
+          Coach, new here?{" "}
+          <Link href="/signup" className="font-medium text-red-500 hover:underline">
+            Create a team
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

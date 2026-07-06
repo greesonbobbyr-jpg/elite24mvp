@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getPlayerCoachView } from "@/lib/coach";
@@ -40,13 +39,6 @@ export default async function CoachPlayerPage({
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
-      <Link
-        href="/"
-        className="text-sm font-medium text-red-500 transition hover:text-red-400"
-      >
-        ← Team
-      </Link>
-
       {/* Identity */}
       <section className="e24-surface rounded-2xl border border-red-600/25 p-5">
         <div className="relative z-10">

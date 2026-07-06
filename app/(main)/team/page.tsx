@@ -31,7 +31,8 @@ export default async function TeamSettingsPage() {
           team={{
             name: team.name,
             logoUrl: team.logoUrl,
-            accentColor: team.accentColor,
+            primaryColor: team.primaryColor,
+            secondaryColor: team.secondaryColor,
           }}
         />
       </section>

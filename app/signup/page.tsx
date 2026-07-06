@@ -27,12 +27,20 @@ export default async function SignupPage() {
         </div>
       </section>
 
-      <p className="text-center text-sm text-zinc-500">
-        Already have an account?{" "}
-        <Link href="/login" className="font-medium text-red-500 hover:underline">
-          Log in
-        </Link>
-      </p>
+      <div className="flex flex-col gap-2 text-center text-sm text-zinc-500">
+        <p>
+          Already have an account?{" "}
+          <Link href="/login" className="font-medium text-red-500 hover:underline">
+            Log in
+          </Link>
+        </p>
+        <p>
+          A player?{" "}
+          <Link href="/join" className="font-medium text-red-500 hover:underline">
+            Join with a code
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

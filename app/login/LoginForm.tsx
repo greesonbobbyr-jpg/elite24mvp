@@ -13,14 +13,15 @@ export function LoginForm() {
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <div>
-        <label htmlFor="email" className="mb-1 block text-xs font-medium text-zinc-400">
-          Email
+        <label htmlFor="identifier" className="mb-1 block text-xs font-medium text-zinc-400">
+          Email or username
         </label>
         <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
+          id="identifier"
+          name="identifier"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
           required
           className={field}
         />

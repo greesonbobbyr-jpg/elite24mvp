@@ -11,9 +11,9 @@ const initialTakeaway: TakeawayState = {};
 // The daily Mindset "story of the day" on the check-in page. Starts COLLAPSED,
 // showing only "1-Minute Mindset" + the title — deliberately NOT the player or
 // the story, so who it's about stays a surprise. Tapping it expands to reveal
-// the story (read) plus a placeholder "Listen" button and the required takeaway
-// field (the precondition that unlocks today's check-in). The Listen button
-// depends only on the `speaker` abstraction (lib/speech.ts).
+// the story (read) plus a placeholder "Listen" button and an optional takeaway
+// field — a reflection only; it does NOT gate today's check-in. The Listen
+// button depends only on the `speaker` abstraction (lib/speech.ts).
 export function MindsetCard({
   title,
   body,
@@ -126,7 +126,7 @@ export function MindsetCard({
         {body}
       </p>
 
-      {/* Required takeaway — the precondition that unlocks today's check-in. */}
+      {/* Optional takeaway — a reflection only; it does not gate the check-in. */}
       <form action={saveAction} className="mt-4 border-t border-white/10 pt-4">
         <label htmlFor="mindset-takeaway" className="e24-eyebrow">
           What&apos;d you take from this?

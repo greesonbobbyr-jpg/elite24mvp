@@ -15,14 +15,17 @@ const isProd = process.env.NODE_ENV === "production";
 const providers = [
   Credentials({
     id: "credentials",
-    credentials: { email: {}, password: {} },
+    credentials: { identifier: {}, password: {} },
     authorize: async (creds) => {
-      const email = String(creds?.email ?? "").trim().toLowerCase();
+      const identifier = String(creds?.identifier ?? "").trim().toLowerCase();
       const password = String(creds?.password ?? "");
-      if (!email || !password) return null;
-      const user = await prisma.user.findUnique({ where: { email } });
-      // No account, or a credential-less account, fails the same way (no
-      // enumeration). Never return the hash.
+      if (!identifier || !password) return null;
+      // One login for both roles: coaches by email (has "@"), players by
+      // username. No account, or a credential-less account, fails the same way
+      // (no enumeration). Never return the hash.
+      const user = identifier.includes("@")
+        ? await prisma.user.findUnique({ where: { email: identifier } })
+        : await prisma.user.findUnique({ where: { username: identifier } });
       if (!user?.passwordHash) return null;
       const ok = await verifyPassword(password, user.passwordHash);
       return ok ? { id: String(user.id) } : null;

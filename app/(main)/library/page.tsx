@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { LIBRARY_ENTRIES } from "@/lib/library";
@@ -13,16 +12,11 @@ export default async function LibraryPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Reference library</h1>
-          <p className="text-sm text-zinc-400">
-            Your team&apos;s playbook &amp; resources.
-          </p>
-        </div>
-        <Link href="/" className="text-sm font-medium text-red-500 hover:underline">
-          ← Home
-        </Link>
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight">Reference library</h1>
+        <p className="text-sm text-zinc-400">
+          Your team&apos;s playbook &amp; resources.
+        </p>
       </header>
 
       {LIBRARY_ENTRIES.map((entry) => (

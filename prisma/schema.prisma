@@ -37,9 +37,14 @@ model Team {
   // can regenerate). Unique across teams. Null only for legacy rows.
   joinCode String? @unique
 
-  // Team branding: logo (pasted URL) + one accent color. Coach-editable.
-  logoUrl     String?
-  accentColor String?
+  // Team branding: logo + two team colors. Coach-editable in signup + settings.
+  // logoUrl holds either a pasted URL or an uploaded image as a size-capped
+  // `data:` URL (no file hosting — see app/components/TeamBrandingFields).
+  // primary/secondary are hex values chosen from the curated lib/teamColors
+  // palette (validated server-side). Both nullable — branding is optional.
+  logoUrl        String?
+  primaryColor   String?
+  secondaryColor String?
 
   // Future grouping hook (conference/region). Unused in the current UI.
   parentId Int?
@@ -57,7 +62,9 @@ model Team {
 // (CLAUDE.md section 6).
 model User {
   id        Int      @id @default(autoincrement())
-  email     String   @unique
+  // Nullable: players sign up with a username + password only (no email — data
+  // minimization for minors, CLAUDE.md §3.4). Coaches still have an email.
+  email     String?  @unique
   name      String
   role      Role
   createdAt DateTime @default(now())
@@ -144,9 +151,9 @@ model JournalEntry {
 
 // One row per player per day: the "1-Minute Mindset" takeaway they wrote after
 // the day's story. Keyed by (userId, day) like JournalEntry — the day ties it to
-// that day's story (storyForDay is deterministic). REQUIRED precondition for the
-// daily check-in (enforced in submitCheckIn). Unlike the private check-in
-// reflection, this is coach-visible BY DESIGN (shown on the coach drill-in).
+// that day's story (storyForDay is deterministic). An OPTIONAL daily reflection —
+// it does NOT gate the check-in. Unlike the private check-in reflection, this is
+// coach-visible BY DESIGN (shown on the coach drill-in).
 model MindsetTakeaway {
   id        Int      @id @default(autoincrement())
   userId    Int

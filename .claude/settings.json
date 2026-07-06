@@ -13,7 +13,9 @@
       "Bash(git commit *)",
       "Bash(git commit -q -m 'chore: update .claude/settings.json *)",
       "Bash(git commit -q -m 'Header: live-text Elite24MVP wordmark \\(Barlow Black Italic\\) *)",
-      "Bash(git commit -q -m 'Board: pin composer \\(fixed chat shell, only messages scroll\\) *)"
+      "Bash(git commit -q -m 'Board: pin composer \\(fixed chat shell, only messages scroll\\) *)",
+      "Bash(npx prisma *)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

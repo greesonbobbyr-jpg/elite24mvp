@@ -4,6 +4,7 @@ import { AuthError } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { uniqueJoinCode } from "@/lib/joincode";
+import { readBranding } from "@/lib/branding";
 import { signIn } from "@/auth";
 
 export type SignupState = { error?: string };
@@ -20,8 +21,6 @@ export async function signup(
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
   const teamName = String(formData.get("teamName") ?? "").trim();
-  const logoUrl = String(formData.get("logoUrl") ?? "").trim() || null;
-  const accentColor = String(formData.get("accentColor") ?? "").trim() || null;
 
   if (!name || !email || !teamName) {
     return { error: "Fill in your name, email, and team name." };
@@ -32,6 +31,10 @@ export async function signup(
   if (password !== confirm) {
     return { error: "Passwords don't match." };
   }
+
+  const branding = readBranding(formData);
+  if ("error" in branding) return { error: branding.error };
+  const { logoUrl, primaryColor, secondaryColor } = branding.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -44,7 +47,7 @@ export async function signup(
   try {
     await prisma.$transaction(async (tx) => {
       const team = await tx.team.create({
-        data: { name: teamName, joinCode, logoUrl, accentColor },
+        data: { name: teamName, joinCode, logoUrl, primaryColor, secondaryColor },
       });
       await tx.user.create({
         data: { name, email, role: "COACH", teamId: team.id, passwordHash },
@@ -57,7 +60,7 @@ export async function signup(
 
   // Log the new coach straight in (throws NEXT_REDIRECT on success).
   try {
-    await signIn("credentials", { email, password, redirectTo: "/" });
+    await signIn("credentials", { identifier: email, password, redirectTo: "/" });
     return {};
   } catch (error) {
     if (error instanceof AuthError) {
