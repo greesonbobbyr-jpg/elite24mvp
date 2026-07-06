@@ -7,6 +7,7 @@ import { MessageComposer } from "./MessageComposer";
 import { MessageReactions } from "./MessageReactions";
 import { QuotedMessage } from "./QuotedMessage";
 import { ReplyProvider } from "./ReplyProvider";
+import { BoardScroller } from "./BoardScroller";
 import { getGif } from "@/lib/gifs";
 
 // The team's message board — a Messenger-style chat. Team-private: only the
@@ -49,40 +50,52 @@ export default async function BoardPage() {
 
   const messages = await listTeamMessages(user.teamId);
   const logoUrl = user.team.logoUrl;
+  const latestId = messages.length ? messages[messages.length - 1].id : 0;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-6 py-10">
-      <header className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className={kicker}>Team Circle</p>
-          <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">
-            {user.team.name}
-          </h1>
-        </div>
-        {logoUrl ? (
-          // Plain <img>: team-controlled arbitrary URL (avoid next/image domain
-          // allowlist). No logo → render nothing.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl}
-            alt={`${user.team.name} logo`}
-            className="h-14 w-14 shrink-0 object-contain"
-          />
-        ) : null}
-      </header>
-
+    // Fixed chat shell: spans from under the app header to above the tab bar, so
+    // only the message list scrolls — the header + composer stay put. The offsets
+    // are tuned to the current app-header (~64px) and player/coach tab-bar
+    // heights; z-0 keeps it under the tab bar (z-40) and TIME OUT takeover (z-50).
+    <main className="fixed inset-x-0 top-[69px] bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-0 flex justify-center">
       <ReplyProvider>
-        {messages.length === 0 ? (
-          <section className="e24-surface rounded-2xl border border-red-600/25 p-6">
-            <div className="relative z-10">
+        <div className="flex h-full w-full max-w-2xl flex-col">
+          {/* TOP — fixed board header */}
+          <header className="flex shrink-0 items-start justify-between gap-4 px-6 pb-2 pt-4">
+            <div className="min-w-0">
               <p className={kicker}>Team Circle</p>
-              <p className="mt-2 text-sm text-zinc-400">
-                No messages yet. Start the conversation below.
-              </p>
+              <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">
+                {user.team.name}
+              </h1>
             </div>
-          </section>
-        ) : (
-          <ol className="flex flex-col">
+            {logoUrl ? (
+              // Plain <img>: team-controlled arbitrary URL (avoid next/image
+              // domain allowlist). No logo → render nothing.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={`${user.team.name} logo`}
+                className="h-14 w-14 shrink-0 object-contain"
+              />
+            ) : null}
+          </header>
+
+          {/* MIDDLE — the ONLY scrolling region */}
+          <BoardScroller
+            latestId={latestId}
+            className="min-h-0 flex-1 overflow-y-auto px-6 pb-2"
+          >
+            {messages.length === 0 ? (
+              <section className="e24-surface rounded-2xl border border-red-600/25 p-6">
+                <div className="relative z-10">
+                  <p className={kicker}>Team Circle</p>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    No messages yet. Start the conversation below.
+                  </p>
+                </div>
+              </section>
+            ) : (
+              <ol className="flex flex-col">
             {messages.map((message, i) => {
               const isMine = message.author.id === user.id;
               const canDelete = user.role === "COACH" || isMine;
@@ -244,10 +257,15 @@ export default async function BoardPage() {
                 </li>
               );
             })}
-          </ol>
-        )}
+              </ol>
+            )}
+          </BoardScroller>
 
-        <MessageComposer />
+          {/* BOTTOM — pinned composer (always visible) */}
+          <div className="shrink-0 border-t border-red-600/20 bg-black/40 px-6 py-3">
+            <MessageComposer />
+          </div>
+        </div>
       </ReplyProvider>
     </main>
   );
