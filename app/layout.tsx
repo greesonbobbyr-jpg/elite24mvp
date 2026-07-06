@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
+import { Roboto, Barlow_Semi_Condensed } from "next/font/google";
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
@@ -11,6 +11,16 @@ const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "500", "700", "900"],
   variable: "--font-roboto",
+  display: "swap",
+});
+
+// Wordmark type: Barlow Semi Condensed Black Italic — used only for the header
+// "Elite24MVP" wordmark (loads just the one 900-italic face, so it's light).
+const barlow = Barlow_Semi_Condensed({
+  subsets: ["latin"],
+  weight: ["900"],
+  style: ["italic"],
+  variable: "--font-barlow",
   display: "swap",
 });
 
@@ -49,7 +59,10 @@ export default function RootLayout({
 }>) {
   // `dark` forces the brand's black theme app-wide (CLAUDE.md section 9).
   return (
-    <html lang="en" className={`${roboto.variable} dark h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${roboto.variable} ${barlow.variable} dark h-full antialiased`}
+    >
       {/* pb-16 reserves space so the global footer + page content clear the
           player bottom tab bar (rendered in the (main) layout). */}
       <body className="flex min-h-full flex-col pb-16">

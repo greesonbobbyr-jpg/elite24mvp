@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
@@ -66,15 +65,18 @@ export default async function MainLayout({
       <header className="relative flex items-center justify-between border-b border-zinc-900 px-3 py-2.5">
         {/* left: player/coach identity chip (the one new link) */}
         {user ? <IdentityChip user={user} /> : <span />}
-        {/* center: brand anchor — the E24 logo image (not a link) */}
-        <Image
-          src="/logo.png"
-          alt="Elite 24 MVP"
-          width={36}
-          height={36}
-          className="pointer-events-none absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2"
-          priority
-        />
+        {/* center: the Elite24MVP wordmark (live text, non-link) */}
+        <div
+          aria-label="Elite24MVP"
+          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black italic leading-none text-white"
+          style={{
+            fontFamily: "var(--font-barlow)",
+            fontSize: "clamp(0.95rem, 4.5vw, 1.25rem)",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          Elite<span style={{ color: "#e1102a" }}>24</span>MVP
+        </div>
         {/* right: hamburger menu (unchanged) */}
         {user ? <NavMenu links={links} /> : <span />}
       </header>
