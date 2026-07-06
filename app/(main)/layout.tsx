@@ -54,9 +54,9 @@ export default async function MainLayout({
   } else if (user?.role === "COACH") {
     // Overflow only — Home/Team Circle/Alerts live in the coach bottom tab bar.
     links = [
+      { href: "/team", label: "Team settings" },
       { href: "/leaderboard", label: "Team leaderboard" },
       { href: "/library", label: "Playbook" },
-      // Team Settings (branding/roster) will live here in a later chunk — no link yet.
     ];
   }
 

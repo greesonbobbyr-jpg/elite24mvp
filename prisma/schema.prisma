@@ -33,7 +33,11 @@ model Team {
   name      String
   createdAt DateTime @default(now())
 
-  // Future branding (logo, accent color). Optional; no UI yet.
+  // Players join a team with this short code (generated at team creation, coach
+  // can regenerate). Unique across teams. Null only for legacy rows.
+  joinCode String? @unique
+
+  // Team branding: logo (pasted URL) + one accent color. Coach-editable.
   logoUrl     String?
   accentColor String?
 

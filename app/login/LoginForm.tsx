@@ -22,7 +22,6 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          placeholder="you@example.com"
           className={field}
         />
       </div>
@@ -36,7 +35,6 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          placeholder="••••••••"
           className={field}
         />
       </div>

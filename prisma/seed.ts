@@ -19,8 +19,18 @@
  */
 import { PrismaClient, Role, PointsSource } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { randomInt } from "node:crypto";
 
 const prisma = new PrismaClient();
+
+// Team join code — mirrors lib/joincode.ts (kept inline so the seed stays
+// standalone). Unambiguous alphabet, 6 chars.
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function seedJoinCode(): string {
+  let c = "";
+  for (let i = 0; i < 6; i++) c += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
+  return c;
+}
 
 // Mirrors lib/points.ts; duplicated here so the seed stays standalone.
 const POINTS_PER_CHECKIN = 10;
@@ -447,8 +457,8 @@ async function main() {
   await prisma.quest.deleteMany();
   await prisma.team.deleteMany();
 
-  const teamA = await prisma.team.create({ data: { name: "Team A" } });
-  const teamB = await prisma.team.create({ data: { name: "Team B" } });
+  const teamA = await prisma.team.create({ data: { name: "Team A", joinCode: seedJoinCode() } });
+  const teamB = await prisma.team.create({ data: { name: "Team B", joinCode: seedJoinCode() } });
 
   // One shared bcrypt hash for the dev password across all seeded users.
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 12);
