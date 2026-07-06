@@ -18,11 +18,16 @@
  * Run with: npm run seed   (or it runs automatically on `prisma migrate reset`)
  */
 import { PrismaClient, Role, PointsSource } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 // Mirrors lib/points.ts; duplicated here so the seed stays standalone.
 const POINTS_PER_CHECKIN = 10;
+
+// Shared DEV password for every seeded user so login works locally. DEV ONLY —
+// the seed refuses to run outside a local SQLite file (see main()).
+const DEV_PASSWORD = "password123";
 
 type PlayerSeed = {
   name: string;
@@ -104,7 +109,11 @@ function daysAgo(n: number): Date {
   return d;
 }
 
-async function createPlayers(teamId: number, players: PlayerSeed[]) {
+async function createPlayers(
+  teamId: number,
+  players: PlayerSeed[],
+  passwordHash: string,
+) {
   for (const p of players) {
     const onboarded = p.onboarded !== false; // default true
     await prisma.user.create({
@@ -113,6 +122,7 @@ async function createPlayers(teamId: number, players: PlayerSeed[]) {
         email: p.email,
         role: Role.PLAYER,
         teamId,
+        passwordHash,
         // A not-yet-onboarded player has no PlayerProfile until they finish
         // onboarding in the app. Points start at 0; they are earned via the
         // ledger and recomputed at the end of seeding.
@@ -440,15 +450,18 @@ async function main() {
   const teamA = await prisma.team.create({ data: { name: "Team A" } });
   const teamB = await prisma.team.create({ data: { name: "Team B" } });
 
+  // One shared bcrypt hash for the dev password across all seeded users.
+  const passwordHash = await bcrypt.hash(DEV_PASSWORD, 12);
+
   await prisma.user.create({
-    data: { name: "Coach Marcus Bell", email: "coach.a@example.com", role: Role.COACH, teamId: teamA.id },
+    data: { name: "Coach Marcus Bell", email: "coach.a@example.com", role: Role.COACH, teamId: teamA.id, passwordHash },
   });
   await prisma.user.create({
-    data: { name: "Coach Tasha Reed", email: "coach.b@example.com", role: Role.COACH, teamId: teamB.id },
+    data: { name: "Coach Tasha Reed", email: "coach.b@example.com", role: Role.COACH, teamId: teamB.id, passwordHash },
   });
 
-  await createPlayers(teamA.id, teamAPlayers);
-  await createPlayers(teamB.id, teamBPlayers);
+  await createPlayers(teamA.id, teamAPlayers, passwordHash);
+  await createPlayers(teamB.id, teamBPlayers, passwordHash);
 
   // Placeholder quest definitions.
   const quests = [];
@@ -524,11 +537,14 @@ async function main() {
     `  Team board: ${board.messageCount} messages (${board.replyCount} replies) + ${board.reactionCount} reactions on Team A`,
   );
   console.log("");
+  console.log(`  Login (dev): any seeded email + password "${DEV_PASSWORD}"`);
+  console.log("    e.g. coach.a@example.com  (Coach Marcus Bell, Team A)");
+  console.log("");
   console.log(
-    'Run `npm run dev`, then use the bottom-left "Dev: switch user" menu. Switch to',
+    'Run `npm run dev`. Log in as a coach, or use the bottom-left "Dev: switch',
   );
   console.log(
-    "Jordan Carter for a populated journal/points/quests, or visit /leaderboard.",
+    'user" menu to impersonate any seeded coach/player (dev-only, real session).',
   );
 }
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { logout } from "./auth-actions";
 
 type NavLink = { href: string; label: string };
 
@@ -56,6 +57,14 @@ export function NavMenu({ links }: { links: NavLink[] }) {
               {link.label}
             </Link>
           ))}
+          <form action={logout} className="border-t border-zinc-800">
+            <button
+              type="submit"
+              className="block w-full px-4 py-3 text-left text-sm font-medium text-zinc-400 transition hover:bg-red-600/20 hover:text-red-400"
+            >
+              Log out
+            </button>
+          </form>
         </nav>
       )}
     </div>

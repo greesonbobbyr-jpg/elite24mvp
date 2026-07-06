@@ -58,6 +58,12 @@ model User {
   role      Role
   createdAt DateTime @default(now())
 
+  // Credential auth (Auth.js credentials provider). Coaches log in by email now;
+  // players by username in a later chunk — username added now to avoid a
+  // re-migration. `passwordHash` is a bcrypt hash; null until a credential is set.
+  passwordHash String?
+  username     String? @unique
+
   teamId Int
   team   Team @relation(fields: [teamId], references: [id])
 

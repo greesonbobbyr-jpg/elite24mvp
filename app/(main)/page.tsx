@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getTodaysEntry, todayKey } from "@/lib/journal";
 import { getTodaysTakeaway } from "@/lib/mindset-takeaway";
@@ -11,23 +12,8 @@ import { Card } from "@/app/components/ui/Card";
 export default async function Home() {
   const user = await getCurrentUser();
 
-  // No user selected (dev switcher idle).
-  if (!user) {
-    return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-        <span className="rounded-full bg-red-600/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-400">
-          Dev build
-        </span>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Elite24MVP
-        </h1>
-        <p className="max-w-sm text-sm text-zinc-400">
-          No user selected. Use the <strong>Dev: switch user</strong> menu in the
-          bottom-left corner to view the app as a coach or a player.
-        </p>
-      </main>
-    );
-  }
+  // Unauthenticated → login (middleware also enforces this; defense in depth).
+  if (!user) redirect("/login");
 
   // Coaches get the team dashboard + roster (player-only daily loop lives below).
   if (user.role === "COACH") {

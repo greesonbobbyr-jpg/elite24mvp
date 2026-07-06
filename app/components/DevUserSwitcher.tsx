@@ -1,3 +1,5 @@
+import { impersonate, stopImpersonating } from "@/app/dev/actions";
+
 type Role = "COACH" | "PLAYER";
 
 type SwitcherTeam = {
@@ -7,9 +9,9 @@ type SwitcherTeam = {
 };
 
 // Dev-only widget (rendered only when NODE_ENV !== "production"; see layout).
-// Lets the owner instantly view the app as any seeded coach or player without
-// logging in. Each entry is a plain link to the /dev/switch route handler,
-// which sets the session cookie and redirects home (robust in dev).
+// Lets the owner instantly view the app as any seeded coach or player. Each entry
+// now POSTs to the `impersonate` server action, which mints a REAL Auth.js
+// session (via the dev-only "impersonate" provider) — never a raw id cookie.
 export function DevUserSwitcher({
   teams,
   currentUserId,
@@ -39,18 +41,20 @@ export function DevUserSwitcher({
             {team.users.map((user) => {
               const active = user.id === currentUserId;
               return (
-                <a
-                  key={user.id}
-                  href={`/dev/switch?userId=${user.id}`}
-                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                    active ? "bg-red-600/20 font-semibold" : ""
-                  }`}
-                >
-                  <span>{user.name}</span>
-                  <span className="ml-2 rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
-                    {user.role === "COACH" ? "Coach" : "Player"}
-                  </span>
-                </a>
+                <form action={impersonate} key={user.id}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <button
+                    type="submit"
+                    className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                      active ? "bg-red-600/20 font-semibold" : ""
+                    }`}
+                  >
+                    <span>{user.name}</span>
+                    <span className="ml-2 rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
+                      {user.role === "COACH" ? "Coach" : "Player"}
+                    </span>
+                  </button>
+                </form>
               );
             })}
           </div>
@@ -58,12 +62,14 @@ export function DevUserSwitcher({
 
         {currentUserId !== null && (
           <div className="border-t border-zinc-200 pt-2 dark:border-zinc-700">
-            <a
-              href="/dev/switch?clear=1"
-              className="block w-full rounded-md px-2 py-1.5 text-left text-xs text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              Sign out (clear selection)
-            </a>
+            <form action={stopImpersonating}>
+              <button
+                type="submit"
+                className="block w-full rounded-md px-2 py-1.5 text-left text-xs text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         )}
       </div>
