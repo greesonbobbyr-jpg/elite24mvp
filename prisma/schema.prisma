@@ -13,8 +13,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Prisma migrations run over a DIRECT (session) connection; the app uses the
+  // transaction pooler. Both are Supabase pooler URLs (IPv4).
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {

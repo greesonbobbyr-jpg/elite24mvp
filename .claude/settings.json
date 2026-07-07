@@ -15,7 +15,10 @@
       "Bash(git commit -q -m 'Header: live-text Elite24MVP wordmark \\(Barlow Black Italic\\) *)",
       "Bash(git commit -q -m 'Board: pin composer \\(fixed chat shell, only messages scroll\\) *)",
       "Bash(npx prisma *)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(gh --version)",
+      "Bash(npx vercel *)",
+      "Bash(gh auth *)"
     ]
   }
 }
