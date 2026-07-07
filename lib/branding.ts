@@ -1,9 +1,10 @@
-import { isTeamColor } from "./teamColors";
-
 // Server-side validation for the shared team-branding fields (logo + two colors),
 // used by both coach signup and team settings. The logo arrives as a size-capped
-// `data:` image URL from TeamBrandingFields (a pasted http(s) URL is also accepted
-// for back-compat). Colors must be known palette values — never arbitrary CSS.
+// `data:` image URL from TeamBrandingFields (a pasted http(s) URL or a same-origin
+// "/asset.png" path is also accepted). Colors must be a #RRGGBB hex — the UI picks
+// from the swatch palette, but any valid hex is accepted (brand colors like the
+// seeded #c8102e aren't in the fixed palette). Hex-only still blocks arbitrary CSS.
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 const IMAGE_DATA_RE = /^data:image\/(png|jpe?g|webp|gif);base64,/i;
 const MAX_IMAGE_BYTES = 300 * 1024; // a little above the client-side cap
@@ -34,6 +35,9 @@ export function validateImageDataUrl(
     return { url: v };
   }
   if (/^https?:\/\//i.test(v)) return { url: v }; // pasted URL still allowed
+  // Root-relative same-origin path (e.g. a seeded /mustang-logo.png in public/).
+  // Single slash only — reject "//host" (protocol-relative → off-site).
+  if (v.startsWith("/") && !v.startsWith("//")) return { url: v };
   return { error: `That ${label} isn't a valid image.` };
 }
 
@@ -49,12 +53,12 @@ export function readBranding(
   const logoUrl = logoRes.url;
 
   const primaryColor = rawPrimary || null;
-  if (primaryColor && !isTeamColor(primaryColor)) {
-    return { error: "Pick a primary color from the palette." };
+  if (primaryColor && !HEX_COLOR.test(primaryColor)) {
+    return { error: "Primary color must be a hex value like #RRGGBB." };
   }
   const secondaryColor = rawSecondary || null;
-  if (secondaryColor && !isTeamColor(secondaryColor)) {
-    return { error: "Pick a secondary color from the palette." };
+  if (secondaryColor && !HEX_COLOR.test(secondaryColor)) {
+    return { error: "Secondary color must be a hex value like #RRGGBB." };
   }
 
   return { data: { logoUrl, primaryColor, secondaryColor } };

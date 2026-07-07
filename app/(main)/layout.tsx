@@ -62,23 +62,34 @@ export default async function MainLayout({
 
   return (
     <>
-      <header className="relative flex items-center justify-between border-b border-zinc-900 px-3 py-2.5">
-        {/* left: player/coach identity chip (the one new link) */}
-        {user ? <IdentityChip user={user} /> : <span />}
+      {/* 3-column grid: equal minmax(0,1fr) flanks keep the center wordmark
+          SCREEN-centered while making it impossible to overlap the chip or
+          hamburger (separate grid columns). The flanks shrink + truncate on
+          narrow screens; desktop is unchanged. */}
+      <header
+        className="grid items-center gap-2 border-b border-zinc-900 px-3 py-2.5"
+        style={{ gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)" }}
+      >
+        {/* left: player/coach identity chip */}
+        <div className="flex min-w-0 justify-self-start overflow-hidden">
+          {user ? <IdentityChip user={user} /> : <span />}
+        </div>
         {/* center: the Elite24MVP wordmark (live text, non-link) */}
         <div
           aria-label="Elite24MVP"
-          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black italic leading-none text-white"
+          className="pointer-events-none justify-self-center whitespace-nowrap font-black italic leading-none text-white"
           style={{
             fontFamily: "var(--font-barlow)",
-            fontSize: "clamp(0.95rem, 4.5vw, 1.25rem)",
+            fontSize: "clamp(0.8rem, 3.2vw, 1.25rem)",
             letterSpacing: "-0.01em",
           }}
         >
           Elite<span style={{ color: "#e1102a" }}>24</span>MVP
         </div>
-        {/* right: hamburger menu (unchanged) */}
-        {user ? <NavMenu links={links} /> : <span />}
+        {/* right: hamburger menu */}
+        <div className="flex min-w-0 justify-self-end">
+          {user ? <NavMenu links={links} /> : <span />}
+        </div>
       </header>
       {children}
       {/* Role bottom tab bars (z-40, below the TIME OUT takeover). */}
