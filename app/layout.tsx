@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Roboto, Barlow_Semi_Condensed } from "next/font/google";
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
 import { DevUserSwitcher } from "@/app/components/DevUserSwitcher";
 import { HomeFooter } from "@/app/components/HomeFooter";
+import { InstallBanner } from "@/app/components/InstallBanner";
 
 // App-wide type: Roboto (self-hosted by next/font — no external request).
 const roboto = Roboto({
@@ -26,7 +27,19 @@ const barlow = Barlow_Semi_Condensed({
 
 export const metadata: Metadata = {
   title: "Elite24MVP",
-  description: "Team-private basketball development app (dev build).",
+  description: "Team-private basketball development app.",
+  // PWA: web manifest (served by app/manifest.ts) + iOS "add to home screen"
+  // support so the app opens full-screen with the Elite24 icon.
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Elite24",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
 };
 
 // Renders the dev-only user switcher. Never shown in production (section 7).
@@ -69,6 +82,8 @@ export default function RootLayout({
         {children}
         {/* Elite24 "Powered by" mark — rendered on the Home route only. */}
         <HomeFooter />
+        {/* Dismissible "add to home screen" prompt (PWA install). */}
+        <InstallBanner />
         <DevSwitcherSlot />
       </body>
     </html>
