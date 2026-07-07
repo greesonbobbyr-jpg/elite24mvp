@@ -1,36 +1,33 @@
 /**
- * Elite24MVP — database seed.
+ * Elite24MVP — database seed (live-demo build).
  *
- * Creates two teams of fake users so the owner can test multi-user UX with the
- * dev user switcher (CLAUDE.md section 7):
- *   - Team A: 1 coach + 8 players
- *   - Team B: 1 coach + 3 players (proves the multi-team data model works)
+ * Two BRANDED teams so every screen looks alive and the team-color system is
+ * obvious (CLAUDE.md section 7):
+ *   - Mustang Broncos: 1 coach (Gary) + 8 players — real red branding + logo.
+ *   - OKC Thunder: 1 coach (Riley) + 4 players — blue/orange, initials-chip logo.
  *
- * Two Team A players (Andre Washington, Brandon Lee) are left NOT onboarded so
- * the forced onboarding flow can be tested.
+ * Players log in by USERNAME (first name), coaches by EMAIL; one shared demo
+ * password. Fixed, sayable join codes (MUSTNG / THUNDR) for the join-flow demo.
  *
- * A few already-onboarded Team A players get back-dated daily check-ins AND
- * back-dated quest completions across the past several weeks (each with matching
- * points-ledger rows), so the journal, points history, and leaderboard look real
- * and the totals match the ledger.
+ * Two Mustang players (Andre Washington, Brandon Lee) are left NOT onboarded so
+ * the forced onboarding flow can be demoed. Onboarded players on both teams get
+ * back-dated check-ins + quest completions (with matching points-ledger rows), so
+ * journals, points history, and leaderboards look real and totals match the ledger.
  *
- * Safe to re-run: it wipes and recreates the seeded data each time.
+ * Safe to re-run: it wipes and recreates the seeded data each time. Portable
+ * across SQLite (dev) and the upcoming Postgres — no file:-URL / SQLite tricks.
  * Run with: npm run seed   (or it runs automatically on `prisma migrate reset`)
  */
-import { PrismaClient, Role, PointsSource } from "@prisma/client";
+import {
+  PrismaClient,
+  Role,
+  PointsSource,
+  MessageType,
+  ReactionType,
+} from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { randomInt } from "node:crypto";
 
 const prisma = new PrismaClient();
-
-// Team join code — mirrors lib/joincode.ts (kept inline so the seed stays
-// standalone). Unambiguous alphabet, 6 chars.
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-function seedJoinCode(): string {
-  let c = "";
-  for (let i = 0; i < 6; i++) c += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
-  return c;
-}
 
 // Mirrors lib/points.ts; duplicated here so the seed stays standalone.
 const POINTS_PER_CHECKIN = 10;
@@ -58,7 +55,7 @@ type PlayerSeed = {
 };
 
 const teamAPlayers: PlayerSeed[] = [
-  { name: "Jordan Carter", email: "jordan.carter@example.com", dream: "Play Division I basketball and earn a full scholarship.", heightInches: 70, position: "Point Guard", jerseyNumber: 3, ppg: 14.2, rpg: 3.1, apg: 5.4, favoritePlayer: "Stephen Curry", favoriteTeam: "Golden State Warriors", highlightUrl: "https://www.youtube.com/watch?v=3qH2bQF4yGo" },
+  { name: "Jordan Carter", email: "jordan.carter@example.com", dream: "Play Division I basketball and earn a full scholarship.", heightInches: 70, position: "Point Guard", jerseyNumber: 24, ppg: 14.2, rpg: 3.1, apg: 5.4, favoritePlayer: "Stephen Curry", favoriteTeam: "Golden State Warriors", highlightUrl: "https://www.youtube.com/watch?v=3qH2bQF4yGo" },
   { name: "Malik Johnson", email: "malik.johnson@example.com", dream: "Earn a spot in my varsity team's starting five this season.", heightInches: 74, position: "Forward", jerseyNumber: 21, ppg: 11.5, rpg: 7.8, apg: 1.9, favoritePlayer: "LeBron James", favoriteTeam: "Los Angeles Lakers", highlightUrl: "https://youtu.be/H4iY3hVjnoc" },
   { name: "Tyler Nguyen", email: "tyler.nguyen@example.com", dream: "Become the best on-ball defender on my team.", heightInches: 71, position: "Shooting Guard", jerseyNumber: 5, ppg: 8.3, rpg: 2.4, apg: 4.1, favoritePlayer: "Jrue Holiday", favoriteTeam: "Boston Celtics" },
   { name: "Andre Washington", email: "andre.washington@example.com", dream: "Dunk in a real game by the end of the year.", heightInches: 76, position: "Center", jerseyNumber: 34, ppg: 9.9, rpg: 9.2, apg: 1.2, favoritePlayer: "Giannis Antetokounmpo", favoriteTeam: "Milwaukee Bucks", onboarded: false },
@@ -72,6 +69,7 @@ const teamBPlayers: PlayerSeed[] = [
   { name: "Marcus Green", email: "marcus.green@example.com", dream: "Make the all-conference team this year.", heightInches: 72, position: "Point Guard", jerseyNumber: 7, ppg: 13.0, rpg: 3.5, apg: 4.8, favoritePlayer: "Ja Morant", favoriteTeam: "Memphis Grizzlies" },
   { name: "Isaiah Brooks", email: "isaiah.brooks@example.com", dream: "Add a reliable three-point shot to my game.", heightInches: 70, position: "Shooting Guard", jerseyNumber: 9, ppg: 8.8, rpg: 2.6, apg: 3.2, favoritePlayer: "Damian Lillard", favoriteTeam: "Milwaukee Bucks" },
   { name: "Noah Patel", email: "noah.patel@example.com", dream: "Start every game and stay healthy all season.", heightInches: 75, position: "Forward", jerseyNumber: 23, ppg: 10.5, rpg: 7.0, apg: 2.1, favoritePlayer: "Kevin Durant", favoriteTeam: "Phoenix Suns" },
+  { name: "Tyrese Walker", email: "tyrese.walker@example.com", dream: "Make varsity and lock down the other team's best scorer.", heightInches: 73, position: "Shooting Guard", jerseyNumber: 4, ppg: 9.4, rpg: 3.0, apg: 2.7, favoritePlayer: "Shai Gilgeous-Alexander", favoriteTeam: "Oklahoma City Thunder" },
 ];
 
 // PLACEHOLDER quests — Gary to replace. Generic basketball-development daily
@@ -220,10 +218,18 @@ async function seedQuestLogs(
   return offsets.length;
 }
 
-// Sample notifications from Coach Marcus Bell to Team A, with a spread of reads
-// so the coach's "Read by X of Y" view looks real. `readers` lists the player
-// emails who have confirmed reading each notification.
-const NOTIFICATIONS = [
+// Notifications with a spread of reads so the coach's "Read by X of Y" view looks
+// real. `readers` lists the player emails who confirmed reading each. One set per
+// team (Mustang rich, OKC light).
+type SeedNotification = {
+  title: string;
+  body: string;
+  daysAgo: number;
+  isTimeout: boolean;
+  readers: string[];
+};
+
+const MUSTANG_NOTIFICATIONS: SeedNotification[] = [
   {
     title: "Practice moved to 5 PM Thursday",
     body: "Hey team — this week's Thursday practice moves to 5:00 PM at the main gym. Be on time and ready to work.",
@@ -257,13 +263,25 @@ const NOTIFICATIONS = [
   },
 ];
 
-async function seedNotifications() {
-  const coach = await prisma.user.findUnique({
-    where: { email: "coach.a@example.com" },
-  });
+// OKC Thunder — a light touch so the alerts screen also renders in blue/orange.
+const OKC_NOTIFICATIONS: SeedNotification[] = [
+  {
+    title: "Team lift Wednesday 4 PM",
+    body: "Thunder — team lift moves to Wednesday at 4:00 PM. Bring your logbook and be ready to work.",
+    daysAgo: 2,
+    isTimeout: false,
+    readers: ["marcus.green@example.com", "isaiah.brooks@example.com"],
+  },
+];
+
+async function seedNotifications(
+  coachEmail: string,
+  notifications: SeedNotification[],
+) {
+  const coach = await prisma.user.findUnique({ where: { email: coachEmail } });
   if (!coach) return 0;
 
-  for (const n of NOTIFICATIONS) {
+  for (const n of notifications) {
     const notification = await prisma.notification.create({
       data: {
         teamId: coach.teamId,
@@ -283,23 +301,33 @@ async function seedNotifications() {
       }
     }
   }
-  return NOTIFICATIONS.length;
+  return notifications.length;
 }
 
-// Placeholder text messages on Team A's board, from the coach + a few players,
-// back-dated so the order looks real. Clearly demo content. `key` marks a message
+// Demo board messages, back-dated so the order looks real. `key` marks a message
 // that gets replied to; `replyToKey` makes an entry a Messenger-style reply to
-// that earlier message (→ replyToId). Entries stay ordered oldest-first so a
-// reply always follows its parent.
-const TEAM_A_MESSAGES = [
+// that earlier message (→ replyToId). Ordered oldest-first so a reply follows its
+// parent. One set per team.
+type SeedReaction = { email: string; type: ReactionType };
+type SeedMessage = {
+  email: string;
+  type: MessageType;
+  hoursAgo: number;
+  body: string;
+  key?: string;
+  replyToKey?: string;
+  reactions: SeedReaction[];
+};
+
+const TEAM_A_MESSAGES: SeedMessage[] = [
   {
-    email: "coach.a@example.com", type: "REGULAR", hoursAgo: 46,
+    email: "gary@elite24.demo", type: "REGULAR", hoursAgo: 46,
     body: "Great energy at practice today 🔥 Same time tomorrow — be early.",
     reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "tyler.nguyen@example.com", type: "PRAY" }],
   },
   {
     key: "goat",
-    email: "coach.a@example.com", type: "DISCUSSION", hoursAgo: 40,
+    email: "gary@elite24.demo", type: "DISCUSSION", hoursAgo: 40,
     body: "Discussion of the Day: Who's the GOAT — Jordan or LeBron? 🐐 Drop your take.",
     reactions: [{ email: "jordan.carter@example.com", type: "THUMBS_UP" }, { email: "malik.johnson@example.com", type: "LAUGH" }, { email: "tyler.nguyen@example.com", type: "HEART" }, { email: "diego.ramirez@example.com", type: "WOW" }],
   },
@@ -307,7 +335,7 @@ const TEAM_A_MESSAGES = [
     replyToKey: "goat",
     email: "jordan.carter@example.com", type: "REGULAR", hoursAgo: 39.9,
     body: "MJ all day. 6-0 in the Finals, never lost. 🐐",
-    reactions: [{ email: "coach.a@example.com", type: "THUMBS_UP" }],
+    reactions: [{ email: "gary@elite24.demo", type: "THUMBS_UP" }],
   },
   {
     replyToKey: "goat",
@@ -327,7 +355,7 @@ const TEAM_A_MESSAGES = [
   },
   {
     key: "challenge",
-    email: "coach.a@example.com", type: "CHALLENGE", hoursAgo: 30,
+    email: "gary@elite24.demo", type: "CHALLENGE", hoursAgo: 30,
     body: "Challenge of the Week: 500 made free throws by Sunday. Track 'em. 🎯",
     reactions: [{ email: "jordan.carter@example.com", type: "PRAY" }, { email: "malik.johnson@example.com", type: "HEART" }, { email: "tyler.nguyen@example.com", type: "THUMBS_UP" }],
   },
@@ -340,11 +368,11 @@ const TEAM_A_MESSAGES = [
   {
     email: "tyler.nguyen@example.com", type: "REGULAR", hoursAgo: 28,
     body: "I'm in. Already at 120 makes. 🙌",
-    reactions: [{ email: "coach.a@example.com", type: "PRAY" }, { email: "jordan.carter@example.com", type: "WOW" }],
+    reactions: [{ email: "gary@elite24.demo", type: "PRAY" }, { email: "jordan.carter@example.com", type: "WOW" }],
   },
   {
     key: "spotlight",
-    email: "coach.a@example.com", type: "SPOTLIGHT", hoursAgo: 20,
+    email: "gary@elite24.demo", type: "SPOTLIGHT", hoursAgo: 20,
     body: "Coach's Spotlight: Tyler locked up on defense all week 💪🔥 Keep leading.",
     reactions: [{ email: "jordan.carter@example.com", type: "HEART" }, { email: "malik.johnson@example.com", type: "PRAY" }, { email: "diego.ramirez@example.com", type: "LAUGH" }],
   },
@@ -357,9 +385,35 @@ const TEAM_A_MESSAGES = [
   {
     email: "diego.ramirez@example.com", type: "REGULAR", hoursAgo: 4,
     body: "Let's get after it. LFG team 💯🏀",
-    reactions: [{ email: "tyler.nguyen@example.com", type: "LAUGH" }, { email: "coach.a@example.com", type: "PRAY" }],
+    reactions: [{ email: "tyler.nguyen@example.com", type: "LAUGH" }, { email: "gary@elite24.demo", type: "PRAY" }],
   },
-] as const;
+];
+
+// OKC Thunder board — a few messages so the board renders in blue/orange too.
+const TEAM_B_MESSAGES: SeedMessage[] = [
+  {
+    email: "riley@elite24.demo", type: "REGULAR", hoursAgo: 30,
+    body: "Welcome to the Thunder 💙⚡ Let's build something special this year.",
+    reactions: [{ email: "marcus.green@example.com", type: "THUMBS_UP" }, { email: "isaiah.brooks@example.com", type: "PRAY" }],
+  },
+  {
+    key: "okc-challenge",
+    email: "riley@elite24.demo", type: "CHALLENGE", hoursAgo: 22,
+    body: "Challenge of the Week: 3 workouts logged by Friday. ⚡ Who's in?",
+    reactions: [{ email: "marcus.green@example.com", type: "HEART" }, { email: "noah.patel@example.com", type: "THUMBS_UP" }, { email: "tyrese.walker@example.com", type: "PRAY" }],
+  },
+  {
+    replyToKey: "okc-challenge",
+    email: "marcus.green@example.com", type: "REGULAR", hoursAgo: 20,
+    body: "On it, Coach. 2 down already 💪",
+    reactions: [{ email: "riley@elite24.demo", type: "THUMBS_UP" }],
+  },
+  {
+    email: "isaiah.brooks@example.com", type: "REGULAR", hoursAgo: 5,
+    body: "Let's go Thunder ⚡🧡",
+    reactions: [{ email: "riley@elite24.demo", type: "PRAY" }],
+  },
+];
 
 function hoursAgo(n: number): Date {
   const d = new Date();
@@ -368,18 +422,16 @@ function hoursAgo(n: number): Date {
   return d;
 }
 
-async function seedTeamMessages() {
+async function seedTeamMessages(messages: SeedMessage[]) {
   let messageCount = 0;
   let reactionCount = 0;
   let replyCount = 0;
   const keyToId = new Map<string, number>();
-  for (const m of TEAM_A_MESSAGES) {
+  for (const m of messages) {
     const author = await prisma.user.findUnique({ where: { email: m.email } });
     if (!author) continue;
 
-    const replyToKey = "replyToKey" in m ? m.replyToKey : undefined;
-    const key = "key" in m ? m.key : undefined;
-    const replyToId = replyToKey ? keyToId.get(replyToKey) ?? null : null;
+    const replyToId = m.replyToKey ? keyToId.get(m.replyToKey) ?? null : null;
 
     const created = await prisma.teamMessage.create({
       data: {
@@ -392,8 +444,8 @@ async function seedTeamMessages() {
       },
     });
     messageCount++;
-    if (replyToKey) replyCount++;
-    if (key) keyToId.set(key, created.id);
+    if (m.replyToKey) replyCount++;
+    if (m.key) keyToId.set(m.key, created.id);
 
     for (const r of m.reactions) {
       const reactor = await prisma.user.findUnique({ where: { email: r.email } });
@@ -417,7 +469,11 @@ async function seedTodayActivity(
   const day = dayKeyOf(date);
   let checkIns = 0;
   let questLogs = 0;
-  for (const email of ["jordan.carter@example.com", "tyler.nguyen@example.com"]) {
+  for (const email of [
+    "jordan.carter@example.com",
+    "tyler.nguyen@example.com",
+    "marcus.green@example.com",
+  ]) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) continue;
     // The Mindset takeaway is the precondition for the check-in — seed it too so
@@ -451,12 +507,10 @@ async function seedTodayActivity(
 }
 
 async function main() {
-  // Safety: only ever seed a local SQLite (file:) dev database (section 7).
-  const url = process.env.DATABASE_URL ?? "";
-  if (process.env.NODE_ENV === "production" || !url.startsWith("file:")) {
-    console.error(
-      "Refusing to seed: this script only runs against a local SQLite (file:) dev database.",
-    );
+  // Safety: never seed a production database (CLAUDE.md section 7). Portable
+  // across SQLite (dev) and the upcoming Postgres — no file:-URL assumption.
+  if (process.env.NODE_ENV === "production") {
+    console.error("Refusing to seed: NODE_ENV is production.");
     process.exit(1);
   }
 
@@ -476,17 +530,34 @@ async function main() {
   await prisma.quest.deleteMany();
   await prisma.team.deleteMany();
 
-  const teamA = await prisma.team.create({ data: { name: "Team A", joinCode: seedJoinCode() } });
-  const teamB = await prisma.team.create({ data: { name: "Team B", joinCode: seedJoinCode() } });
+  // Team 1 — Mustang Broncos: real red branding + logo (public/mustang-logo.png).
+  const teamA = await prisma.team.create({
+    data: {
+      name: "Mustang Broncos",
+      joinCode: "MUSTNG",
+      logoUrl: "/mustang-logo.png",
+      primaryColor: "#c8102e",
+      secondaryColor: "#ffffff",
+    },
+  });
+  // Team 2 — OKC Thunder: blue/orange, no logo file (team-initial "OT" chip).
+  const teamB = await prisma.team.create({
+    data: {
+      name: "OKC Thunder",
+      joinCode: "THUNDR",
+      primaryColor: "#007ac1",
+      secondaryColor: "#ef3b24",
+    },
+  });
 
   // One shared bcrypt hash for the dev password across all seeded users.
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 12);
 
   await prisma.user.create({
-    data: { name: "Coach Marcus Bell", email: "coach.a@example.com", role: Role.COACH, teamId: teamA.id, passwordHash },
+    data: { name: "Coach Gary", email: "gary@elite24.demo", role: Role.COACH, teamId: teamA.id, passwordHash },
   });
   await prisma.user.create({
-    data: { name: "Coach Tasha Reed", email: "coach.b@example.com", role: Role.COACH, teamId: teamB.id, passwordHash },
+    data: { name: "Coach Riley", email: "riley@elite24.demo", role: Role.COACH, teamId: teamB.id, passwordHash },
   });
 
   await createPlayers(teamA.id, teamAPlayers, passwordHash);
@@ -498,14 +569,20 @@ async function main() {
     quests.push(await prisma.quest.create({ data: q }));
   }
 
-  // Back-dated check-ins and quest logs for a few already-onboarded Team A
-  // players. Different counts give the leaderboard a realistic spread.
+  // Back-dated check-ins and quest logs for onboarded players on BOTH teams.
+  // Different counts give each team's leaderboard a realistic spread.
   let totalCheckIns = 0;
   let totalQuestLogs = 0;
   const activity = [
+    // Mustang Broncos
     { email: "jordan.carter@example.com", checkIns: 12, quests: 13 },
     { email: "malik.johnson@example.com", checkIns: 9, quests: 8 },
     { email: "tyler.nguyen@example.com", checkIns: 7, quests: 4 },
+    // OKC Thunder
+    { email: "marcus.green@example.com", checkIns: 8, quests: 6 },
+    { email: "isaiah.brooks@example.com", checkIns: 5, quests: 4 },
+    { email: "noah.patel@example.com", checkIns: 3, quests: 2 },
+    { email: "tyrese.walker@example.com", checkIns: 2, quests: 1 },
   ];
   for (const a of activity) {
     totalCheckIns += await seedCheckIns(a.email, a.checkIns);
@@ -516,8 +593,16 @@ async function main() {
   totalCheckIns += today.checkIns;
   totalQuestLogs += today.questLogs;
 
-  const totalNotifications = await seedNotifications();
-  const board = await seedTeamMessages();
+  const totalNotifications =
+    (await seedNotifications("gary@elite24.demo", MUSTANG_NOTIFICATIONS)) +
+    (await seedNotifications("riley@elite24.demo", OKC_NOTIFICATIONS));
+  const boardA = await seedTeamMessages(TEAM_A_MESSAGES);
+  const boardB = await seedTeamMessages(TEAM_B_MESSAGES);
+  const board = {
+    messageCount: boardA.messageCount + boardB.messageCount,
+    replyCount: boardA.replyCount + boardB.replyCount,
+    reactionCount: boardA.reactionCount + boardB.reactionCount,
+  };
 
   // Recompute each player's cached points total = sum of their ledger, so the
   // cache exactly matches the source of truth (check-ins + quests).
@@ -543,49 +628,57 @@ async function main() {
     prisma.playerProfile.count(),
     prisma.quest.count(),
   ]);
-  const notOnboardedNames = [...teamAPlayers, ...teamBPlayers]
-    .filter((p) => p.onboarded === false)
-    .map((p) => p.name);
+  // Per-team credential summary, built from the DB so it's always accurate.
+  const teams = await prisma.team.findMany({
+    orderBy: { id: "asc" },
+    select: {
+      name: true,
+      joinCode: true,
+      users: {
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+        select: {
+          role: true,
+          email: true,
+          username: true,
+          profile: { select: { id: true } },
+        },
+      },
+    },
+  });
 
   console.log("Seed complete:");
-  console.log("  Teams:   2 (Team A, Team B)");
   console.log(
-    `  Users:   ${coachCount + playerCount} (${coachCount} coaches + ${playerCount} players)`,
+    `  ${teams.length} teams · ${coachCount} coaches + ${playerCount} players · ${onboardedCount} onboarded · ${questCount} quests`,
   );
   console.log(
-    `  Players onboarded: ${onboardedCount} · not yet onboarded: ${playerCount - onboardedCount} (${notOnboardedNames.join(", ")})`,
+    `  Back-dated: ${totalCheckIns} check-ins + ${totalQuestLogs} quest logs · ${totalNotifications} notifications · ${board.messageCount} board messages`,
   );
-  console.log(`  Quests:  ${questCount} placeholder daily quests`);
-  console.log(
-    `  Back-dated: ${totalCheckIns} check-ins + ${totalQuestLogs} quest logs across Jordan Carter, Malik Johnson, Tyler Nguyen`,
-  );
-  console.log(
-    `  Notifications: ${totalNotifications} from Coach Marcus Bell to Team A (with a spread of reads)`,
-  );
-  console.log(
-    `  Team board: ${board.messageCount} messages (${board.replyCount} replies) + ${board.reactionCount} reactions on Team A`,
-  );
-  const samplePlayers = await prisma.user.findMany({
-    where: { role: Role.PLAYER, username: { not: null } },
-    select: { username: true },
-    orderBy: { id: "asc" },
-    take: 3,
-  });
-  const sampleUsernames = samplePlayers
-    .map((p) => p.username)
-    .filter(Boolean)
-    .join(", ");
-
   console.log("");
-  console.log(`  Login (dev): password "${DEV_PASSWORD}" for everyone.`);
-  console.log("    Coach — by email, e.g. coach.a@example.com  (Coach Marcus Bell, Team A)");
-  console.log(`    Player — by username, e.g. ${sampleUsernames}`);
+  console.log(`=== DEMO LOGINS · password: "${DEV_PASSWORD}" ===`);
+  for (const t of teams) {
+    const coach = t.users.find((u) => u.role === Role.COACH);
+    const playersOfTeam = t.users.filter((u) => u.role === Role.PLAYER);
+    const onboarded = playersOfTeam
+      .filter((p) => p.profile)
+      .map((p) => p.username)
+      .filter(Boolean);
+    const pending = playersOfTeam
+      .filter((p) => !p.profile)
+      .map((p) => p.username)
+      .filter(Boolean);
+    console.log("");
+    console.log(`${t.name.toUpperCase()}   (join code ${t.joinCode})`);
+    console.log(`  Coach:   ${coach?.email ?? "—"}  (email login)`);
+    console.log(`  Players: ${onboarded.join(", ")}   (username login)`);
+    if (pending.length) {
+      console.log(
+        `  Onboarding demo (log in → onboarding flow): ${pending.join(", ")}`,
+      );
+    }
+  }
   console.log("");
   console.log(
-    'Run `npm run dev`. Log in as a coach, or use the bottom-left "Dev: switch',
-  );
-  console.log(
-    'user" menu to impersonate any seeded coach/player (dev-only, real session).',
+    'Run `npm run dev`. The dev switcher (bottom-left) also jumps between any seeded user.',
   );
 }
 

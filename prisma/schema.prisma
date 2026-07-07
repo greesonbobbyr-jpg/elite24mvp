@@ -75,6 +75,11 @@ model User {
   passwordHash String?
   username     String? @unique
 
+  // Optional profile photo — a size-capped `data:` URL. Coaches upload theirs in
+  // Team Settings; players use PlayerProfile.photoUrl (via their Brand page). Both
+  // render in the PlayerCard/avatar with an initials fallback.
+  photoUrl String?
+
   teamId Int
   team   Team @relation(fields: [teamId], references: [id])
 
@@ -120,6 +125,11 @@ model PlayerProfile {
 
   // A single highlight reel — a PASTED LINK only (no upload/hosting, section 5).
   highlightUrl String?
+
+  // Player photo: an uploaded image stored as a size-capped `data:` URL (same
+  // in-field, no-hosting pattern as Team.logoUrl). Owner-only upload; null =
+  // fall back to initials in the PlayerCard.
+  photoUrl String?
 
   // Convenience cache of the player's total points. The PointsLedger is the
   // source of truth; this is kept in sync in the same transaction as each

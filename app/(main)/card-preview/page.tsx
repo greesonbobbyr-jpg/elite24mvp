@@ -1,41 +1,47 @@
-import { VerticalCard, HorizontalCard, type CardData } from "./cards";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
+import { getTeamRanking } from "@/lib/leaderboard";
+import { CardPreview } from "./cards";
+import type { CardPlayer, CardTeam } from "@/app/components/PlayerCard";
 
-// TEMPORARY design sandbox: renders two player-card directions side by side with
-// hardcoded demo data so we can iterate on the look in-browser. NOT linked from
-// any nav — reachable only by typing /card-preview. Touches no real feature,
-// model, or route. Delete this whole folder once a direction is picked and the
-// winner is wired into the real Brand page.
-const demo: CardData = {
-  name: "Jordan Carter",
-  number: "24",
-  position: "Point Guard",
-  team: "Mustang Broncos",
-  tier: "PROSPECT",
-  height: "6'2\"",
-  weight: "175",
-  leaderboardRank: "#3",
-  initials: "JC",
-  logo: "/mustang-logo.png",
-};
+// Design sandbox for the PlayerCard — reachable only by typing /card-preview,
+// not linked from any nav. Pulls a REAL record (the viewer's team + a real player
+// + real rank) to prove the component consumes the live Team/PlayerProfile shape
+// and the no-color fallback; the client switcher adds fake palettes + a tier
+// switcher for live iteration. Wired into no real feature yet.
+export default async function CardPreviewPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-export default function CardPreviewPage() {
-  return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center gap-8 px-6 py-12">
-      <p className="text-center text-sm text-zinc-500">
-        Card design preview — demo data, not wired to real profiles yet.
-      </p>
+  const ranking = await getTeamRanking(user.teamId);
+  const targetId = user.role === "PLAYER" ? user.id : ranking[0]?.id;
+  const target = targetId
+    ? await prisma.user.findUnique({
+        where: { id: targetId },
+        include: { profile: true },
+      })
+    : null;
+  const team = await prisma.team.findUnique({ where: { id: user.teamId } });
+  const rankEntry = ranking.find((r) => r.id === targetId);
 
-      <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-start lg:justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <span className="e24-eyebrow">Vertical</span>
-          <VerticalCard demo={demo} />
-        </div>
+  const realPlayer: CardPlayer = target
+    ? {
+        name: target.name,
+        jerseyNumber: target.profile?.jerseyNumber ?? null,
+        position: target.profile?.position ?? null,
+        heightInches: target.profile?.heightInches ?? null,
+        rank: rankEntry?.rank ?? null,
+        points: target.profile?.points ?? 0,
+      }
+    : { name: user.name, points: 0, rank: null };
 
-        <div className="flex flex-col items-center gap-3">
-          <span className="e24-eyebrow">Horizontal</span>
-          <HorizontalCard demo={demo} />
-        </div>
-      </div>
-    </main>
-  );
+  const realTeam: CardTeam = {
+    name: team?.name ?? "Your team",
+    logoUrl: team?.logoUrl ?? null,
+    primaryColor: team?.primaryColor ?? null,
+    secondaryColor: team?.secondaryColor ?? null,
+  };
+
+  return <CardPreview realPlayer={realPlayer} realTeam={realTeam} />;
 }

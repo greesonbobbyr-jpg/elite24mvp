@@ -10,7 +10,14 @@ export function listTeamMessages(teamId: number) {
     where: { teamId, deletedAt: null },
     orderBy: { createdAt: "asc" },
     include: {
-      author: { select: { id: true, name: true, role: true } },
+      author: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          profile: { select: { photoUrl: true } },
+        },
+      },
       reactions: { select: { userId: true, reactionType: true } },
       replyTo: {
         select: {

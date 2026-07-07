@@ -1,245 +1,253 @@
-import Image from "next/image";
+"use client";
 
-// TEMPORARY preview components — two player-card designs for in-browser
-// iteration. Not wired to real profiles: everything is presentational and driven
-// by the passed-in `demo`. Delete with the route once a direction is picked.
+import { useState } from "react";
+import {
+  PlayerCard,
+  type CardPlayer,
+  type CardTeam,
+} from "@/app/components/PlayerCard";
+import { TIERS } from "@/lib/cardTheme";
 
-// The card material: a bright, cohesive Mustang-red — a soft warm glow from the
-// top over a saturated red that deepens to maroon at the bottom (no muddy black
-// corner). Applied inline; the dark stat/badge panels keep their own translucent
-// black so white text stays readable.
-const cardBg =
-  "radial-gradient(135% 105% at 50% -5%, rgba(250,84,99,0.55) 0%, rgba(201,30,52,0.30) 40%, rgba(201,30,52,0) 72%)," +
-  "linear-gradient(162deg, #d11731 0%, #a51126 48%, #470a15 100%)";
+// Client iteration surface for the PlayerCard: a team-palette switcher (the real
+// team + fake palettes) and a tier switcher, rendering all three sizes in their
+// real-world contexts. Presentational only — no data writes.
 
-// Depth without a heavy border: a soft outer drop shadow, a hairline light ring,
-// a subtle top highlight, and a gentle bottom vignette — all inset so the ghost
-// "24" (absolute) still clips to the rounded card.
-const cardShadow =
-  "0 24px 48px -20px rgba(0,0,0,0.6)," +
-  "0 0 0 1px rgba(255,255,255,0.08)," +
-  "inset 0 1px 0 rgba(255,255,255,0.16)," +
-  "inset 0 -90px 90px -60px rgba(0,0,0,0.45)";
+type PaletteOpt = { key: string; label: string; team: CardTeam };
 
-const cardShell = "relative overflow-hidden rounded-3xl";
-
-export type CardData = {
-  name: string;
-  number: string;
-  position: string;
-  team: string;
-  tier: string;
-  height: string;
-  weight: string;
-  leaderboardRank: string;
-  initials: string;
-  logo: string;
-};
-
-// --- Shared bits ---------------------------------------------------------
-
-// The Mustang mark placed DIRECTLY on the card — the PNG is transparent (no white
-// box), so no plate. A soft drop shadow lifts it off the red.
-function LogoMark({
-  logo,
-  team,
-  size = 46,
-}: {
-  logo: string;
-  team: string;
-  size?: number;
-}) {
-  return (
-    <Image
-      src={logo}
-      alt={`${team} logo`}
-      width={size}
-      height={size}
-      className="object-contain drop-shadow-[0_2px_5px_rgba(0,0,0,0.45)]"
-      style={{ width: size, height: size }}
-    />
-  );
+function palettes(realTeam: CardTeam): PaletteOpt[] {
+  return [
+    { key: "real", label: "Your team (real)", team: realTeam },
+    {
+      key: "mustang",
+      label: "Mustang",
+      team: {
+        name: "Mustang Broncos",
+        logoUrl: "/mustang-logo.png",
+        primaryColor: "#c9223a",
+        secondaryColor: "#f2a900",
+      },
+    },
+    {
+      key: "thunder",
+      label: "Royal / Orange",
+      team: {
+        name: "Thunder",
+        logoUrl: null,
+        primaryColor: "#1e58c8",
+        secondaryColor: "#ff7a1a",
+      },
+    },
+    {
+      key: "forest",
+      label: "Forest / Gold",
+      team: {
+        name: "Ridgeline",
+        logoUrl: null,
+        primaryColor: "#1b5e20",
+        secondaryColor: "#f2a900",
+      },
+    },
+    {
+      key: "purple",
+      label: "Purple / Silver",
+      team: {
+        name: "Royals",
+        logoUrl: null,
+        primaryColor: "#5e35b1",
+        secondaryColor: "#c0c0c0",
+      },
+    },
+  ];
 }
 
-// The player-photo placeholder: a framed initials disc/square with a "PHOTO GOES
-// HERE" pill riding its bottom edge. No upload (child-safe / deferred).
-function PhotoFrame({
-  initials,
-  shape,
-  size,
+export function CardPreview({
+  realPlayer,
+  realTeam,
 }: {
-  initials: string;
-  shape: "circle" | "square";
-  size: number;
+  realPlayer: CardPlayer;
+  realTeam: CardTeam;
 }) {
-  const radius = shape === "circle" ? "rounded-full" : "rounded-3xl";
+  const opts = palettes(realTeam);
+  const [teamKey, setTeamKey] = useState("mustang");
+  // null = use the player's actual points; else force a tier by its min.
+  const [tierPoints, setTierPoints] = useState<number | null>(null);
+
+  const team = opts.find((o) => o.key === teamKey)?.team ?? realTeam;
+  const player: CardPlayer = {
+    ...realPlayer,
+    points: tierPoints ?? realPlayer.points,
+  };
+
   return (
-    <div className="relative inline-block" style={{ width: size }}>
-      <div
-        className={`flex items-center justify-center ${radius} font-black uppercase tracking-tight text-white`}
-        style={{
-          width: size,
-          height: size,
-          fontSize: size * 0.34,
-          background:
-            "radial-gradient(120% 120% at 50% 25%, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 100%)",
-          boxShadow:
-            "inset 0 0 0 2px rgba(255,255,255,0.28), inset 0 0 0 7px rgba(0,0,0,0.18), inset 0 8px 24px rgba(0,0,0,0.35)",
-          textShadow: "0 2px 8px rgba(0,0,0,0.45)",
-        }}
-      >
-        {initials}
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-10">
+      <div>
+        <p className="e24-eyebrow">Design sandbox</p>
+        <h1 className="mt-1 text-xl font-bold text-white">PlayerCard preview</h1>
+        <p className="mt-1 text-sm text-zinc-500">
+          Team-color-driven. Not wired into any real page yet.
+        </p>
       </div>
-      <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/70 px-2.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.18em] text-white/85 ring-1 ring-white/10">
-        Photo goes here
-      </span>
-    </div>
-  );
-}
 
-// The tier badge placeholder — a clean dark pill; real badge art comes later.
-function BadgeSlot({ tier }: { tier: string }) {
-  return (
-    <span className="inline-flex flex-col items-center rounded-lg bg-black/35 px-3 py-1 text-center ring-1 ring-white/15">
-      <span className="text-[11px] font-black uppercase tracking-[0.18em] text-white">
-        {tier}
-      </span>
-      <span className="text-[7px] uppercase tracking-[0.1em] text-white/45">
-        badge coming
-      </span>
-    </span>
-  );
-}
-
-// One divided stat cell: bold value over a tiny uppercase label.
-function StatCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center px-2 py-3 text-center">
-      <span className="text-lg font-black leading-none tabular-nums text-white">
-        {value}
-      </span>
-      <span className="mt-1 text-[8.5px] font-bold uppercase leading-tight tracking-[0.12em] text-white/60">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-// The bottom stat panel (shared): three divided cells on a dark translucent bar.
-function StatPanel({ demo }: { demo: CardData }) {
-  return (
-    <div className="flex items-stretch divide-x divide-white/10 rounded-2xl bg-black/30 ring-1 ring-white/10">
-      <StatCell label="Height" value={demo.height} />
-      <StatCell label="Weight" value={demo.weight} />
-      <StatCell label="Leaderboard" value={demo.leaderboardRank} />
-    </div>
-  );
-}
-
-// Bold condensed-feel name + "POSITION · TEAM" subline. `center` for the portrait
-// card, left-aligned for the landscape one.
-function NameBlock({
-  demo,
-  center,
-  size = "text-3xl",
-}: {
-  demo: CardData;
-  center?: boolean;
-  size?: string;
-}) {
-  return (
-    <div className={center ? "text-center" : "text-left"}>
-      <h2
-        className={`${size} font-black uppercase leading-[0.95] tracking-tight text-white`}
-        style={{ textShadow: "0 2px 10px rgba(0,0,0,0.35)" }}
-      >
-        {demo.name}
-      </h2>
-      <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white/75">
-        {demo.position} · {demo.team}
-      </p>
-    </div>
-  );
-}
-
-// --- CARD 1: Vertical (portrait) ----------------------------------------
-
-export function VerticalCard({ demo }: { demo: CardData }) {
-  return (
-    <div
-      className={`${cardShell} w-[340px] p-6`}
-      style={{ background: cardBg, boxShadow: cardShadow }}
-    >
-      {/* ghosted jersey number, behind content */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -top-6 right-2 select-none text-[160px] font-black leading-none text-white/10"
-      >
-        {demo.number}
-      </span>
-
-      <div className="relative z-10 flex flex-col items-center">
-        {/* top row: logo (left) + badge (right) */}
-        <div className="flex w-full items-center justify-between">
-          <LogoMark logo={demo.logo} team={demo.team} size={46} />
-          <BadgeSlot tier={demo.tier} />
-        </div>
-
-        {/* center: photo placeholder */}
-        <div className="mt-7">
-          <PhotoFrame initials={demo.initials} shape="circle" size={150} />
-        </div>
-
-        {/* name + position · team */}
-        <div className="mt-7">
-          <NameBlock demo={demo} center size="text-3xl" />
-        </div>
-
-        {/* bottom stat panel */}
-        <div className="mt-6 w-full">
-          <StatPanel demo={demo} />
+      {/* Team palette switcher */}
+      <div className="flex flex-col gap-2">
+        <span className="e24-eyebrow">Team colors</span>
+        <div className="flex flex-wrap gap-2">
+          {opts.map((o) => {
+            const p = o.team.primaryColor;
+            const s = o.team.secondaryColor;
+            const active = o.key === teamKey;
+            return (
+              <button
+                key={o.key}
+                type="button"
+                onClick={() => setTeamKey(o.key)}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  active
+                    ? "border-white/60 bg-white/10 text-white"
+                    : "border-white/15 text-zinc-400 hover:border-white/30"
+                }`}
+              >
+                <span className="flex">
+                  <span
+                    className="h-3.5 w-3.5 rounded-full ring-1 ring-white/20"
+                    style={{ background: p ?? "#e1102a" }}
+                  />
+                  <span
+                    className="-ml-1 h-3.5 w-3.5 rounded-full ring-1 ring-white/20"
+                    style={{ background: s ?? "#111" }}
+                  />
+                </span>
+                {o.label}
+              </button>
+            );
+          })}
         </div>
       </div>
-    </div>
-  );
-}
 
-// --- CARD 2: Horizontal (landscape) -------------------------------------
+      {/* Tier switcher */}
+      <div className="flex flex-col gap-2">
+        <span className="e24-eyebrow">Tier (border)</span>
+        <div className="flex flex-wrap gap-2">
+          <TierButton
+            label={`Actual (${realPlayer.points})`}
+            active={tierPoints === null}
+            onClick={() => setTierPoints(null)}
+          />
+          {TIERS.map((t) => (
+            <TierButton
+              key={t.key}
+              label={`${t.label} (${t.min}+)`}
+              active={tierPoints === t.min}
+              onClick={() => setTierPoints(t.min)}
+              dot={t.ring[Math.floor(t.ring.length / 2)]}
+            />
+          ))}
+        </div>
+      </div>
 
-export function HorizontalCard({ demo }: { demo: CardData }) {
-  return (
-    <div
-      className={`${cardShell} w-[560px] max-w-full p-6`}
-      style={{ background: cardBg, boxShadow: cardShadow }}
-    >
-      {/* ghosted jersey number, behind content */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -bottom-10 right-6 select-none text-[190px] font-black leading-none text-white/10"
-      >
-        {demo.number}
-      </span>
-
-      <div className="relative z-10">
-        {/* top row: logo (left) + badge (right) */}
-        <div className="flex items-center justify-between">
-          <LogoMark logo={demo.logo} team={demo.team} size={50} />
-          <BadgeSlot tier={demo.tier} />
+      {/* The three sizes in context */}
+      <div className="flex flex-col items-start gap-12 lg:flex-row lg:items-start lg:gap-10">
+        {/* FULL */}
+        <div className="flex w-full flex-col items-center gap-3 lg:w-auto">
+          <span className="e24-eyebrow">Full — tilt + tier border</span>
+          <PlayerCard size="full" player={player} team={team} />
+          <p className="text-center text-[11px] text-zinc-500">
+            Hover (desktop) / drag (touch) to tilt.
+          </p>
         </div>
 
-        {/* body: photo (left) + name (right) */}
-        <div className="mt-5 flex items-center gap-5">
-          <PhotoFrame initials={demo.initials} shape="square" size={128} />
-          <div className="flex-1">
-            <NameBlock demo={demo} size="text-3xl" />
+        <div className="flex w-full flex-1 flex-col gap-10">
+          {/* WIDE banner */}
+          <div className="flex flex-col gap-3">
+            <span className="e24-eyebrow">Wide — banner</span>
+            <PlayerCard size="wide" player={player} team={team} />
+          </div>
+
+          {/* COMPACT in a fake leaderboard */}
+          <div className="flex flex-col gap-3">
+            <span className="e24-eyebrow">Compact — leaderboard row</span>
+            <div className="flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3">
+              <FakeRow rank={player.rank ? player.rank - 1 : 1} />
+              <PlayerCard size="compact" player={player} team={team} />
+              <FakeRow rank={player.rank ? player.rank + 1 : 3} />
+            </div>
+          </div>
+
+          {/* AVATAR in a fake chat */}
+          <div className="flex flex-col gap-3">
+            <span className="e24-eyebrow">Avatar — chat message</span>
+            <div className="flex items-start gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+              <PlayerCard size="avatar" player={player} team={team} />
+              <div className="rounded-2xl rounded-tl-sm bg-zinc-800 px-3.5 py-2">
+                <p className="text-xs font-semibold text-white">{player.name}</p>
+                <p className="mt-0.5 text-sm text-zinc-200">
+                  Let&apos;s get after it today 🔥
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* AVATAR in a fake header corner */}
+          <div className="flex flex-col gap-3">
+            <span className="e24-eyebrow">Avatar — header corner</span>
+            <div className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-2.5">
+              <span
+                className="text-sm font-black italic tracking-tight text-white"
+                style={{ fontFamily: "var(--font-barlow)" }}
+              >
+                Elite<span style={{ color: "#e1102a" }}>24</span>MVP
+              </span>
+              <PlayerCard size="avatar" player={player} team={team} />
+            </div>
           </div>
         </div>
-
-        {/* stat row */}
-        <div className="mt-6">
-          <StatPanel demo={demo} />
-        </div>
       </div>
+    </main>
+  );
+}
+
+function TierButton({
+  label,
+  active,
+  onClick,
+  dot,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  dot?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+        active
+          ? "border-white/60 bg-white/10 text-white"
+          : "border-white/15 text-zinc-400 hover:border-white/30"
+      }`}
+    >
+      {dot && (
+        <span
+          className="h-2.5 w-2.5 rounded-full ring-1 ring-white/20"
+          style={{ background: dot }}
+        />
+      )}
+      {label}
+    </button>
+  );
+}
+
+// A dim placeholder leaderboard row so the compact card reads in context.
+function FakeRow({ rank }: { rank: number }) {
+  return (
+    <div className="flex h-[72px] items-center gap-3 rounded-xl bg-zinc-900/40 px-4 opacity-40">
+      <span className="text-sm font-black tabular-nums text-zinc-500">
+        #{rank}
+      </span>
+      <span className="h-9 w-9 rounded-full bg-zinc-800" />
+      <span className="h-3 w-28 rounded bg-zinc-800" />
+      <span className="ml-auto h-3 w-10 rounded bg-zinc-800" />
     </div>
   );
 }

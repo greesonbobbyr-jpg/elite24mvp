@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getTeamRanking } from "@/lib/leaderboard";
 import { EditBrandForm } from "../EditBrandForm";
 import { Card } from "@/app/components/ui/Card";
+import { PlayerCard } from "@/app/components/PlayerCard";
 
 function formatHeight(inches: number | null): string | null {
   if (inches == null) return null;
@@ -44,13 +45,25 @@ export default async function BrandPage({
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
-      <header>
+      {/* Identity hero — the full player card */}
+      <div className="flex flex-col items-center gap-3">
         <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
           Your Brand
         </span>
-        <h1 className="text-2xl font-bold tracking-tight">{target.name}</h1>
-        <p className="text-sm text-zinc-400">Player · {target.team.name}</p>
-      </header>
+        <PlayerCard
+          size="full"
+          player={{
+            name: target.name,
+            jerseyNumber: profile.jerseyNumber,
+            position: profile.position,
+            heightInches: profile.heightInches,
+            rank: rank > 0 ? rank : null,
+            points: profile.points,
+            photoUrl: profile.photoUrl,
+          }}
+          team={target.team}
+        />
+      </div>
 
       {/* The Dream */}
       <Card>

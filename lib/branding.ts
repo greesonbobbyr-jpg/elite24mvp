@@ -5,8 +5,8 @@ import { isTeamColor } from "./teamColors";
 // `data:` image URL from TeamBrandingFields (a pasted http(s) URL is also accepted
 // for back-compat). Colors must be known palette values — never arbitrary CSS.
 
-const LOGO_DATA_RE = /^data:image\/(png|jpe?g|webp|gif);base64,/i;
-const MAX_LOGO_BYTES = 300 * 1024; // a little above the client-side cap
+const IMAGE_DATA_RE = /^data:image\/(png|jpe?g|webp|gif);base64,/i;
+const MAX_IMAGE_BYTES = 300 * 1024; // a little above the client-side cap
 
 export type Branding = {
   logoUrl: string | null;
@@ -19,6 +19,24 @@ function dataUrlBytes(dataUrl: string): number {
   return Math.floor((b64.length * 3) / 4);
 }
 
+// Server re-validation for an uploaded image field: a `data:image` under the byte
+// cap, or a pasted http(s) URL (back-compat), or empty → null. Shared by team
+// branding (logo) and the player photo. `label` personalizes the error text.
+export function validateImageDataUrl(
+  raw: string,
+  label = "image",
+): { url: string | null } | { error: string } {
+  const v = raw.trim();
+  if (!v) return { url: null };
+  if (v.startsWith("data:")) {
+    if (!IMAGE_DATA_RE.test(v)) return { error: `That ${label} isn't supported.` };
+    if (dataUrlBytes(v) > MAX_IMAGE_BYTES) return { error: `That ${label} is too large.` };
+    return { url: v };
+  }
+  if (/^https?:\/\//i.test(v)) return { url: v }; // pasted URL still allowed
+  return { error: `That ${label} isn't a valid image.` };
+}
+
 export function readBranding(
   formData: FormData,
 ): { data: Branding } | { error: string } {
@@ -26,22 +44,9 @@ export function readBranding(
   const rawPrimary = String(formData.get("primaryColor") ?? "").trim();
   const rawSecondary = String(formData.get("secondaryColor") ?? "").trim();
 
-  let logoUrl: string | null = null;
-  if (rawLogo) {
-    if (rawLogo.startsWith("data:")) {
-      if (!LOGO_DATA_RE.test(rawLogo)) {
-        return { error: "That logo image isn't supported." };
-      }
-      if (dataUrlBytes(rawLogo) > MAX_LOGO_BYTES) {
-        return { error: "That logo image is too large." };
-      }
-      logoUrl = rawLogo;
-    } else if (/^https?:\/\//i.test(rawLogo)) {
-      logoUrl = rawLogo; // pasted URL still allowed
-    } else {
-      return { error: "That logo isn't a valid image." };
-    }
-  }
+  const logoRes = validateImageDataUrl(rawLogo, "logo image");
+  if ("error" in logoRes) return { error: logoRes.error };
+  const logoUrl = logoRes.url;
 
   const primaryColor = rawPrimary || null;
   if (primaryColor && !isTeamColor(primaryColor)) {

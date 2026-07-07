@@ -1,25 +1,25 @@
 import Link from "next/link";
 import { getTeamOverview } from "@/lib/coach";
 import { formatTime } from "@/lib/format";
+import { PlayerCard } from "@/app/components/PlayerCard";
 
 // The coach's team dashboard (shown at "/" for a COACH). A TODAY summary with a
-// check-in progress ring + the full roster (alphabetical by last name), each row
-// linking to the coach-only player drill-in. Team-scoped via getTeamOverview
-// (the coach's own teamId). Read-only.
-
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-}
+// check-in progress ring + the full roster (alphabetical by last name) as compact
+// PlayerCards with a check-in strip, each linking to the coach-only player
+// drill-in. Team-scoped via getTeamOverview (the coach's own teamId). Read-only.
 
 export async function CoachHome({
   user,
 }: {
-  user: { teamId: number; team: { name: string } };
+  user: {
+    teamId: number;
+    team: {
+      name: string;
+      logoUrl: string | null;
+      primaryColor: string | null;
+      secondaryColor: string | null;
+    };
+  };
 }) {
   const { roster, totalPlayers, checkedInToday, questsDoneToday } =
     await getTeamOverview(user.teamId);
@@ -93,60 +93,37 @@ export async function CoachHome({
         {roster.length === 0 ? (
           <p className="text-sm text-zinc-500">No players on this team yet.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {roster.map((r) => {
-              const meta = [
-                r.jerseyNumber != null ? `#${r.jerseyNumber}` : null,
-                r.position,
-              ]
-                .filter(Boolean)
-                .join(" · ");
-              return (
-                <li key={r.id}>
-                  <Link
-                    href={`/coach/player/${r.id}`}
-                    className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5 transition hover:border-red-500/40 hover:bg-white/[0.04] active:scale-[0.99]"
+          <ul className="flex flex-col gap-3">
+            {roster.map((r) => (
+              <li key={r.id}>
+                <Link
+                  href={`/coach/player/${r.id}`}
+                  className="block rounded-xl transition hover:opacity-90 active:scale-[0.99]"
+                >
+                  <PlayerCard
+                    size="compact"
+                    player={{
+                      name: r.name,
+                      jerseyNumber: r.jerseyNumber,
+                      position: r.position,
+                      rank: r.rank,
+                      points: r.points,
+                      photoUrl: r.photoUrl,
+                    }}
+                    team={user.team}
+                  />
+                  <p
+                    className={`mt-1 px-1 text-[11px] font-medium ${
+                      r.checkedInAt ? "text-green-400" : "text-amber-400"
+                    }`}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-950 text-xs font-bold text-white ring-1 ring-red-500/40">
-                      {initials(r.name)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">
-                        {r.name}
-                      </p>
-                      {meta && (
-                        <p className="truncate text-[11px] text-zinc-500">{meta}</p>
-                      )}
-                      {r.checkedInAt ? (
-                        <p className="text-[11px] font-medium text-green-400">
-                          ✓ Checked in {formatTime(r.checkedInAt)}
-                        </p>
-                      ) : (
-                        <p className="text-[11px] font-medium text-amber-400">
-                          Not checked in yet
-                        </p>
-                      )}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-black tabular-nums text-white">
-                        {r.points}
-                      </p>
-                      <p className="text-[10px] text-zinc-500">
-                        {r.rank > 0 ? `#${r.rank}` : "—"}
-                      </p>
-                    </div>
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-4 w-4 shrink-0 text-zinc-600"
-                      fill="currentColor"
-                      aria-hidden
-                    >
-                      <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" />
-                    </svg>
-                  </Link>
-                </li>
-              );
-            })}
+                    {r.checkedInAt
+                      ? `✓ Checked in ${formatTime(r.checkedInAt)}`
+                      : "Not checked in yet"}
+                  </p>
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
       </section>

@@ -3,16 +3,12 @@ import { getCurrentUser } from "@/lib/session";
 import { getPlayerCoachView } from "@/lib/coach";
 import { formatTime } from "@/lib/format";
 import { AdjustPointsForm } from "./AdjustPointsForm";
+import { PlayerCard } from "@/app/components/PlayerCard";
 
 // Coach-only drill-in on one player. Guard: a COACH may view only a PLAYER on
 // their OWN team (getPlayerCoachView returns null otherwise → redirect), the same
 // same-team refusal as /brand/[id]. Shows status/counts only — journal reflections
 // and check-in text are NEVER read here (server-enforced in lib/coach.ts).
-
-function formatHeight(inches: number | null): string | null {
-  if (inches == null) return null;
-  return `${Math.floor(inches / 12)}'${inches % 12}"`;
-}
 
 export default async function CoachPlayerPage({
   params,
@@ -29,39 +25,39 @@ export default async function CoachPlayerPage({
   const view = await getPlayerCoachView(user.teamId, id);
   if (!view) redirect("/"); // not a player on the coach's team
 
-  const height = formatHeight(view.heightInches);
-  const meta = [
-    view.jerseyNumber != null ? `#${view.jerseyNumber}` : null,
-    view.position,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
-      {/* Identity */}
-      <section className="e24-surface rounded-2xl border border-red-600/25 p-5">
-        <div className="relative z-10">
-          <p className="e24-eyebrow">Player</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-white">
-            {view.name}
-          </h1>
-          {meta && <p className="mt-0.5 text-sm text-zinc-400">{meta}</p>}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {height && <Chip label="Height" value={height} />}
-            <Chip label="Rank" value={view.rank > 0 ? `#${view.rank} of ${view.total}` : "—"} />
-            {view.pointsPerGame != null && (
-              <Chip label="PPG" value={String(view.pointsPerGame)} />
-            )}
-            {view.reboundsPerGame != null && (
-              <Chip label="RPG" value={String(view.reboundsPerGame)} />
-            )}
-            {view.assistsPerGame != null && (
-              <Chip label="APG" value={String(view.assistsPerGame)} />
-            )}
-          </div>
+      {/* Identity — the player's full card + coach stat chips */}
+      <div className="flex flex-col items-center gap-3">
+        <PlayerCard
+          size="full"
+          player={{
+            name: view.name,
+            jerseyNumber: view.jerseyNumber,
+            position: view.position,
+            heightInches: view.heightInches,
+            rank: view.rank > 0 ? view.rank : null,
+            points: view.points,
+            photoUrl: view.photoUrl,
+          }}
+          team={user.team}
+        />
+        <div className="flex flex-wrap justify-center gap-2">
+          <Chip
+            label="Rank"
+            value={view.rank > 0 ? `#${view.rank} of ${view.total}` : "—"}
+          />
+          {view.pointsPerGame != null && (
+            <Chip label="PPG" value={String(view.pointsPerGame)} />
+          )}
+          {view.reboundsPerGame != null && (
+            <Chip label="RPG" value={String(view.reboundsPerGame)} />
+          )}
+          {view.assistsPerGame != null && (
+            <Chip label="APG" value={String(view.assistsPerGame)} />
+          )}
         </div>
-      </section>
+      </div>
 
       {/* Today — status only */}
       <section>

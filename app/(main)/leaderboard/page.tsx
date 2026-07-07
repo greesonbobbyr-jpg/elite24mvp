@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getTeamRanking, type RankedPlayer } from "@/lib/leaderboard";
+import { PlayerCard } from "@/app/components/PlayerCard";
 
 // Single-team leaderboard. STRICTLY the current user's own team — no other team
 // is queried or shown (CLAUDE.md section 3.2 / 3.5). A coach views their own
@@ -9,8 +10,8 @@ import { getTeamRanking, type RankedPlayer } from "@/lib/leaderboard";
 // player's team-facing brand page (same team only).
 //
 // Layout: a spotlight PODIUM for the top 3 (rank 1 centered + larger, 2 left,
-// 3 right, with gold/silver/bronze medal rings) and a LIST for rank 4+. Avatars
-// are INITIALS placeholders only — photo upload is deliberately NOT built.
+// 3 right, with gold/silver/bronze medal rings) and a LIST of compact PlayerCards
+// for rank 4+. Photos show where set (podium disc + compact card), else initials.
 
 // First two initials of a name (mirrors IdentityChip's placeholder avatar).
 function initials(name: string): string {
@@ -69,7 +70,7 @@ function PodiumItem({
         className="flex flex-col items-center transition active:scale-[0.97]"
       >
         <span
-          className="flex items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-950 font-black uppercase text-white"
+          className="flex items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-red-700 to-red-950 font-black uppercase text-white"
           style={{
             width: size,
             height: size,
@@ -78,7 +79,16 @@ function PodiumItem({
             textShadow: "0 2px 6px rgba(0,0,0,0.5)",
           }}
         >
-          {initials(player.name)}
+          {player.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={player.photoUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initials(player.name)
+          )}
         </span>
         <span
           className="mt-3 rounded-full px-2.5 py-0.5 text-xs font-black tabular-nums shadow-sm"
@@ -162,34 +172,27 @@ export default async function LeaderboardPage() {
                 <li key={player.id}>
                   <Link
                     href={`/brand/${player.id}`}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
-                      isMe
-                        ? "bg-red-600/15 ring-1 ring-red-500/40"
-                        : "bg-white/[0.02] hover:bg-white/[0.05]"
+                    className={`relative block rounded-xl transition active:scale-[0.99] ${
+                      isMe ? "ring-2 ring-red-400" : "hover:opacity-90"
                     }`}
                   >
-                    <span className="w-7 shrink-0 text-center text-sm font-black tabular-nums text-zinc-500">
-                      {player.rank}
-                    </span>
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-950 text-xs font-bold text-white ring-1 ring-red-500/40">
-                      {initials(player.name)}
-                    </span>
-                    <span
-                      className={`min-w-0 flex-1 truncate text-sm font-bold uppercase tracking-wide ${
-                        isMe ? "text-red-400" : "text-white"
-                      }`}
-                    >
-                      {player.name}
-                      {isMe && " · You"}
-                    </span>
-                    <span className="flex shrink-0 items-baseline gap-1">
-                      <span className="text-sm font-black tabular-nums text-white">
-                        {player.points.toLocaleString()}
+                    <PlayerCard
+                      size="compact"
+                      player={{
+                        name: player.name,
+                        jerseyNumber: player.jerseyNumber,
+                        position: player.position,
+                        rank: player.rank,
+                        points: player.points,
+                        photoUrl: player.photoUrl,
+                      }}
+                      team={user.team}
+                    />
+                    {isMe && (
+                      <span className="absolute -top-1.5 right-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-white shadow">
+                        You
                       </span>
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-white/40">
-                        pts
-                      </span>
-                    </span>
+                    )}
                   </Link>
                 </li>
               );

@@ -9,6 +9,7 @@ import { QuotedMessage } from "./QuotedMessage";
 import { ReplyProvider } from "./ReplyProvider";
 import { BoardScroller } from "./BoardScroller";
 import { getGif } from "@/lib/gifs";
+import { PlayerCard } from "@/app/components/PlayerCard";
 
 // The team's message board — a Messenger-style chat. Team-private: only the
 // current user's own team is queried and posted to (CLAUDE.md section 3.2).
@@ -17,19 +18,9 @@ import { getGif } from "@/lib/gifs";
 // tinted). "Me" is the code's existing check: message.author.id === user.id.
 //
 // The CURRENT user speaks in a clean white bubble (right); everyone else speaks
-// in the red ".e24-bubble" material (left) with an initials avatar + name.
+// in the red ".e24-bubble" material (left) with their team avatar card + name.
 // Consecutive messages from one author are grouped. A reply carries the quoted
 // original, rendered dimmed behind the reply bubble.
-
-// First two initials of a name (mirrors IdentityChip's placeholder avatar).
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-}
 
 // A short preview of a message for reply quotes / the compose bar.
 function snippetOf(body: string, gifId: string | null): string {
@@ -145,14 +136,19 @@ export default async function BoardPage() {
                     {/* avatar column — OTHERS only, once per group */}
                     {!isMine &&
                       (isFirstOfGroup ? (
-                        <span
-                          className="mt-6 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-950 text-[11px] font-bold text-white ring-1 ring-red-500/40"
-                          aria-hidden
-                        >
-                          {initials(message.author.name)}
-                        </span>
+                        <div className="mt-6 shrink-0" aria-hidden>
+                          <PlayerCard
+                            size="avatar"
+                            player={{
+                              name: message.author.name,
+                              photoUrl: message.author.profile?.photoUrl ?? null,
+                              points: 0,
+                            }}
+                            team={user.team}
+                          />
+                        </div>
                       ) : (
-                        <span className="w-8 shrink-0" aria-hidden />
+                        <span className="w-10 shrink-0" aria-hidden />
                       ))}
 
                     <div

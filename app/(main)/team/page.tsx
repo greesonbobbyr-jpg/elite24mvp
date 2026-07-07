@@ -34,6 +34,7 @@ export default async function TeamSettingsPage() {
             primaryColor: team.primaryColor,
             secondaryColor: team.secondaryColor,
           }}
+          coachPhotoUrl={user.photoUrl}
         />
       </section>
     </main>

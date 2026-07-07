@@ -2,56 +2,18 @@
 
 import { useRef, useState } from "react";
 import { TEAM_COLORS } from "@/lib/teamColors";
+import { resizeToDataUrl } from "@/lib/clientImage";
 
 // Coach team-branding inputs, shared by the signup form and team settings:
 //  - Logo: drag-drop OR click-to-browse. The image is resized in-browser to a
 //    small `data:` URL (no upload endpoint / file hosting — it rides along in the
 //    existing `logoUrl` field and renders via a plain <img>). Server re-validates
-//    it's a data:image under a size cap.
+//    it's a data:image under a size cap. Resize logic lives in lib/clientImage.
 //  - Colors: PRIMARY + SECONDARY picked from the fixed TEAM_COLORS palette. The
 //    chosen hexes go into hidden inputs; server re-validates each is a known
 //    palette color.
 // All three are optional (branding is optional). `default*` props pre-fill the
 // current values on the settings page.
-
-const MAX_DIM = 512; // longest edge, px
-const MAX_BYTES = 200 * 1024; // ~200 KB cap on the stored data URL
-
-function dataUrlBytes(dataUrl: string): number {
-  const comma = dataUrl.indexOf(",");
-  const b64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
-  // base64 → bytes (ignore padding precisely enough for a cap check)
-  return Math.floor((b64.length * 3) / 4);
-}
-
-async function readImage(file: File): Promise<HTMLImageElement> {
-  const url = await new Promise<string>((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result as string);
-    fr.onerror = () => reject(new Error("read failed"));
-    fr.readAsDataURL(file);
-  });
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("decode failed"));
-    img.src = url;
-  });
-}
-
-function encode(img: HTMLImageElement, max: number, quality: number): string {
-  const scale = Math.min(1, max / Math.max(img.width, img.height));
-  const w = Math.max(1, Math.round(img.width * scale));
-  const h = Math.max(1, Math.round(img.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return "";
-  ctx.drawImage(img, 0, 0, w, h);
-  // webp where supported; browsers that don't support it fall back to png.
-  return canvas.toDataURL("image/webp", quality);
-}
 
 export function TeamBrandingFields({
   defaultLogoUrl = null,
@@ -72,27 +34,12 @@ export function TeamBrandingFields({
   async function handleFile(file: File | undefined | null) {
     setError(null);
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Please choose an image file.");
+    const res = await resizeToDataUrl(file);
+    if ("error" in res) {
+      setError(res.error);
       return;
     }
-    try {
-      const img = await readImage(file);
-      // First pass; if it's over the cap, retry smaller/lower quality.
-      let out = encode(img, MAX_DIM, 0.85);
-      if (out && dataUrlBytes(out) > MAX_BYTES) out = encode(img, 320, 0.7);
-      if (!out) {
-        setError("Couldn't process that image. Try another.");
-        return;
-      }
-      if (dataUrlBytes(out) > MAX_BYTES) {
-        setError("That image is too large. Try a smaller one.");
-        return;
-      }
-      setLogo(out);
-    } catch {
-      setError("Couldn't read that image. Try another.");
-    }
+    setLogo(res.url);
   }
 
   return (

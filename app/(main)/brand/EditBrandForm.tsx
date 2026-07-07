@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { updateBrand, type BrandState } from "./actions";
 import { Button } from "@/app/components/ui/Button";
 import { cardDefault } from "@/app/components/ui/Card";
+import { PhotoUploadField } from "@/app/components/PhotoUploadField";
 
 const initialState: BrandState = {};
 const fieldClass =
@@ -20,6 +21,7 @@ type EditableProfile = {
   favoritePlayer: string | null;
   favoriteTeam: string | null;
   highlightUrl: string | null;
+  photoUrl: string | null;
 };
 
 export function EditBrandForm({ profile }: { profile: EditableProfile }) {
@@ -34,6 +36,8 @@ export function EditBrandForm({ profile }: { profile: EditableProfile }) {
         Edit my brand
       </summary>
       <form action={formAction} className="mt-4 flex flex-col gap-4">
+        <PhotoUploadField defaultPhotoUrl={profile.photoUrl} />
+
         <fieldset className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="col-span-2 sm:col-span-1">
             <label className={labelClass}>Position</label>

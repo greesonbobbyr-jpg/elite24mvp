@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
+import { validateImageDataUrl } from "@/lib/branding";
 
 export type BrandState = { error?: string };
 
@@ -55,6 +56,14 @@ export async function updateBrand(
     highlightUrl = parsed.toString();
   }
 
+  // Player photo: an uploaded, size-capped data: image (same validation as the
+  // team logo). Empty clears it to null. Owner-only — we always write user.id.
+  const photoRes = validateImageDataUrl(
+    String(formData.get("photoUrl") ?? ""),
+    "photo",
+  );
+  if ("error" in photoRes) return { error: photoRes.error };
+
   await prisma.playerProfile.update({
     where: { userId: user.id },
     data: {
@@ -67,10 +76,14 @@ export async function updateBrand(
       favoritePlayer: optionalString(formData.get("favoritePlayer")),
       favoriteTeam: optionalString(formData.get("favoriteTeam")),
       highlightUrl,
+      photoUrl: photoRes.url,
     },
   });
 
+  // The photo shows on the card across surfaces — refresh them too.
   revalidatePath(`/brand/${user.id}`);
   revalidatePath("/");
+  revalidatePath("/leaderboard");
+  revalidatePath("/board");
   return {};
 }

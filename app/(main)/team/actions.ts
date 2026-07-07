@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { uniqueJoinCode } from "@/lib/joincode";
-import { readBranding } from "@/lib/branding";
+import { readBranding, validateImageDataUrl } from "@/lib/branding";
 
 export type TeamSettingsState = { error?: string; ok?: boolean };
 
@@ -32,11 +32,23 @@ export async function updateTeam(
   if ("error" in branding) return { error: branding.error };
   const { logoUrl, primaryColor, secondaryColor } = branding.data;
 
+  // The coach's OWN photo (same validation as any uploaded image). Empty clears
+  // it. Owner-only — we always write user.id, never a client-supplied id.
+  const photoRes = validateImageDataUrl(
+    String(formData.get("photoUrl") ?? ""),
+    "photo",
+  );
+  if ("error" in photoRes) return { error: photoRes.error };
+
   await prisma.team.update({
     where: { id: user.teamId },
     data: { name, logoUrl, primaryColor, secondaryColor },
   });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { photoUrl: photoRes.url },
+  });
   revalidatePath("/team");
-  revalidatePath("/"); // team name shows on the dashboard/header
+  revalidatePath("/"); // team name + coach photo show on the dashboard/header
   return { ok: true };
 }

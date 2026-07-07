@@ -13,6 +13,7 @@ export type RosterRow = {
   name: string;
   position: string | null;
   jerseyNumber: number | null;
+  photoUrl: string | null;
   points: number;
   rank: number;
   checkedInAt: Date | null;
@@ -43,7 +44,12 @@ export async function getTeamOverview(teamId: number): Promise<TeamOverview> {
         id: true,
         name: true,
         profile: {
-          select: { points: true, position: true, jerseyNumber: true },
+          select: {
+            points: true,
+            position: true,
+            jerseyNumber: true,
+            photoUrl: true,
+          },
         },
       },
     }),
@@ -68,6 +74,7 @@ export async function getTeamOverview(teamId: number): Promise<TeamOverview> {
       name: p.name,
       position: p.profile?.position ?? null,
       jerseyNumber: p.profile?.jerseyNumber ?? null,
+      photoUrl: p.profile?.photoUrl ?? null,
       points: p.profile?.points ?? 0,
       rank: rankById.get(p.id) ?? 0,
       checkedInAt: checkedInAtByUser.get(p.id) ?? null,
@@ -87,6 +94,7 @@ export type PlayerCoachView = {
   name: string;
   position: string | null;
   jerseyNumber: number | null;
+  photoUrl: string | null;
   heightInches: number | null;
   pointsPerGame: number | null;
   reboundsPerGame: number | null;
@@ -156,6 +164,7 @@ export async function getPlayerCoachView(
     name: target.name,
     position: p.position,
     jerseyNumber: p.jerseyNumber,
+    photoUrl: p.photoUrl,
     heightInches: p.heightInches,
     pointsPerGame: p.pointsPerGame,
     reboundsPerGame: p.reboundsPerGame,

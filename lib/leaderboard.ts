@@ -5,6 +5,9 @@ export type RankedPlayer = {
   name: string;
   points: number;
   rank: number;
+  jerseyNumber: number | null;
+  position: string | null;
+  photoUrl: string | null;
 };
 
 // Players on a team ranked by points (highest first). Shared by the leaderboard
@@ -17,10 +20,26 @@ export type RankedPlayer = {
 export async function getTeamRanking(teamId: number): Promise<RankedPlayer[]> {
   const players = await prisma.user.findMany({
     where: { teamId, role: "PLAYER" },
-    include: { profile: { select: { points: true } } },
+    include: {
+      profile: {
+        select: {
+          points: true,
+          jerseyNumber: true,
+          position: true,
+          photoUrl: true,
+        },
+      },
+    },
   });
   const sorted = players
-    .map((p) => ({ id: p.id, name: p.name, points: p.profile?.points ?? 0 }))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      points: p.profile?.points ?? 0,
+      jerseyNumber: p.profile?.jerseyNumber ?? null,
+      position: p.profile?.position ?? null,
+      photoUrl: p.profile?.photoUrl ?? null,
+    }))
     .sort((a, b) => b.points - a.points);
 
   let rank = 0;

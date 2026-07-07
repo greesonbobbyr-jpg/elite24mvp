@@ -1,34 +1,52 @@
 import Link from "next/link";
+import { PlayerCard } from "@/app/components/PlayerCard";
 
-// The header identity chip: ONE compact card (brand "material" — subtle dark
-// gradient + thin red glow ring) with an initials avatar + the user's name.
-// For a PLAYER the whole chip links to their OWN Brand page (the only new link).
-// For a coach (no brand page) it's a non-link. The avatar shows INITIALS only —
-// a placeholder slot; photo upload is deliberately NOT built here.
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-}
+// The header identity chip. Both roles get an avatar-size PlayerCard (team ring +
+// photo/initials): a PLAYER's photo comes from their PlayerProfile, a COACH's from
+// User.photoUrl (uploaded in Team Settings). A player's chip links to their Brand
+// page; a coach's is a non-link.
 
 const chipClass =
   "flex max-w-[58vw] items-center gap-2.5 rounded-full border border-red-600/30 bg-gradient-to-br from-zinc-900 to-black py-1.5 pl-1.5 pr-3 shadow-[0_0_0_1px_rgba(220,38,38,0.12),0_4px_14px_-6px_rgba(0,0,0,0.7)]";
 
-export function IdentityChip({
-  user,
-}: {
-  user: { id: number; name: string; role: string };
-}) {
+type ChipUser = {
+  id: number;
+  name: string;
+  role: string;
+  photoUrl: string | null;
+  team: {
+    name: string;
+    logoUrl: string | null;
+    primaryColor: string | null;
+    secondaryColor: string | null;
+  };
+  profile: {
+    photoUrl: string | null;
+    jerseyNumber: number | null;
+    points: number;
+  } | null;
+};
+
+export function IdentityChip({ user }: { user: ChipUser }) {
   const isPlayer = user.role === "PLAYER";
+  const photoUrl = isPlayer ? (user.profile?.photoUrl ?? null) : user.photoUrl;
+
+  const avatar = (
+    <PlayerCard
+      size="avatar"
+      player={{
+        name: user.name,
+        photoUrl,
+        jerseyNumber: user.profile?.jerseyNumber ?? null,
+        points: user.profile?.points ?? 0,
+      }}
+      team={user.team}
+    />
+  );
 
   const inner = (
     <>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-950 text-xs font-bold text-white ring-2 ring-red-500/70">
-        {initials(user.name)}
-      </span>
+      {avatar}
       <span className="min-w-0 leading-tight">
         <span className="block truncate text-sm font-semibold text-white">
           {user.name}
