@@ -28,6 +28,7 @@ import {
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { todayKey as tzDayKey } from "../lib/daykey";
+import { advanceStreak, type StreakState } from "../lib/streaks";
 
 const prisma = new PrismaClient();
 
@@ -79,9 +80,10 @@ const teamBPlayers: PlayerSeed[] = [
 // PLACEHOLDER quests — Gary to replace. Generic basketball-development daily
 // tasks; deliberately NOT tied to the E24P 4-part cycle (future design).
 const QUESTS = [
-  { title: "Shooting reps", description: "Get up 100 shots — game spots, both sides.", points: 15, sortOrder: 1 },
+  // targetCount marks a MEASURABLE quest (predict-then-log calibration flow).
+  { title: "Shooting reps", description: "Get up 100 shots — game spots, both sides.", points: 15, sortOrder: 1, targetCount: 100 },
   { title: "Ball-handling", description: "10 minutes of two-ball dribbling drills.", points: 10, sortOrder: 2 },
-  { title: "Free throws", description: "Shoot 50 free throws and track your makes.", points: 10, sortOrder: 3 },
+  { title: "Free throws", description: "Shoot 50 free throws and track your makes.", points: 10, sortOrder: 3, targetCount: 50 },
   { title: "Conditioning", description: "Run sprints or a timed mile.", points: 15, sortOrder: 4 },
   { title: "Strength & core", description: "15 minutes of bodyweight strength and core work.", points: 10, sortOrder: 5 },
   { title: "Film study", description: "Watch 10 minutes of film and note one thing to improve.", points: 10, sortOrder: 6 },
@@ -622,7 +624,9 @@ async function main() {
   };
 
   // Recompute each player's cached points total = sum of their ledger, so the
-  // cache exactly matches the source of truth (check-ins + quests).
+  // cache exactly matches the source of truth (check-ins + quests). Also
+  // backfill streak fields by replaying each player's entry days through the
+  // same advanceStreak the app uses — seeded streaks behave like real ones.
   const players = await prisma.user.findMany({
     where: { role: Role.PLAYER },
     select: { id: true, profile: { select: { id: true } } },
@@ -633,9 +637,21 @@ async function main() {
       where: { userId: p.id },
       _sum: { amount: true },
     });
+    const entryDays = await prisma.journalEntry.findMany({
+      where: { userId: p.id },
+      select: { day: true },
+      orderBy: { day: "asc" },
+    });
+    let streak: StreakState = {
+      currentStreak: 0,
+      bestStreak: 0,
+      lastCheckInDay: null,
+      streakGraceUsed: false,
+    };
+    for (const e of entryDays) streak = advanceStreak(streak, e.day);
     await prisma.playerProfile.update({
       where: { userId: p.id },
-      data: { points: agg._sum.amount ?? 0 },
+      data: { points: agg._sum.amount ?? 0, ...streak },
     });
   }
 

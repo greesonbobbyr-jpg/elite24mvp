@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
 import { todayKey } from "@/lib/journal";
 import { POINTS_PER_CHECKIN } from "@/lib/points";
+import { advanceStreak } from "@/lib/streaks";
 
 export type CheckInState = { error?: string };
 
@@ -31,23 +32,44 @@ export async function submitCheckIn(
   // The 1-Minute Mindset takeaway is a separate, optional reflection and does NOT
   // gate this (it used to, which broke submitting the check-in first).
   try {
-    await prisma.$transaction([
-      prisma.journalEntry.create({
-        data: { userId: user.id, reflection, day: todayKey() },
-      }),
-      prisma.pointsLedger.create({
+    const day = todayKey();
+    await prisma.$transaction(async (tx) => {
+      await tx.journalEntry.create({
+        data: { userId: user.id, reflection, day },
+      });
+      await tx.pointsLedger.create({
         data: {
           userId: user.id,
           amount: POINTS_PER_CHECKIN,
           reason: "Daily check-in",
           source: PointsSource.DAILY_CHECK_IN,
         },
-      }),
-      prisma.playerProfile.update({
+      });
+      // Advance the streak in the same transaction as the entry (the unique
+      // [userId, day] on JournalEntry guarantees this runs once per day).
+      const profile = await tx.playerProfile.findUnique({
         where: { userId: user.id },
-        data: { points: { increment: POINTS_PER_CHECKIN } },
-      }),
-    ]);
+        select: {
+          currentStreak: true,
+          bestStreak: true,
+          lastCheckInDay: true,
+          streakGraceUsed: true,
+        },
+      });
+      const streak = advanceStreak(
+        profile ?? {
+          currentStreak: 0,
+          bestStreak: 0,
+          lastCheckInDay: null,
+          streakGraceUsed: false,
+        },
+        day,
+      );
+      await tx.playerProfile.update({
+        where: { userId: user.id },
+        data: { points: { increment: POINTS_PER_CHECKIN }, ...streak },
+      });
+    });
   } catch (error) {
     // Unique violation = already checked in today. Treat as a no-op success.
     if (

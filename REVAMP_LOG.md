@@ -30,3 +30,17 @@ create (5/hr/IP), and reactions (60/min/user). Wrote
 one-time credential table to git-ignored `credentials-rotated.local.txt` —
 rotation does NOT invalidate already-issued JWT sessions). RateLimit migration
 authored; **not applied yet** (DB paused — see note above).
+
+## Phase 1 — Data foundation
+One additive migration (`streaks_predictions_timezone`, authored/committed, not
+yet applied): `Team.timezone` (IANA, default America/Chicago — data-model prep
+for per-team day math), streak fields on PlayerProfile (`currentStreak`,
+`bestStreak`, `lastCheckInDay`, `streakGraceUsed`), `Quest.targetCount` (marks a
+measurable quest for the predict-then-log flow), and `QuestLog.predicted/actual`.
+New pure `lib/streaks.ts` — `advanceStreak` with a one-missed-day grace "shield"
+(a single gap keeps the streak and spends the shield; a second gap resets and
+returns it) — wired into `submitCheckIn`'s transaction, 7 cases unit-verified.
+Seed: "Free throws" (50) and "Shooting reps" (100) get targetCounts, and streak
+fields are backfilled by replaying seeded entry days through the same
+`advanceStreak` the app uses. Weekly points intentionally need NO schema — they
+derive from `PointsLedger.createdAt` (Phase 4 queries it directly).

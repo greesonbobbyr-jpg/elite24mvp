@@ -45,6 +45,11 @@ model Team {
   name      String
   createdAt DateTime @default(now())
 
+  // IANA timezone for this team's calendar-day logic. Data-model prep: the app
+  // currently uses the app-wide APP_TIMEZONE (lib/daykey); threading this value
+  // through every todayKey() call site is a later refactor.
+  timezone String @default("America/Chicago")
+
   // Players join a team with this short code (generated at team creation, coach
   // can regenerate). Unique across teams. Null only for legacy rows.
   joinCode String? @unique
@@ -148,6 +153,15 @@ model PlayerProfile {
   // ledger write so a future leaderboard can read a single number quickly.
   points Int @default(0)
 
+  // Check-in streak (lib/streaks.ts, advanced inside submitCheckIn's txn).
+  // One missed day is absorbed by a grace "shield" (streakGraceUsed tracks
+  // whether this streak already spent it); a second gap resets. Habit design:
+  // punishing a single miss teaches quitting, not consistency.
+  currentStreak   Int     @default(0)
+  bestStreak      Int     @default(0)
+  lastCheckInDay  String?
+  streakGraceUsed Boolean @default(false)
+
   // Set when the player completes first-time onboarding (CLAUDE.md section 2).
   // Null = not yet onboarded. In the seed, a not-yet-onboarded player has no
   // PlayerProfile row at all; this timestamp marks completion explicitly.
@@ -229,6 +243,12 @@ model Quest {
   sortOrder   Int        @default(0)
   createdAt   DateTime   @default(now())
 
+  // A MEASURABLE quest (e.g. free throws out of 50). When set, the player
+  // predicts their count before starting and logs the actual after — the
+  // predicted-vs-actual gap trains self-assessment (calibration). Null = a
+  // plain one-tap quest.
+  targetCount Int?
+
   logs QuestLog[]
 }
 
@@ -248,9 +268,15 @@ model QuestLog {
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   questId   Int
   quest     Quest       @relation(fields: [questId], references: [id], onDelete: Cascade)
-  day       String      // calendar day "YYYY-MM-DD" (server-local time)
+  day       String      // calendar day "YYYY-MM-DD" (app-timezone, lib/daykey)
   status    QuestStatus @default(APPROVED)
   createdAt DateTime    @default(now())
+
+  // Predict-then-log for measurable quests (Quest.targetCount != null): the
+  // player's predicted count (set at start, status PENDING) and the actual they
+  // logged (set at completion, status → APPROVED). Both null for one-tap quests.
+  predicted Int?
+  actual    Int?
 
   // The points-ledger row this completion created (set by logQuest). Cascade-
   // deleted with the log on undo.
