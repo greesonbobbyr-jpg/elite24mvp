@@ -13,9 +13,18 @@ const initialState: BoardState = {};
 // single-line input, and a compact send icon on the right. Popovers (emoji tray,
 // GIF picker, selected-GIF chip, error) sit above the bar. All behavior is
 // unchanged — curated GIFs only (no GIPHY, no upload), server-validated post.
-export function MessageComposer() {
+// `initialBody`/`initialType` prefill a draft (e.g. the coach's streak-shoutout
+// link) — always editable before sending; the server re-enforces that special
+// types are coach-only.
+export function MessageComposer({
+  initialBody,
+  initialType,
+}: {
+  initialBody?: string;
+  initialType?: "DISCUSSION" | "CHALLENGE" | "SPOTLIGHT";
+} = {}) {
   const [state, formAction, pending] = useActionState(postMessage, initialState);
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(initialBody ?? "");
   const [gifId, setGifId] = useState<string | null>(null);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
@@ -58,6 +67,12 @@ export function MessageComposer() {
     <form ref={formRef} action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="gifId" value={gifId ?? ""} />
       <input type="hidden" name="replyToId" value={replyingTo?.id ?? ""} />
+      {initialType && <input type="hidden" name="type" value={initialType} />}
+      {initialType === "SPOTLIGHT" && (
+        <p className="rounded-full bg-red-500/15 px-3 py-1 text-center text-[10px] font-bold uppercase tracking-wide text-red-400">
+          Coach&apos;s Spotlight draft — edit it, then send
+        </p>
+      )}
 
       {/* Reply preview — who/what you're replying to, with a cancel. */}
       {replyingTo && (

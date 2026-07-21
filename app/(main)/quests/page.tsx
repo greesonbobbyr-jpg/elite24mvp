@@ -7,6 +7,7 @@ import { QuestList } from "../QuestList";
 import { PointsHistory } from "../PointsHistory";
 import { AnimatedTotal } from "../AnimatedTotal";
 import { Card } from "@/app/components/ui/Card";
+import { tierForPoints, TIERS } from "@/lib/cardTheme";
 
 // Daily quests + points, the player's "Mission Board". Player-private; the (main)
 // layout enforces onboarding + footer. Styling only — quest/points behavior is
@@ -50,6 +51,13 @@ export default async function QuestsPage() {
     .reduce((sum, e) => sum + e.amount, 0);
   const pct = totalCount > 0 ? (doneCount / totalCount) * 100 : 0;
 
+  // Tier progress — makes the card-border tier a mid-term goal, not just décor.
+  const tier = tierForPoints(points);
+  const nextTier = TIERS[TIERS.findIndex((t) => t.key === tier.key) + 1] ?? null;
+  const tierPct = nextTier
+    ? Math.min(100, ((points - tier.min) / (nextTier.min - tier.min)) * 100)
+    : 100;
+
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
       <h1 className="e24-eyebrow">Daily Quests</h1>
@@ -68,6 +76,24 @@ export default async function QuestsPage() {
           )}
         </div>
       </Card>
+
+      {/* Tier progress */}
+      <div>
+        <div className="flex items-baseline justify-between">
+          <span className="e24-eyebrow uppercase">{tier.label}</span>
+          <span className="text-xs font-semibold text-zinc-400">
+            {nextTier
+              ? `${nextTier.min - points} PTS TO ${nextTier.label.toUpperCase()}`
+              : "TOP TIER"}
+          </span>
+        </div>
+        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#d4af37] to-[#e8c766] transition-[width]"
+            style={{ width: `${tierPct}%` }}
+          />
+        </div>
+      </div>
 
       {/* Today's progress */}
       {totalCount > 0 && (

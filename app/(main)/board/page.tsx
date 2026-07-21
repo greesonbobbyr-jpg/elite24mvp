@@ -35,9 +35,21 @@ function snippetOf(body: string, gifId: string | null): string {
 const kicker =
   "text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500";
 
-export default async function BoardPage() {
+export default async function BoardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ spotlight?: string; days?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/");
+
+  // Coach arriving from a "Give a shoutout →" streak-milestone link: prefill a
+  // SPOTLIGHT draft (fully editable — the coach writes/sends, never the app).
+  const { spotlight, days } = await searchParams;
+  const spotlightDraft =
+    user.role === "COACH" && spotlight
+      ? `Coach's Spotlight: ${spotlight} is on a ${Number.parseInt(days ?? "", 10) || "hot"}-day check-in streak 🔥 That's how pros are built. Keep leading.`
+      : null;
 
   const messages = await listTeamMessages(user.teamId);
   const logoUrl = user.team.logoUrl;
@@ -259,7 +271,10 @@ export default async function BoardPage() {
 
           {/* BOTTOM — pinned composer (always visible) */}
           <div className="shrink-0 border-t border-red-600/20 bg-black/40 px-6 py-3">
-            <MessageComposer />
+            <MessageComposer
+              initialBody={spotlightDraft ?? undefined}
+              initialType={spotlightDraft ? "SPOTLIGHT" : undefined}
+            />
           </div>
         </div>
       </ReplyProvider>

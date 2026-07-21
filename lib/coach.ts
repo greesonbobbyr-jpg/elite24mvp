@@ -17,6 +17,7 @@ export type RosterRow = {
   points: number;
   rank: number;
   checkedInAt: Date | null;
+  currentStreak: number;
 };
 
 export type TeamOverview = {
@@ -49,6 +50,7 @@ export async function getTeamOverview(teamId: number): Promise<TeamOverview> {
             position: true,
             jerseyNumber: true,
             photoUrl: true,
+            currentStreak: true,
           },
         },
       },
@@ -78,6 +80,7 @@ export async function getTeamOverview(teamId: number): Promise<TeamOverview> {
       points: p.profile?.points ?? 0,
       rank: rankById.get(p.id) ?? 0,
       checkedInAt: checkedInAtByUser.get(p.id) ?? null,
+      currentStreak: p.profile?.currentStreak ?? 0,
     }))
     .sort((a, b) => lastName(a.name).localeCompare(lastName(b.name)));
 

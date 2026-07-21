@@ -87,6 +87,39 @@ export async function CoachHome({
         </div>
       </section>
 
+      {/* STREAK MILESTONES — prompt the coach to recognize consistency. The app
+          prompts, the coach decides and writes; nothing is ever auto-posted. */}
+      {(() => {
+        const milestone = (n: number) => (n >= 30 ? 30 : n >= 14 ? 14 : n >= 7 ? 7 : 0);
+        const hot = roster
+          .filter((r) => milestone(r.currentStreak) > 0)
+          .sort((a, b) => b.currentStreak - a.currentStreak);
+        if (hot.length === 0) return null;
+        return (
+          <section className="rounded-2xl border border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-zinc-950 p-5">
+            <p className="e24-eyebrow">Streak milestones</p>
+            <ul className="mt-2 flex flex-col gap-2">
+              {hot.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-sm font-semibold text-white">
+                    🔥 {r.name}
+                    <span className="ml-2 text-xs font-bold text-[#e8c766]">
+                      {r.currentStreak}-day streak
+                    </span>
+                  </span>
+                  <Link
+                    href={`/board?spotlight=${encodeURIComponent(r.name.split(" ")[0])}&days=${r.currentStreak}`}
+                    className="shrink-0 text-xs font-bold uppercase tracking-wide text-red-500 transition hover:text-red-400"
+                  >
+                    Give a shoutout →
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })()}
+
       {/* ROSTER */}
       <section>
         <p className="e24-eyebrow mb-2">Roster · {totalPlayers}</p>

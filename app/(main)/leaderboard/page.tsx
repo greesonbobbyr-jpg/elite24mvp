@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { getTeamRanking, type RankedPlayer } from "@/lib/leaderboard";
+import {
+  getTeamRanking,
+  getWeeklyRanking,
+  type RankedPlayer,
+} from "@/lib/leaderboard";
 import { PlayerCard } from "@/app/components/PlayerCard";
 
 // Single-team leaderboard. STRICTLY the current user's own team — no other team
@@ -116,11 +120,27 @@ function PodiumItem({
   );
 }
 
-export default async function LeaderboardPage() {
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
+  const { view } = await searchParams;
+  const weekView = view === "week";
+
   const ranked = await getTeamRanking(user.teamId);
+  const weekly = weekView ? await getWeeklyRanking(user.teamId) : [];
+  // "Most improved": biggest positive gain vs. your OWN last week.
+  const mostImprovedId = weekly.reduce<{ id: number; delta: number } | null>(
+    (best, p) =>
+      p.delta > 0 && (!best || p.delta > best.delta)
+        ? { id: p.id, delta: p.delta }
+        : best,
+    null,
+  )?.id;
   const podium = ranked.slice(0, 3);
   const rest = ranked.slice(3);
   const logoUrl = user.team.logoUrl;
@@ -150,8 +170,89 @@ export default async function LeaderboardPage() {
         ) : null}
       </header>
 
+      {/* View tabs: all-time vs weekly sprint (resets every Monday) */}
+      <div className="flex gap-2">
+        <Link
+          href="/leaderboard"
+          className={`rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+            !weekView
+              ? "border-red-500 bg-red-600/20 text-red-300"
+              : "border-white/15 text-zinc-400 hover:border-white/30"
+          }`}
+        >
+          All-time
+        </Link>
+        <Link
+          href="/leaderboard?view=week"
+          className={`rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+            weekView
+              ? "border-red-500 bg-red-600/20 text-red-300"
+              : "border-white/15 text-zinc-400 hover:border-white/30"
+          }`}
+        >
+          This week
+        </Link>
+      </div>
+
+      {/* Weekly sprint — everyone starts Monday at 0 (keeps the whole roster in
+          the race), with a "most improved vs your own last week" badge. */}
+      {weekView && (
+        <section>
+          <ul className="flex flex-col gap-2">
+            {weekly.map((p) => {
+              const isMe = p.id === user.id;
+              return (
+                <li key={p.id}>
+                  <Link
+                    href={`/brand/${p.id}`}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
+                      isMe
+                        ? "bg-red-600/15 ring-1 ring-red-500/40"
+                        : "bg-white/[0.02] hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    <span className="w-7 shrink-0 text-center text-sm font-black tabular-nums text-zinc-500">
+                      {p.rank}
+                    </span>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-red-700 to-red-950 text-xs font-bold text-white ring-1 ring-red-500/40">
+                      {p.photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        initials(p.name)
+                      )}
+                    </span>
+                    <span
+                      className={`min-w-0 flex-1 truncate text-sm font-bold uppercase tracking-wide ${
+                        isMe ? "text-red-400" : "text-white"
+                      }`}
+                    >
+                      {p.name}
+                      {isMe && " · You"}
+                    </span>
+                    {p.id === mostImprovedId && (
+                      <span className="shrink-0 rounded-full bg-green-600/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-400">
+                        ▲ Most improved
+                      </span>
+                    )}
+                    <span className="flex shrink-0 items-baseline gap-1">
+                      <span className="text-sm font-black tabular-nums text-white">
+                        {p.weekPoints.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-white/40">
+                        pts
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* Podium — top 3 */}
-      {podium.length > 0 && (
+      {!weekView && podium.length > 0 && (
         <section className="e24-surface rounded-2xl border border-red-600/25 px-4 py-6">
           <div className="relative z-10 flex items-end justify-center gap-2">
             {podium.map((player, i) => (
@@ -162,7 +263,7 @@ export default async function LeaderboardPage() {
       )}
 
       {/* List — rank 4+ */}
-      {rest.length > 0 && (
+      {!weekView && rest.length > 0 && (
         <section>
           <div className="mb-3 h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent" />
           <ul className="flex flex-col gap-2">

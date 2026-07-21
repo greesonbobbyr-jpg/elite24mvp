@@ -7,6 +7,8 @@ import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { storyForDay } from "@/lib/mindset";
 import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
 import { getTodaysReview, getLatestReviewNote } from "@/lib/review";
+import { getTeamRanking } from "@/lib/leaderboard";
+import { tierForPoints, TIERS } from "@/lib/cardTheme";
 import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
 import { ReviewCard } from "./ReviewCard";
@@ -52,6 +54,16 @@ export default async function Home() {
     .filter((q) => completedIds.includes(q.id))
     .map((q) => ({ title: q.title, points: q.points }));
 
+  // Progress strip: streak / tier / rank — the "why come back" state, on the
+  // first screen instead of buried in /quests and /leaderboard.
+  const ranking = await getTeamRanking(user.teamId);
+  const myRank = ranking.find((r) => r.id === user.id)?.rank ?? 0;
+  const points = profile?.points ?? 0;
+  const tier = tierForPoints(points);
+  const nextTier = TIERS[TIERS.findIndex((t) => t.key === tier.key) + 1] ?? null;
+  const streak = profile?.currentStreak ?? 0;
+  const shieldReady = !(profile?.streakGraceUsed ?? false);
+
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
       {/* The Dream — the material hero */}
@@ -69,6 +81,37 @@ export default async function Home() {
           </div>
         </Card>
       )}
+
+      {/* Progress strip — streak · tier · rank at a glance */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-center">
+          <p className="text-lg font-black leading-none text-white">
+            🔥 {streak}
+            {shieldReady && streak > 0 && (
+              <span title="Shield ready — one missed day won't break it" className="ml-1 align-middle text-[10px]">🛡️</span>
+            )}
+          </p>
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+            Day streak
+          </p>
+        </div>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-center">
+          <p className="text-lg font-black uppercase leading-none text-white">
+            {tier.label}
+          </p>
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+            {nextTier ? `${nextTier.min - points} pts to ${nextTier.label}` : "Top tier"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-center">
+          <p className="text-lg font-black leading-none text-white">
+            {myRank > 0 ? `#${myRank}` : "—"}
+          </p>
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+            Team rank
+          </p>
+        </div>
+      </div>
 
       {/* Daily check-in (the core loop) — the main act */}
       <Card className="bg-gradient-to-b from-zinc-900/60 to-zinc-950 shadow-lg shadow-black/40">

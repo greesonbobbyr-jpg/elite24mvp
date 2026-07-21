@@ -76,3 +76,19 @@ one-tap logging is server-blocked for measurable quests, and
 `getTodaysCompletedQuestIds` counts only APPROVED so a started-but-unfinished
 quest isn't "done". UI copy choices (button "Finish the day · +5", outcome
 labels) made per the standing "reasonable choice" rule.
+
+## Phase 4 — Make progress visible
+The player home now opens with a progress strip under the Dream — 🔥 day streak
+(with a 🛡️ dot while the grace shield is unspent), current tier + "N pts to
+<next>", and team rank — so the "why come back" state lives on the first screen.
+The quests page gained a gold tier-progress bar ("SILVER · 240 PTS TO GOLD")
+turning the card-border tier into a mid-term goal. The leaderboard has All-time /
+This-week tabs: the week view (Mon–Sun in APP_TIMEZONE, derived from
+PointsLedger.createdAt via the new `getWeeklyRanking`) starts everyone at 0 each
+Monday — keeping the bottom of the all-time board in the race — and badges the
+"▲ Most improved" player (biggest gain vs. their OWN last week). CoachHome shows
+a Streak Milestones card (players at 7/14/30+ days) with "Give a shoutout →"
+links that prefill an editable Coach's Spotlight draft in the board composer —
+the app prompts, the coach writes and sends; nothing is ever auto-posted.
+Week-boundary math (Monday mapping, year rollover, DST-correct week start) is
+unit-verified.

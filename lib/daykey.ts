@@ -36,6 +36,20 @@ export function diffDays(a: string, b: string): number {
   );
 }
 
+// A day key shifted by n whole days (n may be negative).
+export function addDays(dayKey: string, n: number): string {
+  const [y, m, d] = dayKey.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + n));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+// Monday of the week containing `dayKey` (leaderboard weeks are Mon–Sun).
+export function mondayOf(dayKey: string): string {
+  const [y, m, d] = dayKey.split("-").map(Number);
+  const weekday = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7; // 0=Mon
+  return addDays(dayKey, -weekday);
+}
+
 // The UTC instant when `dayKey` begins in `timeZone` (handles DST via a
 // guess-and-correct pass). Used for time-window queries (weekly points).
 export function zonedStartOfDay(dayKey: string, timeZone = APP_TIMEZONE): Date {
