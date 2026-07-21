@@ -1,6 +1,11 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
-import { listTeamMessages } from "@/lib/board";
+import {
+  listTeamMessages,
+  BOARD_PAGE_SIZE,
+  BOARD_MAX_LIMIT,
+} from "@/lib/board";
 import { formatDateTime } from "@/lib/format";
 import { deleteMessage } from "./actions";
 import { MessageComposer } from "./MessageComposer";
@@ -10,6 +15,7 @@ import { ReplyProvider } from "./ReplyProvider";
 import { BoardScroller } from "./BoardScroller";
 import { getGif } from "@/lib/gifs";
 import { PlayerCard } from "@/app/components/PlayerCard";
+import { photoSrc } from "@/lib/photoUrl";
 
 // The team's message board — a Messenger-style chat. Team-private: only the
 // current user's own team is queried and posted to (CLAUDE.md section 3.2).
@@ -38,20 +44,26 @@ const kicker =
 export default async function BoardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ spotlight?: string; days?: string }>;
+  searchParams: Promise<{ spotlight?: string; days?: string; limit?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
   // Coach arriving from a "Give a shoutout →" streak-milestone link: prefill a
   // SPOTLIGHT draft (fully editable — the coach writes/sends, never the app).
-  const { spotlight, days } = await searchParams;
+  const { spotlight, days, limit: limitParam } = await searchParams;
   const spotlightDraft =
     user.role === "COACH" && spotlight
       ? `Coach's Spotlight: ${spotlight} is on a ${Number.parseInt(days ?? "", 10) || "hot"}-day check-in streak 🔥 That's how pros are built. Keep leading.`
       : null;
 
-  const messages = await listTeamMessages(user.teamId);
+  // Newest N messages; "Show earlier" steps the cap (server-first pagination).
+  const limit = Math.min(
+    Number.parseInt(limitParam ?? "", 10) || BOARD_PAGE_SIZE,
+    BOARD_MAX_LIMIT,
+  );
+  const messages = await listTeamMessages(user.teamId, limit);
+  const hasEarlier = messages.length >= limit && limit < BOARD_MAX_LIMIT;
   const logoUrl = user.team.logoUrl;
   const latestId = messages.length ? messages[messages.length - 1].id : 0;
 
@@ -98,6 +110,17 @@ export default async function BoardPage({
                 </div>
               </section>
             ) : (
+              <>
+              {hasEarlier && (
+                <div className="pb-2 text-center">
+                  <Link
+                    href={`/board?limit=${limit + BOARD_PAGE_SIZE}`}
+                    className="inline-block rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold text-zinc-400 transition hover:border-white/30 hover:text-zinc-200"
+                  >
+                    Show earlier messages
+                  </Link>
+                </div>
+              )}
               <ol className="flex flex-col">
             {messages.map((message, i) => {
               const isMine = message.author.id === user.id;
@@ -153,7 +176,10 @@ export default async function BoardPage({
                             size="avatar"
                             player={{
                               name: message.author.name,
-                              photoUrl: message.author.profile?.photoUrl ?? null,
+                              photoUrl: photoSrc(
+                                message.author.id,
+                                message.author.profile?.photoUrl,
+                              ),
                               points: 0,
                             }}
                             team={user.team}
@@ -266,6 +292,7 @@ export default async function BoardPage({
               );
             })}
               </ol>
+              </>
             )}
           </BoardScroller>
 

@@ -7,6 +7,7 @@ import {
   type RankedPlayer,
 } from "@/lib/leaderboard";
 import { PlayerCard } from "@/app/components/PlayerCard";
+import { photoSrc } from "@/lib/photoUrl";
 
 // Single-team leaderboard. STRICTLY the current user's own team — no other team
 // is queried or shown (CLAUDE.md section 3.2 / 3.5). A coach views their own
@@ -131,8 +132,17 @@ export default async function LeaderboardPage({
   const { view } = await searchParams;
   const weekView = view === "week";
 
-  const ranked = await getTeamRanking(user.teamId);
-  const weekly = weekView ? await getWeeklyRanking(user.teamId) : [];
+  // photoSrc: serve photos via /api/photo instead of inlining base64 into HTML.
+  const ranked = (await getTeamRanking(user.teamId)).map((p) => ({
+    ...p,
+    photoUrl: photoSrc(p.id, p.photoUrl),
+  }));
+  const weekly = weekView
+    ? (await getWeeklyRanking(user.teamId)).map((p) => ({
+        ...p,
+        photoUrl: photoSrc(p.id, p.photoUrl),
+      }))
+    : [];
   // "Most improved": biggest positive gain vs. your OWN last week.
   const mostImprovedId = weekly.reduce<{ id: number; delta: number } | null>(
     (best, p) =>

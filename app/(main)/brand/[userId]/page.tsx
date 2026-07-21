@@ -5,6 +5,7 @@ import { getTeamRanking } from "@/lib/leaderboard";
 import { EditBrandForm } from "../EditBrandForm";
 import { Card } from "@/app/components/ui/Card";
 import { PlayerCard } from "@/app/components/PlayerCard";
+import { photoSrc } from "@/lib/photoUrl";
 
 function formatHeight(inches: number | null): string | null {
   if (inches == null) return null;
@@ -59,7 +60,7 @@ export default async function BrandPage({
             heightInches: profile.heightInches,
             rank: rank > 0 ? rank : null,
             points: profile.points,
-            photoUrl: profile.photoUrl,
+            photoUrl: photoSrc(target.id, profile.photoUrl),
           }}
           team={target.team}
         />

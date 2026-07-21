@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
 import { validateImageDataUrl } from "@/lib/branding";
+import { storeImage } from "@/lib/photoStore";
 
 export type BrandState = { error?: string };
 
@@ -63,6 +64,10 @@ export async function updateBrand(
     "photo",
   );
   if ("error" in photoRes) return { error: photoRes.error };
+  // Offload to Supabase Storage when configured (no-op passthrough otherwise).
+  const storedPhoto = photoRes.url
+    ? await storeImage(photoRes.url, `players/${user.id}`)
+    : null;
 
   await prisma.playerProfile.update({
     where: { userId: user.id },
@@ -76,7 +81,7 @@ export async function updateBrand(
       favoritePlayer: optionalString(formData.get("favoritePlayer")),
       favoriteTeam: optionalString(formData.get("favoriteTeam")),
       highlightUrl,
-      photoUrl: photoRes.url,
+      photoUrl: storedPhoto,
     },
   });
 

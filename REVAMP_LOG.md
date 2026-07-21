@@ -106,3 +106,20 @@ notification (no name-calling) through the existing notification/receipt
 machinery, with an optional "send as TIME OUT" checkbox for the full-screen
 takeover. Runtime verification of the delete cascade is queued behind the DB
 restore (cascades are declared on every User relation in the schema).
+
+## Phase 6 — Scale/performance
+The board no longer loads every message ever: `listTeamMessages` fetches the
+newest 75 (oldest-first render preserved) with a "Show earlier messages" link
+stepping the cap 75→150→… up to 600 — server-first pagination, no client
+scroll-anchoring complexity (logged trade-off). Notification lists got the same
+treatment (newest 50 for players / 30 with receipts for the coach). Photos left
+the HTML: a new authed, TEAM-SCOPED `/api/photo/[userId]` route serves the
+stored data-URL as real cacheable image bytes, and all six render sites
+(leaderboard incl. weekly + podium, board avatars, header chip, coach roster +
+drill-in, brand hero) now use `photoSrc()` (content-hash cache busting) — a
+12-player leaderboard drops from >1MB of inline base64 to normal HTML. New
+`lib/photoStore.ts`: uploads (player/coach photo, team logo) route through
+Supabase Storage IF `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` are set
+(owner-supplied; needs a public "photos" bucket) and otherwise pass through
+unchanged — the Storage half stays dormant until keys exist (flagged in the
+plan). Loading skeletons added for the route group, leaderboard, and board.

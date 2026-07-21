@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PlayerCard } from "@/app/components/PlayerCard";
+import { photoSrc } from "@/lib/photoUrl";
 
 // The header identity: just the avatar (team-ring photo, or initials fallback) —
 // a PLAYER's photo comes from their PlayerProfile, a COACH's from User.photoUrl.
@@ -25,7 +26,10 @@ type ChipUser = {
 
 export function IdentityChip({ user }: { user: ChipUser }) {
   const isPlayer = user.role === "PLAYER";
-  const photoUrl = isPlayer ? (user.profile?.photoUrl ?? null) : user.photoUrl;
+  const photoUrl = photoSrc(
+    user.id,
+    isPlayer ? (user.profile?.photoUrl ?? null) : user.photoUrl,
+  );
 
   const avatar = (
     <PlayerCard

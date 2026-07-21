@@ -6,6 +6,7 @@ export function listTeamNotifications(teamId: number) {
   return prisma.notification.findMany({
     where: { teamId },
     orderBy: { createdAt: "desc" },
+    take: 50, // newest 50 — the history list is not an archive
     include: { author: { select: { name: true } } },
   });
 }
@@ -28,6 +29,7 @@ export async function getTeamReadStatus(teamId: number) {
     prisma.notification.findMany({
       where: { teamId },
       orderBy: { createdAt: "desc" },
+      take: 30, // newest 30 — receipts on older posts stop mattering
       include: {
         author: { select: { name: true } },
         reads: { select: { userId: true } },

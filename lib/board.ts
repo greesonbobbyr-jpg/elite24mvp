@@ -1,14 +1,22 @@
 import { prisma } from "./prisma";
 
-// Non-deleted messages for a team, oldest first (chat order), with author,
-// reactions, and — for replies — the quoted parent (author name + a snippet of
-// its body/gif, plus its deletedAt so a removed parent renders "original
-// removed"). Always called with the current user's own teamId — team-private
-// (CLAUDE.md section 3.2).
-export function listTeamMessages(teamId: number) {
-  return prisma.teamMessage.findMany({
+// Newest-N non-deleted messages for a team, returned oldest-first (chat order),
+// with author, reactions, and — for replies — the quoted parent. Capped: a
+// season of chat is thousands of rows, and the board used to fetch ALL of them
+// on every visit. "Show earlier" grows the cap in steps. Always called with the
+// current user's own teamId — team-private (CLAUDE.md section 3.2).
+export const BOARD_PAGE_SIZE = 75;
+export const BOARD_MAX_LIMIT = 600;
+
+export async function listTeamMessages(
+  teamId: number,
+  limit: number = BOARD_PAGE_SIZE,
+) {
+  const take = Math.min(Math.max(limit, 1), BOARD_MAX_LIMIT);
+  const newestFirst = await prisma.teamMessage.findMany({
     where: { teamId, deletedAt: null },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
+    take,
     include: {
       author: {
         select: {
@@ -30,4 +38,5 @@ export function listTeamMessages(teamId: number) {
       },
     },
   });
+  return newestFirst.reverse();
 }

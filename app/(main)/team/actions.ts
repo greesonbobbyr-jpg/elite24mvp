@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/session";
 import { uniqueJoinCode } from "@/lib/joincode";
 import { readBranding, validateImageDataUrl } from "@/lib/branding";
 import { hashPassword } from "@/lib/password";
+import { storeImage } from "@/lib/photoStore";
 
 export type TeamSettingsState = { error?: string; ok?: boolean };
 
@@ -42,13 +43,21 @@ export async function updateTeam(
   );
   if ("error" in photoRes) return { error: photoRes.error };
 
+  // Offload uploads to Supabase Storage when configured (passthrough otherwise).
+  const storedLogo = logoUrl
+    ? await storeImage(logoUrl, `teams/${user.teamId}`)
+    : null;
+  const storedPhoto = photoRes.url
+    ? await storeImage(photoRes.url, `coaches/${user.id}`)
+    : null;
+
   await prisma.team.update({
     where: { id: user.teamId },
-    data: { name, logoUrl, primaryColor, secondaryColor },
+    data: { name, logoUrl: storedLogo, primaryColor, secondaryColor },
   });
   await prisma.user.update({
     where: { id: user.id },
-    data: { photoUrl: photoRes.url },
+    data: { photoUrl: storedPhoto },
   });
   revalidatePath("/team");
   revalidatePath("/"); // team name + coach photo show on the dashboard/header
