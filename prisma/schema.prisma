@@ -108,6 +108,7 @@ model User {
   pointsLedger   PointsLedger[]
   questLogs      QuestLog[]
   mindsetTakeaways MindsetTakeaway[]
+  dailyReviews   DailyReview[]
 
   // Notifications a coach has authored, and a player's read-confirmations.
   authoredNotifications Notification[]     @relation("NotificationAuthor")
@@ -185,6 +186,34 @@ model JournalEntry {
   @@index([userId])
 }
 
+// Did the day's plan happen? The player's own honest read.
+enum ReviewOutcome {
+  YES
+  PARTIAL
+  NO
+}
+
+// The evening "Pro Review" — the closing step of the E24P cycle (Pro Plan →
+// Pro Preview → Pro Perform → PRO REVIEW). One per player per day, only after
+// that day's check-in exists (the review references the morning plan).
+// PRIVACY: like the check-in reflection, `learned` and `noteToTomorrow` are
+// PLAYER-PRIVATE — the coach may see THAT a review was done, never its text.
+// `noteToTomorrow` resurfaces in the next morning's check-in (the investment
+// that loads the next trigger).
+model DailyReview {
+  id             Int           @id @default(autoincrement())
+  userId         Int
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day            String // "YYYY-MM-DD" (app-timezone, lib/daykey)
+  outcome        ReviewOutcome
+  learned        String // "What did you notice?"
+  noteToTomorrow String?
+  createdAt      DateTime      @default(now())
+
+  @@unique([userId, day])
+  @@index([userId])
+}
+
 // One row per player per day: the "1-Minute Mindset" takeaway they wrote after
 // the day's story. Keyed by (userId, day) like JournalEntry — the day ties it to
 // that day's story (storyForDay is deterministic). An OPTIONAL daily reflection —
@@ -208,6 +237,7 @@ enum PointsSource {
   DAILY_CHECK_IN
   QUEST
   COACH_ADJUSTMENT // a coach's manual +/- veto (with a reason); see coach/actions
+  REVIEW // completing the evening Pro Review
 }
 
 // The points ledger is the source of truth for a player's points: one row per

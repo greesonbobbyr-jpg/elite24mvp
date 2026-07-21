@@ -18,7 +18,9 @@
       "Bash(git check-ignore *)",
       "Bash(gh --version)",
       "Bash(npx vercel *)",
-      "Bash(gh auth *)"
+      "Bash(gh auth *)",
+      "Bash(rm -rf .next)",
+      "Bash(rm -f \"app/\\(main\\)/board/CommentForm.tsx\" \"app/\\(main\\)/board/CommentsDisclosure.tsx\")"
     ]
   }
 }

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
+import { listActiveQuests, getTodaysQuestLogs } from "@/lib/quests";
 import { listLedger, getPointsTotal } from "@/lib/points";
 import { todayKey } from "@/lib/journal";
 import { QuestList } from "../QuestList";
@@ -30,15 +30,18 @@ export default async function QuestsPage() {
     );
   }
 
-  const [quests, completedIds, points, ledger] = await Promise.all([
+  const [quests, todayLogs, points, ledger] = await Promise.all([
     listActiveQuests(),
-    getTodaysCompletedQuestIds(user.id),
+    getTodaysQuestLogs(user.id),
     getPointsTotal(user.id),
     listLedger(user.id),
   ]);
 
   // Derived display only (no new queries):
-  const done = new Set(completedIds);
+  const logs = [...todayLogs.values()];
+  const done = new Set(
+    logs.filter((l) => l.status === "APPROVED").map((l) => l.questId),
+  );
   const totalCount = quests.length;
   const doneCount = quests.filter((q) => done.has(q.id)).length;
   const today = todayKey();
@@ -84,7 +87,7 @@ export default async function QuestsPage() {
         </div>
       )}
 
-      <QuestList quests={quests} completedIds={completedIds} />
+      <QuestList quests={quests} logs={logs} />
       <PointsHistory total={points} entries={ledger} />
     </main>
   );

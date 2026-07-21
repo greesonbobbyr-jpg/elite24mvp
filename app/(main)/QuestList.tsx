@@ -1,11 +1,20 @@
 import { undoQuest } from "./actions";
 import { MarkDoneButton } from "./MarkDoneButton";
+import { PredictStartForm, LogActualForm } from "./QuestPredictForms";
 
 type Quest = {
   id: number;
   title: string;
   description: string;
   points: number;
+  targetCount: number | null;
+};
+
+type TodayLog = {
+  questId: number;
+  status: "PENDING" | "APPROVED";
+  predicted: number | null;
+  actual: number | null;
 };
 
 // Shared quest icons (no per-quest icon field). Embedded MDI paths (Apache-2.0),
@@ -36,30 +45,36 @@ function IconUndo({ className }: { className?: string }) {
   );
 }
 
-// Today's active quests as "mission" tiles. A quest already completed today is
-// shown in the GOLD earned state and can't be logged again (also enforced by the
-// DB unique constraint). Styling only — logging/props are unchanged.
+// Today's active quests as "mission" tiles. Plain quests are one-tap; MEASURABLE
+// quests (targetCount set) run the predict-then-log calibration flow:
+// no log → predict+start (PENDING) → log actual (APPROVED, gold, shows
+// "guessed X · made Y"). Completed tiles show gold and tap-to-undo.
 export function QuestList({
   quests,
-  completedIds,
+  logs,
 }: {
   quests: Quest[];
-  completedIds: number[];
+  logs: TodayLog[];
 }) {
   if (quests.length === 0) return null;
-  const done = new Set(completedIds);
+  const byQuest = new Map(logs.map((l) => [l.questId, l]));
 
   return (
     <ul className="flex flex-col gap-3">
       {quests.map((quest) => {
-        const completed = done.has(quest.id);
+        const log = byQuest.get(quest.id);
+        const completed = log?.status === "APPROVED";
+        const pending = log?.status === "PENDING";
+        const measurable = quest.targetCount != null;
         return (
           <li
             key={quest.id}
             className={`flex items-center gap-3 rounded-xl border p-4 transition ${
               completed
                 ? "border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-zinc-950"
-                : "border-zinc-800 bg-zinc-950/40"
+                : pending
+                  ? "border-red-500/40 bg-red-950/10"
+                  : "border-zinc-800 bg-zinc-950/40"
             }`}
           >
             {/* icon square */}
@@ -77,7 +92,7 @@ export function QuestList({
               )}
             </span>
 
-            {/* title + description */}
+            {/* title + description (+ calibration once a measurable is done) */}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-white">
                 {quest.title}
@@ -85,9 +100,17 @@ export function QuestList({
               <p className="truncate text-xs text-zinc-500">
                 {quest.description}
               </p>
+              {completed &&
+                measurable &&
+                log?.predicted != null &&
+                log?.actual != null && (
+                  <p className="mt-0.5 text-xs font-semibold text-[#e8c766]">
+                    guessed {log.predicted} · made {log.actual}
+                  </p>
+                )}
             </div>
 
-            {/* right: gold DONE badge (static) or red MARK DONE action */}
+            {/* right: state-driven control */}
             {completed ? (
               <form action={undoQuest} className="shrink-0">
                 <input type="hidden" name="questId" value={quest.id} />
@@ -106,6 +129,18 @@ export function QuestList({
                   </span>
                 </button>
               </form>
+            ) : pending && measurable ? (
+              <LogActualForm
+                questId={quest.id}
+                targetCount={quest.targetCount as number}
+                predicted={log?.predicted ?? 0}
+                points={quest.points}
+              />
+            ) : measurable ? (
+              <PredictStartForm
+                questId={quest.id}
+                targetCount={quest.targetCount as number}
+              />
             ) : (
               <MarkDoneButton questId={quest.id} points={quest.points} />
             )}

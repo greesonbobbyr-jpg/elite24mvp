@@ -58,3 +58,21 @@ treatment (a kid's first screen now reads as the same product). And
 primaries (< ~0.09 luminance) are lifted into a visible charcoal so a team with
 black branding doesn't produce an invisible card on the black app background
 (unit-verified: #111111 → visible stops; normal colors unchanged).
+
+## Phase 3 — Close the loop (core)
+The app now implements the FULL E24P cycle. New `DailyReview` model (+`REVIEW`
+points source, migration authored/queued): one per player per day, only after
+that day's check-in. The evening **Pro Review** card on home shows the morning
+plan and the day's logged quests side by side (plan vs action), asks "did it
+happen?" (Yes/Partly/Not today) + "what did you notice?" (required) + an
+optional "one line for tomorrow-you" — worth +5 pts, idempotent via the unique
+key. The note resurfaces above the NEXT morning's check-in prompt ("📝 From your
+last review") — the investment that loads the next trigger. PRIVACY: review text
+is player-private like the journal; the coach drill-in shows only a "Pro Review
+done / not yet" status chip. Measurable quests (targetCount set) now run
+**predict-then-log**: predict your count → Start (PENDING, no points) → log the
+actual → Done (APPROVED + points + "guessed X · made Y" calibration line);
+one-tap logging is server-blocked for measurable quests, and
+`getTodaysCompletedQuestIds` counts only APPROVED so a started-but-unfinished
+quest isn't "done". UI copy choices (button "Finish the day · +5", outcome
+labels) made per the standing "reasonable choice" rule.

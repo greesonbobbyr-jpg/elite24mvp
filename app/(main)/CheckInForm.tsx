@@ -6,7 +6,9 @@ import { Button } from "@/app/components/ui/Button";
 
 const initialState: CheckInState = {};
 
-export function CheckInForm() {
+// `lastNote` = the player's own "note to tomorrow-you" from their most recent
+// Pro Review — their past self opens today's loop (investment → next trigger).
+export function CheckInForm({ lastNote }: { lastNote?: string | null }) {
   const [state, formAction, pending] = useActionState(
     submitCheckIn,
     initialState,
@@ -14,6 +16,14 @@ export function CheckInForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
+      {lastNote && (
+        <div className="rounded-lg border-l-2 border-red-500 bg-black/40 px-3 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-red-400">
+            📝 From your last review
+          </p>
+          <p className="mt-0.5 text-sm italic text-zinc-300">“{lastNote}”</p>
+        </div>
+      )}
       <textarea
         name="reflection"
         required

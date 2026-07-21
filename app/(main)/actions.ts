@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
 import { todayKey } from "@/lib/journal";
-import { POINTS_PER_CHECKIN } from "@/lib/points";
+import { POINTS_PER_CHECKIN, POINTS_PER_REVIEW } from "@/lib/points";
 import { advanceStreak } from "@/lib/streaks";
 
 export type CheckInState = { error?: string };
@@ -114,6 +114,163 @@ export async function saveMindsetTakeaway(
   return { ok: true };
 }
 
+export type ReviewState = { error?: string };
+
+// The evening "Pro Review" — the closing step of the E24P cycle. Requires
+// today's check-in (the review looks back at the morning plan), records how it
+// went + what the player noticed + an optional note to tomorrow-you, and awards
+// +POINTS_PER_REVIEW once (the @@unique([userId, day]) makes it idempotent).
+// PRIVACY: review text is player-private; the coach only ever sees done/not.
+export async function submitReview(
+  _prevState: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) {
+    return { error: "Only a player can review their day." };
+  }
+
+  const outcomeRaw = String(formData.get("outcome") ?? "");
+  if (!["YES", "PARTIAL", "NO"].includes(outcomeRaw)) {
+    return { error: "Pick how today's plan went." };
+  }
+  const outcome = outcomeRaw as "YES" | "PARTIAL" | "NO";
+  const learned = String(formData.get("learned") ?? "").trim();
+  if (learned === "") {
+    return { error: "Write one thing you noticed today." };
+  }
+  const noteToTomorrow =
+    String(formData.get("noteToTomorrow") ?? "").trim() || null;
+
+  const day = todayKey();
+  const entry = await prisma.journalEntry.findUnique({
+    where: { userId_day: { userId: user.id, day } },
+    select: { id: true },
+  });
+  if (!entry) {
+    return { error: "Check in first — the review looks back at today's plan." };
+  }
+
+  try {
+    await prisma.$transaction([
+      prisma.dailyReview.create({
+        data: { userId: user.id, day, outcome, learned, noteToTomorrow },
+      }),
+      prisma.pointsLedger.create({
+        data: {
+          userId: user.id,
+          amount: POINTS_PER_REVIEW,
+          reason: "Pro Review",
+          source: PointsSource.REVIEW,
+        },
+      }),
+      prisma.playerProfile.update({
+        where: { userId: user.id },
+        data: { points: { increment: POINTS_PER_REVIEW } },
+      }),
+    ]);
+  } catch (error) {
+    // Unique violation = already reviewed today (no double award). No-op success.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      revalidatePath("/");
+      return {};
+    }
+    throw error;
+  }
+
+  revalidatePath("/");
+  return {};
+}
+
+// PREDICT-THEN-LOG (measurable quests, Quest.targetCount != null). Step 1: the
+// player predicts their count BEFORE doing the work — a PENDING QuestLog with
+// `predicted`, no points yet. The predicted-vs-actual gap is the calibration
+// feedback that trains self-assessment (the core of basketball IQ off the court).
+export async function startQuest(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+
+  const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
+  const predicted = Number.parseInt(String(formData.get("predicted") ?? ""), 10);
+  if (!Number.isInteger(questId) || !Number.isInteger(predicted)) return;
+
+  const quest = await prisma.quest.findUnique({ where: { id: questId } });
+  if (!quest || !quest.active || quest.targetCount == null) return;
+  if (predicted < 0 || predicted > quest.targetCount) return;
+
+  try {
+    await prisma.questLog.create({
+      data: {
+        userId: user.id,
+        questId: quest.id,
+        day: todayKey(),
+        status: "PENDING",
+        predicted,
+      },
+    });
+  } catch (error) {
+    // Already started/completed today — no-op.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      revalidatePath("/quests");
+      return;
+    }
+    throw error;
+  }
+
+  revalidatePath("/quests");
+  revalidatePath("/");
+}
+
+// Step 2: log the ACTUAL count → the PENDING log flips to APPROVED and the
+// points are awarded (ledger row linked via questLogId so undo reverses it).
+export async function completeQuest(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+
+  const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
+  const actual = Number.parseInt(String(formData.get("actual") ?? ""), 10);
+  if (!Number.isInteger(questId) || !Number.isInteger(actual)) return;
+
+  const quest = await prisma.quest.findUnique({ where: { id: questId } });
+  if (!quest || quest.targetCount == null) return;
+  if (actual < 0 || actual > quest.targetCount) return;
+
+  const day = todayKey();
+  const log = await prisma.questLog.findUnique({
+    where: { userId_questId_day: { userId: user.id, questId, day } },
+  });
+  if (!log || log.status !== "PENDING") return; // not started, or already done
+
+  await prisma.$transaction(async (tx) => {
+    await tx.questLog.update({
+      where: { id: log.id },
+      data: { actual, status: "APPROVED" },
+    });
+    await tx.pointsLedger.create({
+      data: {
+        userId: user.id,
+        amount: quest.points,
+        reason: quest.title,
+        source: PointsSource.QUEST,
+        questLogId: log.id,
+      },
+    });
+    await tx.playerProfile.update({
+      where: { userId: user.id },
+      data: { points: { increment: quest.points } },
+    });
+  });
+
+  revalidatePath("/quests");
+  revalidatePath("/");
+}
+
 // Logs that the current player completed a quest today. Same transactional
 // shape as submitCheckIn: create the QuestLog, write a PointsLedger row
 // (source QUEST, amount = the quest's points), and bump the cached total. The
@@ -127,6 +284,8 @@ export async function logQuest(formData: FormData): Promise<void> {
 
   const quest = await prisma.quest.findUnique({ where: { id: questId } });
   if (!quest || !quest.active) return;
+  // Measurable quests go through the predict-then-log flow, never one-tap.
+  if (quest.targetCount != null) return;
 
   try {
     // Interactive transaction so the ledger row can link back to the created

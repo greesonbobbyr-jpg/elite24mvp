@@ -104,6 +104,8 @@ export type PlayerCoachView = {
   total: number;
   checkedInAt: Date | null;
   mindsetTakeaway: string | null;
+  // STATUS ONLY — the review's text is player-private (like the journal).
+  reviewDoneToday: boolean;
   week: { checkins: number; questsDone: number; pointsEarned: number };
 };
 
@@ -134,7 +136,7 @@ export async function getPlayerCoachView(
   weekStart.setDate(weekStart.getDate() - 6);
   const weekStartKey = todayKey(weekStart);
 
-  const [todayEntry, todayTakeaway, checkins, questsDone, pointsAgg, ranking] =
+  const [todayEntry, todayTakeaway, todayReview, checkins, questsDone, pointsAgg, ranking] =
     await Promise.all([
       prisma.journalEntry.findUnique({
         where: { userId_day: { userId: playerId, day: todayKey() } },
@@ -144,6 +146,11 @@ export async function getPlayerCoachView(
       prisma.mindsetTakeaway.findUnique({
         where: { userId_day: { userId: playerId, day: todayKey() } },
         select: { text: true },
+      }),
+      // Status only — never the review text (player-private by design).
+      prisma.dailyReview.findUnique({
+        where: { userId_day: { userId: playerId, day: todayKey() } },
+        select: { id: true },
       }),
       prisma.journalEntry.count({
         where: { userId: playerId, day: { gte: weekStartKey } },
@@ -176,6 +183,7 @@ export async function getPlayerCoachView(
     total: ranking.length,
     checkedInAt: todayEntry?.createdAt ?? null,
     mindsetTakeaway: todayTakeaway?.text ?? null,
+    reviewDoneToday: Boolean(todayReview),
     week: {
       checkins,
       questsDone,

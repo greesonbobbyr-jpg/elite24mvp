@@ -6,8 +6,10 @@ import { getTodaysTakeaway } from "@/lib/mindset-takeaway";
 import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { storyForDay } from "@/lib/mindset";
 import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
+import { getTodaysReview, getLatestReviewNote } from "@/lib/review";
 import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
+import { ReviewCard } from "./ReviewCard";
 import { CoachHome } from "./CoachHome";
 import { Card } from "@/app/components/ui/Card";
 
@@ -30,11 +32,25 @@ export default async function Home() {
   const takeaway = await getTodaysTakeaway(user.id);
   const story = storyForDay(todayKey());
 
-  // "Next up" line for the checked-in state (cheap counts, only when needed).
-  const [quests, completedIds] = todaysEntry
-    ? await Promise.all([listActiveQuests(), getTodaysCompletedQuestIds(user.id)])
-    : [[], []];
+  // "Next up" counts + Pro Review data for the checked-in state; the note from
+  // the player's last review surfaces above the check-in prompt otherwise.
+  let quests: Awaited<ReturnType<typeof listActiveQuests>> = [];
+  let completedIds: number[] = [];
+  let todaysReview: Awaited<ReturnType<typeof getTodaysReview>> = null;
+  let lastNote: Awaited<ReturnType<typeof getLatestReviewNote>> = null;
+  if (todaysEntry) {
+    [quests, completedIds, todaysReview] = await Promise.all([
+      listActiveQuests(),
+      getTodaysCompletedQuestIds(user.id),
+      getTodaysReview(user.id),
+    ]);
+  } else {
+    lastNote = await getLatestReviewNote(user.id);
+  }
   const questsDone = quests.filter((q) => completedIds.includes(q.id)).length;
+  const loggedQuests = quests
+    .filter((q) => completedIds.includes(q.id))
+    .map((q) => ({ title: q.title, points: q.points }));
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
@@ -75,10 +91,27 @@ export default async function Home() {
           </div>
         ) : (
           <div className="mt-3">
-            <CheckInForm />
+            <CheckInForm lastNote={lastNote?.noteToTomorrow ?? null} />
           </div>
         )}
       </Card>
+
+      {/* Evening Pro Review — closes the loop the morning check-in opened. */}
+      {todaysEntry && (
+        <ReviewCard
+          reflection={todaysEntry.reflection}
+          loggedQuests={loggedQuests}
+          savedReview={
+            todaysReview
+              ? {
+                  outcome: todaysReview.outcome,
+                  learned: todaysReview.learned,
+                  noteToTomorrow: todaysReview.noteToTomorrow,
+                }
+              : null
+          }
+        />
+      )}
 
       {/* Daily mindset moment — UNLOCKS with the check-in (the story is the
           day's variable reward for showing up; no spoilers beforehand). */}

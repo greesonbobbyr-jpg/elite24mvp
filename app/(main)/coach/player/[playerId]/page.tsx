@@ -65,6 +65,14 @@ export default async function CoachPlayerPage({
         {view.checkedInAt ? (
           <div className="rounded-xl border border-green-600/30 bg-green-600/10 px-4 py-3 text-sm font-medium text-green-300">
             ✓ Checked in at {formatTime(view.checkedInAt)}
+            {/* Review STATUS only — its text is player-private, like the journal. */}
+            <span className="mt-1 block text-xs font-normal">
+              {view.reviewDoneToday ? (
+                <span className="text-green-400">✓ Pro Review done</span>
+              ) : (
+                <span className="text-zinc-500">Pro Review not done yet</span>
+              )}
+            </span>
           </div>
         ) : (
           <div className="rounded-xl border border-amber-600/30 bg-amber-600/10 px-4 py-3 text-sm font-medium text-amber-300">
