@@ -92,3 +92,17 @@ links that prefill an editable Coach's Spotlight draft in the board composer —
 the app prompts, the coach writes and sends; nothing is ever auto-posted.
 Week-boundary math (Monday mapping, year rollover, DST-correct week start) is
 unit-verified.
+
+## Phase 5 — Coach tools
+Team Settings gained a **Roster** section: per-player **Reset password**
+(readable temp value like `swish-dunk-42`, bcrypt-hashed, shown ONCE to the
+coach with "write it down now" copy) and **Remove** — a HARD delete behind a
+two-tap confirm that states exactly what goes with it (journal, points, streak,
+messages; for players who have left the team — soft-delete/archive deliberately
+deferred). Both actions re-verify coach-only + own-team + PLAYER-only
+server-side. The coach dashboard's "X still to check in" count is now
+actionable: a **Send check-in reminder** button posts a canned, team-wide
+notification (no name-calling) through the existing notification/receipt
+machinery, with an optional "send as TIME OUT" checkbox for the full-screen
+takeover. Runtime verification of the delete cascade is queued behind the DB
+restore (cascades are declared on every User relation in the schema).

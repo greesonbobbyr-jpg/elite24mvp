@@ -77,3 +77,25 @@ export async function adjustPoints(
   revalidatePath("/");
   return { ok: true };
 }
+
+// One-tap follow-through on the "X still to check in" count: posts a canned
+// check-in reminder notification to the coach's OWN team (optionally as a TIME
+// OUT takeover). Reuses the normal notification machinery — players confirm,
+// the coach sees receipts. Copy is deliberately team-wide (no name-calling).
+export async function sendCheckInReminder(formData: FormData): Promise<void> {
+  const coach = await getCurrentUser();
+  if (!coach || coach.role !== "COACH") return;
+
+  const isTimeout = formData.get("isTimeout") === "on";
+  await prisma.notification.create({
+    data: {
+      teamId: coach.teamId,
+      authorId: coach.id,
+      title: "Check-in reminder 🏀",
+      body: "Get your daily check-in in — write today's plan and get after it. Your streak is counting on you.",
+      isTimeout,
+    },
+  });
+  revalidatePath("/notifications");
+  revalidatePath("/");
+}

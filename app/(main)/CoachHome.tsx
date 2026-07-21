@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTeamOverview } from "@/lib/coach";
 import { formatTime } from "@/lib/format";
 import { PlayerCard } from "@/app/components/PlayerCard";
+import { sendCheckInReminder } from "./coach/actions";
 
 // The coach's team dashboard (shown at "/" for a COACH). A TODAY summary with a
 // check-in progress ring + the full roster (alphabetical by last name) as compact
@@ -85,6 +86,29 @@ export async function CoachHome({
             </p>
           </div>
         </div>
+
+        {/* Act on the count, don't just stare at it. Canned copy, team-wide. */}
+        {remaining > 0 && (
+          <form
+            action={sendCheckInReminder}
+            className="relative z-10 mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-3"
+          >
+            <button
+              type="submit"
+              className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-red-500 active:scale-95"
+            >
+              Send check-in reminder
+            </button>
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-zinc-400">
+              <input
+                type="checkbox"
+                name="isTimeout"
+                className="h-3.5 w-3.5 accent-red-600"
+              />
+              Send as TIME OUT (takes over their screen)
+            </label>
+          </form>
+        )}
       </section>
 
       {/* STREAK MILESTONES — prompt the coach to recognize consistency. The app
