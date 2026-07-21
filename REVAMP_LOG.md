@@ -44,3 +44,17 @@ Seed: "Free throws" (50) and "Shooting reps" (100) get targetCounts, and streak
 fields are backfilled by replaying seeded entry days through the same
 `advanceStreak` the app uses. Weekly points intentionally need NO schema — they
 derive from `PointsLedger.createdAt` (Phase 4 queries it directly).
+
+## Phase 2 — Quick wins
+The Mindset story now UNLOCKS with the check-in: before checking in, the home
+page shows a locked strip ("🔒 Check in to unlock today's story" — no title, so
+no spoilers); after, the full MindsetCard. That places the app's best variable
+content as the reward for the core action (Hooked, without loot-box mechanics).
+The "✓ Checked in today" state no longer dead-ends — it chains into "Next up:
+Quests · X of Y done →" at the moment of peak motivation. Onboarding was
+restyled from leftover light-theme classes to the same dark login/signup field
+treatment (a kid's first screen now reads as the same product). And
+`cardGradient` gained the mirror of its light-color guard: near-black team
+primaries (< ~0.09 luminance) are lifted into a visible charcoal so a team with
+black branding doesn't produce an invisible card on the black app background
+(unit-verified: #111111 → visible stops; normal colors unchanged).

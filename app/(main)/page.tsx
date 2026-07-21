@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getTodaysEntry, todayKey } from "@/lib/journal";
 import { getTodaysTakeaway } from "@/lib/mindset-takeaway";
 import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { storyForDay } from "@/lib/mindset";
+import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
 import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
 import { CoachHome } from "./CoachHome";
@@ -27,6 +29,12 @@ export default async function Home() {
   const todaysEntry = await getTodaysEntry(user.id);
   const takeaway = await getTodaysTakeaway(user.id);
   const story = storyForDay(todayKey());
+
+  // "Next up" line for the checked-in state (cheap counts, only when needed).
+  const [quests, completedIds] = todaysEntry
+    ? await Promise.all([listActiveQuests(), getTodaysCompletedQuestIds(user.id)])
+    : [[], []];
+  const questsDone = quests.filter((q) => completedIds.includes(q.id)).length;
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
@@ -57,6 +65,13 @@ export default async function Home() {
             <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-200">
               {todaysEntry.reflection}
             </p>
+            {/* Peak-motivation moment — chain into the next habit, don't dead-end. */}
+            <Link
+              href="/quests"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-red-500 transition hover:text-red-400"
+            >
+              Next up: Quests · {questsDone} of {quests.length} done →
+            </Link>
           </div>
         ) : (
           <div className="mt-3">
@@ -65,12 +80,27 @@ export default async function Home() {
         )}
       </Card>
 
-      {/* Daily mindset moment — slim collapsible strip */}
-      <MindsetCard
-        title={story.title}
-        body={story.body}
-        savedTakeaway={takeaway?.text ?? ""}
-      />
+      {/* Daily mindset moment — UNLOCKS with the check-in (the story is the
+          day's variable reward for showing up; no spoilers beforehand). */}
+      {todaysEntry ? (
+        <MindsetCard
+          title={story.title}
+          body={story.body}
+          savedTakeaway={takeaway?.text ?? ""}
+        />
+      ) : (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/60">
+          <div className="flex w-full items-center gap-3 px-4 py-3">
+            <span aria-hidden className="shrink-0 text-base">
+              🔒
+            </span>
+            <span className="e24-eyebrow shrink-0">1-Minute Mindset</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
+              Check in to unlock today&apos;s story
+            </span>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

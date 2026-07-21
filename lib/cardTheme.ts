@@ -60,8 +60,16 @@ export function luminance(hex: string): number {
 // primaries get darkened harder so text zones stay readable. No primary → the
 // app red/black fallback.
 export function cardGradient(primary?: string | null): string {
-  const base = primary && hexToRgb(primary) ? primary : APP_RED;
+  let base = primary && hexToRgb(primary) ? primary : APP_RED;
   const isFallback = !(primary && hexToRgb(primary));
+
+  // Mirror of the light-color guard below: a near-black team primary would melt
+  // into the black app background, so lift very dark bases into a visible
+  // charcoal before building the gradient.
+  const rawLum = luminance(base);
+  if (!isFallback && rawLum < 0.09) {
+    base = shade(base, 0.12 + (0.09 - rawLum) * 2);
+  }
 
   // Extra darkening for light colors (cream/white/silver) so the card body is
   // never bright behind content.

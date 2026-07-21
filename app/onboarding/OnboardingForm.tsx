@@ -5,9 +5,11 @@ import { completeOnboarding, type OnboardingState } from "./actions";
 
 const initialState: OnboardingState = {};
 
+// Same dark field treatment as login/signup — this is a kid's first screen and
+// should read as the same product.
 const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-red-500 dark:border-zinc-700 dark:bg-zinc-900";
-const labelClass = "mb-1 block text-sm font-medium";
+  "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
+const labelClass = "mb-1 block text-xs font-medium text-zinc-400";
 
 export function OnboardingForm() {
   const [state, formAction, pending] = useActionState(
@@ -111,7 +113,7 @@ export function OnboardingForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+        className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:opacity-60"
       >
         {pending ? "Saving…" : "Let's go"}
       </button>
