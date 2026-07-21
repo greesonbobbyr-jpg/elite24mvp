@@ -42,3 +42,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# one-time secret outputs (rotate-passwords etc.) — never committed
+*.local.txt

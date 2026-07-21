@@ -2,6 +2,7 @@
 
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
+import { rateLimit, clientIp, RATE_LIMITED_MESSAGE } from "@/lib/ratelimit";
 
 export type LoginState = { error?: string };
 
@@ -15,6 +16,13 @@ export async function login(
 ): Promise<LoginState> {
   const identifier = String(formData.get("identifier") ?? "");
   const password = String(formData.get("password") ?? "");
+
+  // Throttle guessing: 10 tries per 5 minutes per identifier+IP pair.
+  const ip = await clientIp();
+  if (!(await rateLimit("login", `${identifier.trim()}:${ip}`, 10, 300))) {
+    return { error: RATE_LIMITED_MESSAGE };
+  }
+
   try {
     await signIn("credentials", { identifier, password, redirectTo: "/" });
     return {};

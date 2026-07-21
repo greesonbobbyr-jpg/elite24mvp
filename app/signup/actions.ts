@@ -6,6 +6,7 @@ import { hashPassword } from "@/lib/password";
 import { uniqueJoinCode } from "@/lib/joincode";
 import { readBranding } from "@/lib/branding";
 import { signIn } from "@/auth";
+import { rateLimit, clientIp, RATE_LIMITED_MESSAGE } from "@/lib/ratelimit";
 
 export type SignupState = { error?: string };
 
@@ -16,6 +17,11 @@ export async function signup(
   _prev: SignupState,
   formData: FormData,
 ): Promise<SignupState> {
+  // Throttle account creation: 5 signups per hour per IP.
+  if (!(await rateLimit("signup", await clientIp(), 5, 3600))) {
+    return { error: RATE_LIMITED_MESSAGE };
+  }
+
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");

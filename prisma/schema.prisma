@@ -25,6 +25,15 @@ enum Role {
   PLAYER
 }
 
+// Fixed-window rate-limit counters (lib/ratelimit.ts). DB-backed so limits hold
+// across serverless instances with no extra infra. `key` encodes
+// scope:identifier:windowIndex; rows are pruned opportunistically.
+model RateLimit {
+  key       String   @id
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+}
+
 // A team is the private space a coach runs for their players.
 //
 // `parentId` is a nullable self-relation: a team can later belong to a larger

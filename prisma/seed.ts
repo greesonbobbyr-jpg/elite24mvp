@@ -26,15 +26,19 @@ import {
   ReactionType,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
+import { todayKey as tzDayKey } from "../lib/daykey";
 
 const prisma = new PrismaClient();
 
 // Mirrors lib/points.ts; duplicated here so the seed stays standalone.
 const POINTS_PER_CHECKIN = 10;
 
-// Shared DEV password for every seeded user so login works locally. DEV ONLY —
-// the seed refuses to run outside a local SQLite file (see main()).
-const DEV_PASSWORD = "password123";
+// Shared demo password for every seeded user. Never hardcoded: pass
+// SEED_PASSWORD to choose one, else a fresh random one is generated and printed
+// ONCE in the summary.
+const DEV_PASSWORD =
+  process.env.SEED_PASSWORD || `e24-${randomBytes(4).toString("hex")}`;
 
 type PlayerSeed = {
   name: string;
@@ -103,11 +107,10 @@ const REFLECTIONS = [
 const CHECKIN_OFFSETS = [1, 2, 4, 5, 7, 9, 11, 14, 17, 20, 24, 28, 33, 39];
 const QUEST_OFFSETS = [1, 2, 3, 5, 6, 8, 10, 12, 15, 18, 22, 26, 31, 38];
 
+// Timezone-aware day keys (same helper the app uses), so seeded entries land on
+// the same calendar days the app will compute at read time.
 function dayKeyOf(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return tzDayKey(date);
 }
 
 function daysAgo(n: number): Date {
@@ -507,10 +510,24 @@ async function seedTodayActivity(
 }
 
 async function main() {
-  // Safety: never seed a production database (CLAUDE.md section 7). Portable
-  // across SQLite (dev) and the upcoming Postgres — no file:-URL assumption.
+  // Safety (CLAUDE.md section 7): seeding WIPES the target database, and local
+  // dev may point at the live Supabase DB. NODE_ENV alone can't catch that (a
+  // local run against prod is NODE_ENV=development), so an explicit confirmation
+  // naming the exact DB host is required. No confirmation → no wipe, ever.
   if (process.env.NODE_ENV === "production") {
     console.error("Refusing to seed: NODE_ENV is production.");
+    process.exit(1);
+  }
+  let dbHost = "";
+  try {
+    dbHost = new URL(process.env.DATABASE_URL ?? "").hostname;
+  } catch {
+    /* fall through to the refusal below */
+  }
+  if (!dbHost || process.env.SEED_CONFIRM !== dbHost) {
+    console.error(
+      `Refusing to seed. This WIPES AND RESEEDS the database at:\n\n    ${dbHost || "(unparseable DATABASE_URL)"}\n\nIf that is really what you want, run:\n\n    SEED_CONFIRM=${dbHost} npm run seed\n`,
+    );
     process.exit(1);
   }
 

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
 import { isValidGifId } from "@/lib/gifs";
+import { rateLimit } from "@/lib/ratelimit";
 
 export type BoardState = { error?: string; ok?: boolean };
 
@@ -106,6 +107,9 @@ const REACTION_TYPES = new Set([
 export async function toggleReaction(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user || (user.role !== "COACH" && !isOnboarded(user))) return;
+
+  // Each tap re-renders the whole board — cap rapid-fire tapping per user.
+  if (!(await rateLimit("react", String(user.id), 60, 60))) return;
 
   const messageId = Number.parseInt(String(formData.get("messageId") ?? ""), 10);
   if (!Number.isInteger(messageId)) return;

@@ -1,13 +1,9 @@
 import { prisma } from "./prisma";
 
-// The local calendar day as "YYYY-MM-DD". Used to enforce one check-in per day
-// and to date journal entries. Server-local time is fine for this local MVP.
-export function todayKey(date = new Date()): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+// Day keys are timezone-aware (lib/daykey) — re-exported here so the many
+// existing `import { todayKey } from "@/lib/journal"` call sites keep working.
+import { todayKey } from "./daykey";
+export { todayKey };
 
 // Today's check-in for a player, or null if they haven't checked in yet.
 export function getTodaysEntry(userId: number) {

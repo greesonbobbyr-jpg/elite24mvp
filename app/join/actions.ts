@@ -4,6 +4,7 @@ import { AuthError } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { signIn } from "@/auth";
+import { rateLimit, clientIp, RATE_LIMITED_MESSAGE } from "@/lib/ratelimit";
 
 // Player self-join by the coach's team code. Two steps, both server-validated:
 //  1. lookupJoinCode — confirm the code matches a team (read-only) and show its
@@ -29,6 +30,11 @@ export async function lookupJoinCode(
   _prev: LookupState,
   formData: FormData,
 ): Promise<LookupState> {
+  // Throttle code guessing: the lookup is an oracle over the join-code space.
+  if (!(await rateLimit("join-lookup", await clientIp(), 15, 300))) {
+    return { error: RATE_LIMITED_MESSAGE };
+  }
+
   const code = normalizeCode(formData.get("code"));
   if (!code) return { error: "Enter your team code." };
   const team = await findTeamByCode(code);
@@ -44,6 +50,11 @@ export async function createPlayer(
   _prev: CreatePlayerState,
   formData: FormData,
 ): Promise<CreatePlayerState> {
+  // Throttle account creation: 5 joins per hour per IP.
+  if (!(await rateLimit("join-create", await clientIp(), 5, 3600))) {
+    return { error: RATE_LIMITED_MESSAGE };
+  }
+
   const code = normalizeCode(formData.get("code"));
   const name = String(formData.get("name") ?? "").trim();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
