@@ -8,6 +8,7 @@ import {
 import { formatDate, formatDateTime } from "@/lib/format";
 import { confirmRead } from "../actions";
 import { NotificationComposer } from "./NotificationComposer";
+import { PushToggle } from "./PushToggle";
 import { WhistleIcon } from "@/app/components/WhistleIcon";
 import { Button } from "@/app/components/ui/Button";
 
@@ -127,6 +128,9 @@ export default async function NotificationsPage() {
         <p className="e24-eyebrow">Notifications</p>
         <p className="mt-1 text-sm text-zinc-500">Messages from your coach</p>
       </header>
+
+      {/* Web Push opt-in — permission prompt only fires on the player's tap. */}
+      <PushToggle />
 
       {notifications.length === 0 ? (
         <EmptyCard line="No notifications from your coach yet." />

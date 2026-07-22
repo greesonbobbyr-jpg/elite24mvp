@@ -50,6 +50,11 @@ model Team {
   // through every todayKey() call site is a later refactor.
   timezone String @default("America/Chicago")
 
+  // Coach-set hour (0-23, team-local) for the daily check-in Web Push reminder.
+  // Null = reminders off. The cron sender matches it against the current hour
+  // in `timezone` and only pushes to players who haven't checked in yet.
+  checkInReminderHour Int?
+
   // Players join a team with this short code (generated at team creation, coach
   // can regenerate). Unique across teams. Null only for legacy rows.
   joinCode String? @unique
@@ -117,6 +122,24 @@ model User {
   // Team message board posts this user has authored, and reactions they've made.
   teamMessages     TeamMessage[]
   messageReactions MessageReaction[]
+
+  // Web Push subscriptions for the daily check-in reminder (player-owned).
+  pushSubscriptions PushSubscription[]
+}
+
+// One browser/device Web Push subscription. Endpoint is globally unique; a user
+// may have several (phone + tablet). Dead endpoints (410/404 on send) are pruned
+// by the cron sender. No PII beyond the push endpoint itself.
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // Player-only data: the required Dream plus structured "Your Brand" stats.

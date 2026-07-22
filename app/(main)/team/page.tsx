@@ -46,6 +46,7 @@ export default async function TeamSettingsPage() {
             logoUrl: team.logoUrl,
             primaryColor: team.primaryColor,
             secondaryColor: team.secondaryColor,
+            checkInReminderHour: team.checkInReminderHour,
           }}
           coachPhotoUrl={user.photoUrl}
         />

@@ -1,0 +1,21 @@
+# Hourly trigger for the check-in reminder push (Vercel Hobby crons are
+# daily-only, so GitHub Actions carries the schedule). The endpoint decides
+# per-team whether the current hour matches the coach's setting — most runs are
+# no-ops. Requires the CRON_SECRET repo secret (Settings → Secrets → Actions)
+# matching the Vercel env var of the same name.
+name: check-in-reminders
+
+on:
+  schedule:
+    - cron: "0 * * * *" # top of every hour (UTC)
+  workflow_dispatch: {} # manual test runs
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminder endpoint
+        run: |
+          curl -fsS \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://elite24mvp.vercel.app/api/cron/check-in-reminders"

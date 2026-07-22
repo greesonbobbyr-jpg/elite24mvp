@@ -16,6 +16,8 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|login|signup|join|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|pdf|mjs|ico|txt|webmanifest)).*)",
+    // Public: auth API, auth pages, the cron endpoint (own CRON_SECRET guard),
+    // the service worker, and static assets. Everything else needs a session.
+    "/((?!api/auth|api/cron|login|signup|join|sw\\.js|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|pdf|mjs|ico|txt|webmanifest)).*)",
   ],
 };

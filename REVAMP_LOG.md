@@ -123,3 +123,21 @@ Supabase Storage IF `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` are set
 (owner-supplied; needs a public "photos" bucket) and otherwise pass through
 unchanged — the Storage half stays dormant until keys exist (flagged in the
 plan). Loading skeletons added for the route group, leaderboard, and board.
+
+## Phase 7 — Web Push check-in reminder
+The Hooked loop finally has its external trigger — coach-controlled, opt-in,
+no spam. New `PushSubscription` model + `Team.checkInReminderHour` (migration
+authored/queued). Players opt in via a "Daily reminder" toggle on their
+Notifications page (permission prompt fires only on tap; kid-appropriate copy);
+the coach picks the hour (3–8 PM team-local, or Off) in Team Settings — nothing
+sends unless BOTH sides opt in. `public/sw.js` handles push + click-to-open;
+`lib/push.ts` (web-push/VAPID) sends and prunes dead endpoints; the
+`CRON_SECRET`-guarded `/api/cron/check-in-reminders` route pings, per team,
+only subscribed players who haven't checked in today ("Time to check in 🏀 Your
+streak is waiting." — no PII in payloads). Scheduling runs via a GitHub Actions
+hourly cron (`.github/workflows/reminders.yml`) because Vercel Hobby crons are
+daily-only; VAPID keys + CRON_SECRET are set in `.env` and Vercel prod env.
+**Owner setup remaining:** add `CRON_SECRET` (the value in `.env`) as a GitHub
+repo Actions secret — the workflow no-ops until then. Middleware now exempts
+`sw.js` + `/api/cron` (its own secret guard). Mid-phase note: the machine died
+during this phase; all work survived on disk and was verified before continuing.

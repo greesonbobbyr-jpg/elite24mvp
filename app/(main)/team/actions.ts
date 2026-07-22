@@ -43,6 +43,14 @@ export async function updateTeam(
   );
   if ("error" in photoRes) return { error: photoRes.error };
 
+  // Daily check-in reminder hour (team-local; "" = off). Whitelisted range.
+  const rawHour = String(formData.get("reminderHour") ?? "").trim();
+  const parsedHour = Number.parseInt(rawHour, 10);
+  const checkInReminderHour =
+    rawHour !== "" && Number.isInteger(parsedHour) && parsedHour >= 0 && parsedHour <= 23
+      ? parsedHour
+      : null;
+
   // Offload uploads to Supabase Storage when configured (passthrough otherwise).
   const storedLogo = logoUrl
     ? await storeImage(logoUrl, `teams/${user.teamId}`)
@@ -53,7 +61,13 @@ export async function updateTeam(
 
   await prisma.team.update({
     where: { id: user.teamId },
-    data: { name, logoUrl: storedLogo, primaryColor, secondaryColor },
+    data: {
+      name,
+      logoUrl: storedLogo,
+      primaryColor,
+      secondaryColor,
+      checkInReminderHour,
+    },
   });
   await prisma.user.update({
     where: { id: user.id },
