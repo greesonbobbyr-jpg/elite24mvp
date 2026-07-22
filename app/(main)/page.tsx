@@ -139,23 +139,6 @@ export default async function Home() {
         )}
       </Card>
 
-      {/* Evening Pro Review — closes the loop the morning check-in opened. */}
-      {todaysEntry && (
-        <ReviewCard
-          reflection={todaysEntry.reflection}
-          loggedQuests={loggedQuests}
-          savedReview={
-            todaysReview
-              ? {
-                  outcome: todaysReview.outcome,
-                  learned: todaysReview.learned,
-                  noteToTomorrow: todaysReview.noteToTomorrow,
-                }
-              : null
-          }
-        />
-      )}
-
       {/* Daily mindset moment — UNLOCKS with the check-in (the story is the
           day's variable reward for showing up; no spoilers beforehand). */}
       {todaysEntry ? (
@@ -176,6 +159,24 @@ export default async function Home() {
             </span>
           </div>
         </section>
+      )}
+
+      {/* Evening Pro Review — BELOW the Mindset (a collapsed "end your day"
+          strip), so the post-check-in flow reads: story now, review tonight. */}
+      {todaysEntry && (
+        <ReviewCard
+          reflection={todaysEntry.reflection}
+          loggedQuests={loggedQuests}
+          savedReview={
+            todaysReview
+              ? {
+                  outcome: todaysReview.outcome,
+                  learned: todaysReview.learned,
+                  noteToTomorrow: todaysReview.noteToTomorrow,
+                }
+              : null
+          }
+        />
       )}
     </main>
   );

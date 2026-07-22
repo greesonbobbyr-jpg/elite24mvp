@@ -40,6 +40,10 @@ export function ReviewCard({
 }) {
   const [state, formAction, pending] = useActionState(submitReview, initialState);
   const [outcome, setOutcome] = useState<string>("");
+  // Collapsed by default: after checking in, the player's NEXT step is the
+  // 1-Minute Mindset — the review is an end-of-day thing, so it waits as a
+  // quiet strip until tapped (sits BELOW the Mindset on the page).
+  const [expanded, setExpanded] = useState(false);
 
   // Already reviewed — show the closed loop, not a form.
   if (savedReview) {
@@ -66,9 +70,48 @@ export function ReviewCard({
     );
   }
 
+  // Collapsed teaser — mirrors the Mindset strip so it reads as "later", not
+  // "next". Tapping expands the full review form.
+  if (!expanded) {
+    return (
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 transition hover:border-red-500/40">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          aria-expanded={false}
+          className="group flex w-full items-center gap-3 px-4 py-3 text-left"
+        >
+          <span aria-hidden className="shrink-0 text-base">
+            🌙
+          </span>
+          <span className="e24-eyebrow shrink-0">Pro Review</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
+            End your day — how did the plan go? · +5
+          </span>
+          <span
+            className="shrink-0 text-lg text-red-500/70 transition-transform group-hover:rotate-90"
+            aria-hidden
+          >
+            ▸
+          </span>
+        </button>
+      </section>
+    );
+  }
+
   return (
-    <section className="rounded-xl border border-red-600/40 bg-red-950/10 p-5">
-      <h2 className="e24-eyebrow">Pro Review</h2>
+    <section className="e24-reveal rounded-xl border border-red-600/40 bg-red-950/10 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="e24-eyebrow">Pro Review</h2>
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          aria-label="Collapse"
+          className="rounded-full px-1.5 py-1 text-sm text-zinc-500 transition hover:text-zinc-300 active:scale-95"
+        >
+          ▴
+        </button>
+      </div>
       <p className="mt-1 text-lg font-semibold text-white">
         How did today&apos;s plan go?
       </p>

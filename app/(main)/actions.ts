@@ -185,50 +185,10 @@ export async function submitReview(
   return {};
 }
 
-// PREDICT-THEN-LOG (measurable quests, Quest.targetCount != null). Step 1: the
-// player predicts their count BEFORE doing the work — a PENDING QuestLog with
-// `predicted`, no points yet. The predicted-vs-actual gap is the calibration
-// feedback that trains self-assessment (the core of basketball IQ off the court).
-export async function startQuest(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
-
-  const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
-  const predicted = Number.parseInt(String(formData.get("predicted") ?? ""), 10);
-  if (!Number.isInteger(questId) || !Number.isInteger(predicted)) return;
-
-  const quest = await prisma.quest.findUnique({ where: { id: questId } });
-  if (!quest || !quest.active || quest.targetCount == null) return;
-  if (predicted < 0 || predicted > quest.targetCount) return;
-
-  try {
-    await prisma.questLog.create({
-      data: {
-        userId: user.id,
-        questId: quest.id,
-        day: todayKey(),
-        status: "PENDING",
-        predicted,
-      },
-    });
-  } catch (error) {
-    // Already started/completed today — no-op.
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      revalidatePath("/quests");
-      return;
-    }
-    throw error;
-  }
-
-  revalidatePath("/quests");
-  revalidatePath("/");
-}
-
-// Step 2: log the ACTUAL count → the PENDING log flips to APPROVED and the
-// points are awarded (ledger row linked via questLogId so undo reverses it).
+// MEASURABLE quests (Quest.targetCount != null): the player logs HOW MANY they
+// made in one step ("36 / 50") — recorded on the QuestLog and shown on the tile.
+// (A predict-first step existed briefly; the owner cut it — logging the real
+// count keeps the self-tracking value without the guessing homework.)
 export async function completeQuest(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
@@ -238,34 +198,68 @@ export async function completeQuest(formData: FormData): Promise<void> {
   if (!Number.isInteger(questId) || !Number.isInteger(actual)) return;
 
   const quest = await prisma.quest.findUnique({ where: { id: questId } });
-  if (!quest || quest.targetCount == null) return;
+  if (!quest || !quest.active || quest.targetCount == null) return;
   if (actual < 0 || actual > quest.targetCount) return;
 
   const day = todayKey();
-  const log = await prisma.questLog.findUnique({
-    where: { userId_questId_day: { userId: user.id, questId, day } },
-  });
-  if (!log || log.status !== "PENDING") return; // not started, or already done
 
-  await prisma.$transaction(async (tx) => {
-    await tx.questLog.update({
-      where: { id: log.id },
-      data: { actual, status: "APPROVED" },
+  const award = (tx: Prisma.TransactionClient, questLogId: number) =>
+    Promise.all([
+      tx.pointsLedger.create({
+        data: {
+          userId: user.id,
+          amount: quest.points,
+          reason: quest.title,
+          source: PointsSource.QUEST,
+          questLogId,
+        },
+      }),
+      tx.playerProfile.update({
+        where: { userId: user.id },
+        data: { points: { increment: quest.points } },
+      }),
+    ]);
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const log = await tx.questLog.create({
+        data: {
+          userId: user.id,
+          questId: quest.id,
+          day,
+          status: "APPROVED",
+          actual,
+        },
+      });
+      await award(tx, log.id);
     });
-    await tx.pointsLedger.create({
-      data: {
-        userId: user.id,
-        amount: quest.points,
-        reason: quest.title,
-        source: PointsSource.QUEST,
-        questLogId: log.id,
-      },
-    });
-    await tx.playerProfile.update({
-      where: { userId: user.id },
-      data: { points: { increment: quest.points } },
-    });
-  });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      // A log already exists today. If it's a leftover PENDING one (from the
+      // brief predict-first flow), upgrade it and award once; done = no-op.
+      const existing = await prisma.questLog.findUnique({
+        where: {
+          userId_questId_day: { userId: user.id, questId: quest.id, day },
+        },
+      });
+      if (existing && existing.status === "PENDING") {
+        await prisma.$transaction(async (tx) => {
+          await tx.questLog.update({
+            where: { id: existing.id },
+            data: { actual, status: "APPROVED" },
+          });
+          await award(tx, existing.id);
+        });
+      }
+      revalidatePath("/quests");
+      revalidatePath("/");
+      return;
+    }
+    throw error;
+  }
 
   revalidatePath("/quests");
   revalidatePath("/");

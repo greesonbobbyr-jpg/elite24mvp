@@ -1,6 +1,6 @@
 import { undoQuest } from "./actions";
 import { MarkDoneButton } from "./MarkDoneButton";
-import { PredictStartForm, LogActualForm } from "./QuestPredictForms";
+import { QuestCountForm } from "./QuestCountForm";
 
 type Quest = {
   id: number;
@@ -46,9 +46,13 @@ function IconUndo({ className }: { className?: string }) {
 }
 
 // Today's active quests as "mission" tiles. Plain quests are one-tap; MEASURABLE
-// quests (targetCount set) run the predict-then-log calibration flow:
-// no log → predict+start (PENDING) → log actual (APPROVED, gold, shows
-// "guessed X · made Y"). Completed tiles show gold and tap-to-undo.
+// quests (targetCount set) take the made-count in one step ("36 / 50") and show
+// it on the done tile. Completed tiles show gold and tap-to-undo.
+//
+// MOBILE: title + description WRAP fully (no truncation) — a kid must be able to
+// read the whole quest without tapping into anything. The action control sits
+// under the text on its own row, right-aligned, so narrow screens never squeeze
+// the words.
 export function QuestList({
   quests,
   logs,
@@ -64,86 +68,78 @@ export function QuestList({
       {quests.map((quest) => {
         const log = byQuest.get(quest.id);
         const completed = log?.status === "APPROVED";
-        const pending = log?.status === "PENDING";
         const measurable = quest.targetCount != null;
         return (
           <li
             key={quest.id}
-            className={`flex items-center gap-3 rounded-xl border p-4 transition ${
+            className={`rounded-xl border p-4 transition ${
               completed
                 ? "border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-zinc-950"
-                : pending
-                  ? "border-red-500/40 bg-red-950/10"
-                  : "border-zinc-800 bg-zinc-950/40"
+                : "border-zinc-800 bg-zinc-950/40"
             }`}
           >
-            {/* icon square */}
-            <span
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ring-1 ${
-                completed
-                  ? "bg-[#d4af37]/15 text-[#d4af37] ring-[#d4af37]/40"
-                  : "bg-red-600/15 text-red-500 ring-red-600/30"
-              }`}
-            >
-              {completed ? (
-                <IconCheck className="h-6 w-6" />
-              ) : (
-                <IconTarget className="h-6 w-6" />
-              )}
-            </span>
+            <div className="flex items-start gap-3">
+              {/* icon square */}
+              <span
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ring-1 ${
+                  completed
+                    ? "bg-[#d4af37]/15 text-[#d4af37] ring-[#d4af37]/40"
+                    : "bg-red-600/15 text-red-500 ring-red-600/30"
+                }`}
+              >
+                {completed ? (
+                  <IconCheck className="h-6 w-6" />
+                ) : (
+                  <IconTarget className="h-6 w-6" />
+                )}
+              </span>
 
-            {/* title + description (+ calibration once a measurable is done) */}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">
-                {quest.title}
-              </p>
-              <p className="truncate text-xs text-zinc-500">
-                {quest.description}
-              </p>
-              {completed &&
-                measurable &&
-                log?.predicted != null &&
-                log?.actual != null && (
-                  <p className="mt-0.5 text-xs font-semibold text-[#e8c766]">
-                    guessed {log.predicted} · made {log.actual}
+              {/* title + description — full text, wrapping */}
+              <div className="min-w-0 flex-1">
+                <p className="break-words text-sm font-semibold text-white">
+                  {quest.title}
+                </p>
+                <p className="mt-0.5 break-words text-xs leading-relaxed text-zinc-500">
+                  {quest.description}
+                </p>
+                {completed && measurable && log?.actual != null && (
+                  <p className="mt-1 text-xs font-semibold text-[#e8c766]">
+                    made {log.actual} / {quest.targetCount}
                   </p>
                 )}
+              </div>
             </div>
 
-            {/* right: state-driven control */}
-            {completed ? (
-              <form action={undoQuest} className="shrink-0">
-                <input type="hidden" name="questId" value={quest.id} />
-                <button
-                  type="submit"
-                  title="Tap to undo"
-                  aria-label={`Undo ${quest.title}`}
-                  className="relative flex h-12 w-24 flex-col items-center justify-center rounded-xl border border-[#d4af37]/40 bg-[#d4af37]/15 text-[#e8c766] shadow-[0_0_12px_rgba(212,175,55,0.5)] transition hover:bg-[#d4af37]/25 active:scale-[0.97]"
-                >
-                  <IconUndo className="absolute right-1.5 top-1.5 h-3 w-3 text-[#d4af37]/70" />
-                  <span className="text-xs font-bold uppercase tracking-wide leading-none">
-                    Done
-                  </span>
-                  <span className="mt-0.5 text-[11px] font-semibold leading-none">
-                    +{quest.points}
-                  </span>
-                </button>
-              </form>
-            ) : pending && measurable ? (
-              <LogActualForm
-                questId={quest.id}
-                targetCount={quest.targetCount as number}
-                predicted={log?.predicted ?? 0}
-                points={quest.points}
-              />
-            ) : measurable ? (
-              <PredictStartForm
-                questId={quest.id}
-                targetCount={quest.targetCount as number}
-              />
-            ) : (
-              <MarkDoneButton questId={quest.id} points={quest.points} />
-            )}
+            {/* action row — under the text so words never get squeezed */}
+            <div className="mt-3 flex justify-end">
+              {completed ? (
+                <form action={undoQuest} className="shrink-0">
+                  <input type="hidden" name="questId" value={quest.id} />
+                  <button
+                    type="submit"
+                    title="Tap to undo"
+                    aria-label={`Undo ${quest.title}`}
+                    className="relative flex h-12 w-24 flex-col items-center justify-center rounded-xl border border-[#d4af37]/40 bg-[#d4af37]/15 text-[#e8c766] shadow-[0_0_12px_rgba(212,175,55,0.5)] transition hover:bg-[#d4af37]/25 active:scale-[0.97]"
+                  >
+                    <IconUndo className="absolute right-1.5 top-1.5 h-3 w-3 text-[#d4af37]/70" />
+                    <span className="text-xs font-bold uppercase tracking-wide leading-none">
+                      Done
+                    </span>
+                    <span className="mt-0.5 text-[11px] font-semibold leading-none">
+                      +{quest.points}
+                    </span>
+                  </button>
+                </form>
+              ) : measurable ? (
+                <QuestCountForm
+                  questId={quest.id}
+                  targetCount={quest.targetCount as number}
+                  points={quest.points}
+                />
+              ) : (
+                <MarkDoneButton questId={quest.id} points={quest.points} />
+              )}
+            </div>
           </li>
         );
       })}
