@@ -23,8 +23,14 @@ export function AdjustPointsForm({ playerId }: { playerId: number }) {
   }, [state]);
 
   const removing = direction === "remove";
+  // No `w-full` here — width is set per field below. (It used to live in this
+  // shared string, which made the reason input 100% wide INSIDE a flex row next
+  // to the amount box, pushing it off the right edge of the card — invisible on
+  // a phone, so a coach couldn't type the reason a removal requires.)
   const field =
-    "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
+    "rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
+  const label =
+    "mb-1 block text-[10px] font-bold uppercase tracking-wide text-zinc-500";
 
   return (
     <form action={formAction} className="mt-4 flex flex-col gap-2">
@@ -51,21 +57,47 @@ export function AdjustPointsForm({ playerId }: { playerId: number }) {
         ))}
       </div>
 
-      <div className="flex gap-2">
+      {/* Amount */}
+      <div>
+        <label htmlFor="adj-amount" className={label}>
+          {removing ? "Points to remove" : "Points to add"}
+        </label>
         <input
+          id="adj-amount"
           name="amount"
           inputMode="numeric"
+          required
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
-          placeholder="Amount"
-          className={`${field} w-28 shrink-0`}
+          placeholder="e.g. 20"
+          className={`${field} w-32`}
         />
+      </div>
+
+      {/* Reason — full width on its own row so it's always visible. Required
+          for a removal (browser-enforced here, server-enforced in adjustPoints)
+          so there's a record of why points were taken. */}
+      <div>
+        <label htmlFor="adj-reason" className={label}>
+          Reason{" "}
+          {removing ? (
+            <span className="text-red-400">(required)</span>
+          ) : (
+            <span className="text-zinc-600">(optional)</span>
+          )}
+        </label>
         <input
+          id="adj-reason"
           name="reason"
+          required={removing}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder={removing ? "Reason (required)" : "Reason (optional)"}
-          className={field}
+          placeholder={
+            removing
+              ? "Why are these points being removed?"
+              : "What are these points for?"
+          }
+          className={`${field} w-full`}
         />
       </div>
 
