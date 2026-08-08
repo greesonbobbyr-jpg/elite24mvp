@@ -129,8 +129,8 @@ export function TeamBrandingFields({
         {(primary || secondary) && (
           <div className="flex items-center gap-2 text-xs text-zinc-500">
             <span>Your uniforms:</span>
-            {primary && <JerseyIcon hex={primary} className="h-14 w-12" />}
-            {secondary && <JerseyIcon hex={secondary} className="h-14 w-12" />}
+            {primary && <JerseyIcon hex={primary} className="h-16 w-14" />}
+            {secondary && <JerseyIcon hex={secondary} className="h-16 w-14" />}
           </div>
         )}
       </div>
@@ -169,7 +169,7 @@ function Swatches({
                   : "hover:scale-110"
               }`}
             >
-              <JerseyIcon hex={c.hex} className="h-12 w-11" />
+              <JerseyIcon hex={c.hex} className="h-14 w-12" />
             </button>
           );
         })}
