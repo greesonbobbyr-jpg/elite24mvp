@@ -127,19 +127,70 @@ export function TeamBrandingFields({
         />
         {(primary || secondary) && (
           <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <span>Preview:</span>
-            <span
-              className="inline-block h-5 w-8 rounded border border-white/20"
-              style={{ backgroundColor: primary ?? "transparent" }}
-            />
-            <span
-              className="inline-block h-5 w-8 rounded border border-white/20"
-              style={{ backgroundColor: secondary ?? "transparent" }}
-            />
+            <span>Your uniforms:</span>
+            {primary && <JerseyIcon hex={primary} className="h-8 w-7" />}
+            {secondary && <JerseyIcon hex={secondary} className="h-8 w-7" />}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+// A miniature sleeveless basketball jersey in the given color — plain body,
+// WHITE neck + armhole trim (like classic team tanks), no logo. Tilted a few
+// degrees with a darker sliver visible inside the near armhole so it reads as a
+// jersey turned slightly toward you, not a flat cutout. A faint neutral hairline
+// keeps the White/Cream jerseys visible on the black UI.
+export function JerseyIcon({
+  hex,
+  className = "h-10 w-9",
+}: {
+  hex: string;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 40 46"
+      className={className}
+      style={{ transform: "rotate(-8deg)" }}
+      aria-hidden="true"
+    >
+      {/* body */}
+      <path
+        d="M10 3 L14 3 C15.5 9 17.5 12.5 20 13.5 C22.5 12.5 24.5 9 26 3 L30 3 C29.5 9.5 31.5 13.5 35 17 L34.5 41 C34.5 42.5 33.5 43.5 32 43.5 L8 43.5 C6.5 43.5 5.5 42.5 5.5 41 L5 17 C8.5 13.5 10.5 9.5 10 3 Z"
+        fill={hex}
+        stroke="rgba(148,148,158,0.55)"
+        strokeWidth="1"
+      />
+      {/* interior shadow through the near armhole (the "turned" depth cue) */}
+      <path
+        d="M30 3 C29.5 9.5 31.5 13.5 35 17 L32.5 18.5 C29.8 14.8 28.4 10.2 28.8 4.5 Z"
+        fill="rgba(0,0,0,0.30)"
+      />
+      {/* white ribbing: V-neck + both armholes */}
+      <path
+        d="M14 3 C15.5 9 17.5 12.5 20 13.5 C22.5 12.5 24.5 9 26 3"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M10 3 C10.5 9.5 8.5 13.5 5 17"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M30 3 C29.5 9.5 31.5 13.5 35 17"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
@@ -157,7 +208,7 @@ function Swatches({
       <p className="mb-1.5 block text-xs font-medium text-zinc-400">
         {label} <span className="text-zinc-600">(optional)</span>
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {TEAM_COLORS.map((c) => {
           const isSel = selected?.toLowerCase() === c.hex.toLowerCase();
           return (
@@ -168,13 +219,14 @@ function Swatches({
               aria-label={c.name}
               aria-pressed={isSel}
               onClick={() => onPick(isSel ? null : c.hex)}
-              style={{ backgroundColor: c.hex }}
-              className={`h-8 w-8 rounded-full transition ${
+              className={`rounded-lg p-0.5 transition ${
                 isSel
-                  ? "ring-2 ring-white ring-offset-2 ring-offset-black"
-                  : "border border-white/20 hover:scale-110"
+                  ? "scale-105 ring-2 ring-white ring-offset-2 ring-offset-black"
+                  : "hover:scale-110"
               }`}
-            />
+            >
+              <JerseyIcon hex={c.hex} />
+            </button>
           );
         })}
       </div>
