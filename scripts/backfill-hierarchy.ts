@@ -25,6 +25,16 @@ const MODE = process.argv.includes("--execute")
 
 const SEASON_NAME = String(new Date().getFullYear());
 
+// The legacy app matches TODAY's quest logs by GLOBAL quest id, so today's rows
+// are never re-pointed while the legacy write path is alive — the Stage 4a
+// converge run moves them once the new read path deploys.
+const TODAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: process.env.APP_TIMEZONE ?? "America/Chicago",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
+
 // Legacy login-role → new membership/author role.
 const roleOf = (userRole: Role): Role =>
   userRole === Role.COACH ? Role.HEAD_COACH : Role.PLAYER;
@@ -63,7 +73,7 @@ async function dryRun() {
   console.log(`  Memberships: one per user (coach→HEAD_COACH, player→PLAYER)`);
   console.log(`  ORG_ADMIN grants: ${coaches.length} (one per coach)`);
   console.log(
-    `  Quest clones: ${globalQuests.length} global quests × new orgs (logs re-pointed)`,
+    `  Quest clones: ${globalQuests.length} global quests × new orgs (created INACTIVE; historical logs re-pointed)`,
   );
   console.log("\nLEGACY ROWS AWAITING STAMPS (new column still NULL):");
   for (const [k, v] of Object.entries(nullCounts)) console.log(`  ${k}: ${v}`);
@@ -72,7 +82,8 @@ async function dryRun() {
 
 async function stampGaps() {
   const [
-    journal, review, takeP, takeM, qlogP, qlogM, ledgerP, reads, reacts, msgs, notifs, qlogGlobal,
+    journal, review, takeP, takeM, qlogP, qlogM, ledgerP, reads, reacts, msgs, notifs,
+    qlogGlobalPast, qlogGlobalToday,
   ] = await Promise.all([
     prisma.journalEntry.count({ where: { profileId: null } }),
     prisma.dailyReview.count({ where: { profileId: null } }),
@@ -85,7 +96,8 @@ async function stampGaps() {
     prisma.messageReaction.count({ where: { profileId: null } }),
     prisma.teamMessage.count({ where: { authorProfileId: null } }),
     prisma.notification.count({ where: { authorProfileId: null } }),
-    prisma.questLog.count({ where: { quest: { organizationId: null } } }),
+    prisma.questLog.count({ where: { quest: { organizationId: null }, day: { lt: TODAY } } }),
+    prisma.questLog.count({ where: { quest: { organizationId: null }, day: { gte: TODAY } } }),
   ]);
   return {
     "JournalEntry.profileId": journal,
@@ -99,7 +111,8 @@ async function stampGaps() {
     "MessageReaction.profileId": reacts,
     "TeamMessage.authorProfileId": msgs,
     "Notification.authorProfileId": notifs,
-    "QuestLog → still pointing at GLOBAL quests": qlogGlobal,
+    "QuestLog on GLOBAL quests, day < today (must re-point)": qlogGlobalPast,
+    "QuestLog on GLOBAL quests, today (moves at Stage 4a cutover)": qlogGlobalToday,
   };
 }
 
@@ -162,7 +175,10 @@ async function execute() {
                 description: gq.description,
                 points: gq.points,
                 targetCount: gq.targetCount,
-                active: gq.active,
+                // Inactive during the legacy window: the live app lists quests
+                // by `active` with no org filter, so active clones would show
+                // as duplicates. Stage 4a flips clones on (and globals off).
+                active: false,
                 sortOrder: gq.sortOrder,
               },
             });
@@ -254,15 +270,18 @@ async function execute() {
           where: { userId: user.id, profileId: null },
           data: { profileId: pid, membershipId: mid },
         })).count);
-        // Quest logs: stamp + RE-POINT to the org's clone in one update per quest.
+        // Quest logs: stamp ALL of the user's logs…
+        bump("QuestLog stamped", (await tx.questLog.updateMany({
+          where: { userId: user.id, profileId: null },
+          data: { profileId: pid, membershipId: mid },
+        })).count);
+        // …but re-point only STRICTLY HISTORICAL days to the org clone. Today's
+        // logs stay on global ids so the legacy quest page keeps matching them;
+        // the Stage 4a converge run re-points the final stragglers.
         for (const gq of globalQuests) {
-          bump("QuestLog (stamped + re-pointed)", (await tx.questLog.updateMany({
-            where: { userId: user.id, questId: gq.id, profileId: null },
-            data: {
-              profileId: pid,
-              membershipId: mid,
-              questId: cloneOf.get(`${orgId}:${gq.id}`)!,
-            },
+          bump("QuestLog re-pointed (day < today)", (await tx.questLog.updateMany({
+            where: { userId: user.id, questId: gq.id, day: { lt: TODAY } },
+            data: { questId: cloneOf.get(`${orgId}:${gq.id}`)! },
           })).count);
         }
         bump("PointsLedger", (await tx.pointsLedger.updateMany({
@@ -337,17 +356,26 @@ async function verify() {
   // Stamp coverage — every legacy row filled.
   const gaps = await stampGaps();
   for (const [k, v] of Object.entries(gaps)) {
-    if (k.startsWith("QuestLog → still")) continue; // reported below
+    if (k.startsWith("QuestLog on GLOBAL")) continue; // reported below
     ok(v === 0, `Stamped: ${k}`, v ? `${v} NULL rows remain` : "");
   }
 
-  // Quest cloning.
+  // Quest cloning. During the legacy window clones are INACTIVE (the live app
+  // lists quests by `active` with no org filter) and today's logs stay on
+  // global ids; both flip at the Stage 4a cutover's converge run.
   const globalQuestCount = await prisma.quest.count({ where: { organizationId: null } });
   const cloneCount = await prisma.quest.count({ where: { organizationId: { not: null } } });
-  const logsOnGlobal = gaps["QuestLog → still pointing at GLOBAL quests"];
+  const activeClones = await prisma.quest.count({
+    where: { organizationId: { not: null }, active: true },
+  });
   ok(cloneCount === globalQuestCount * orgCount,
     `Quest clones == ${globalQuestCount} global × ${orgCount} orgs`, `${cloneCount}`);
-  ok(logsOnGlobal === 0, "No QuestLog points at a global quest", `${logsOnGlobal}`);
+  ok(activeClones === 0, "Clones inactive during legacy window", `${activeClones} active`);
+  ok(gaps["QuestLog on GLOBAL quests, day < today (must re-point)"] === 0,
+    "All historical QuestLogs re-pointed to org clones");
+  console.log(
+    `INFO  Today's logs on global ids (legacy-visible, converge at 4a): ${gaps["QuestLog on GLOBAL quests, today (moves at Stage 4a cutover)"]}`,
+  );
 
   // Sum invariants.
   const profiles = await prisma.profile.findMany({ select: { id: true, name: true, careerPoints: true } });

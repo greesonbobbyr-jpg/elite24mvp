@@ -9,10 +9,10 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **0 of 6 BUILT + COMMITTED** (`6dcf636`) — migration authored, **NOT yet applied** |
-| Database | Shared Supabase Postgres — production `main` runs against it throughout; stages 0–3 are strictly additive for exactly this reason |
+| Stage | **1 of 6 DONE** — Stage 0 migration **applied to the shared DB**; backfill **executed + verified in production** (commits `6dcf636`, `466d1c5` + hotfix/hardening commit) |
+| Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them (re-verified post-run: 6 quests listed, leaderboards/points/streaks identical) |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Awaiting | Owner OK to run `prisma migrate deploy` for the Stage 0 migration |
+| Next | Stage 2 — choke point v2 (`lib/context.ts` + `lib/authz.ts` + compat shim) |
 
 ---
 
@@ -249,16 +249,30 @@ untouched.
 **Gate:** owner reviews the SQL → `npx prisma migrate deploy` against the shared DB →
 verify prod untouched → Stage 1.
 
-### Stage 1 — Backfill (idempotent script; additive data only)
-Per existing Team: create Organization (name = team name — matches "coach signup creates a
-world") + one current Season; set `Team.organizationId`. Per User: create Profile (copy
-identity/stats; careerPoints ← points; streaks; setupCompletedAt ← onboardedAt, now() for
-coaches) + Membership (COACH→HEAD_COACH, PLAYER→PLAYER; membership.points ← points); each
-coach also gets RoleAssignment ORG_ADMIN@their org. Stamp every legacy row's new columns
-(ledger/logs/journal/review/takeaway(+membership)/reads/reactions/authors). Clone the 6
-global quests per org and re-point each QuestLog to its org's clone. Verify with count +
-sum invariants (careerPoints == Σledger by profile; membership.points == Σledger by
-membership). Run once against the shared DB after local verification.
+### Stage 1 — Backfill ✅ DONE (executed against the shared DB 2026-08-10)
+`scripts/backfill-hierarchy.ts` — dry-run default / `--execute` (guarded by
+`BACKFILL_CONFIRM=<db host>`) / `--verify`; idempotent by construction (find-else-create +
+`updateMany WHERE new-column IS NULL`); single transaction. Proven first on a throwaway
+local Postgres (`scripts/localpg.ts`, embedded-postgres, UTF8 initdb), then run in prod.
+
+**As built:** per Team → Organization (name = team name) + one current Season ("2026") +
+`Team.organizationId`. Per User → Profile (identity/stats; careerPoints ← points; streaks;
+setupCompletedAt ← onboardedAt, createdAt for coaches) + Membership (COACH→HEAD_COACH,
+PLAYER→PLAYER; membership.points ← points); coaches also get ORG_ADMIN@their org. Every
+legacy row stamped (ledger/logs/journal/review/takeaway+membership/reads/reactions/author
+snapshots). 6 global quests cloned per org. **Production result: all 21 verify checks
+PASS** (counts, full stamp coverage, both sum invariants); idempotent re-run creates 0.
+
+**Incident + hardening (recorded for the reviewer):** the first execute created quest
+clones with `active=true` and re-pointed ALL quest logs. Both are visible to the legacy
+app: `listActiveQuests()` filters only on `active` (page briefly listed 18 quests), and
+the quest page matches TODAY's logs by global quest id (a re-pointed today-log would show
+incomplete and allow double completion). Fixed within minutes by
+`scripts/hotfix-stage1-legacy-window.ts` (clones deactivated; today-log revert — prod had
+**zero** today-logs, so no player ever saw a wrong state and no duplicates existed). The
+backfill script is now hardened so re-runs are legacy-invisible by construction:
+**clones are created INACTIVE** and **only `day < today` logs are re-pointed**; verify
+asserts both. Today-window logs converge at the Stage 4a cutover (below).
 
 ### Stage 2 — Choke point v2
 `lib/context.ts` (getCurrentContext + acting cookie) + `lib/authz.ts` (matrix, unit-tested
@@ -271,7 +285,11 @@ cache + careerPoints + membership.points together. Behavior identical; data conv
 
 ### Stage 4 — Surface-by-surface cutover (easiest → hardest)
 - **4a** Person-scope: journal, check-in, Pro Review, mindset, quests → ctx + the
-  author-only reflections module.
+  author-only reflections module. **Includes the quest converge step** (one scripted
+  operation shipped with this cutover): re-run the backfill to stamp/re-point rows the
+  legacy write path created since Stage 1, flip org clones `active=true` + globals
+  `active=false`, and move remaining today-logs to the clones — sequenced with the deploy
+  so neither read path ever sees a mixed state.
 - **4b** Brand / photo route / identity chip → profile reads; team-equality checks become
   org-bounded `can()` checks; **implements the visibility tightening** (Dream + stats no
   longer teammate-visible; card info only).
@@ -309,8 +327,11 @@ rename `User.profileRecord`→`profile`; retire legacy `COACH` enum value.
   its cutover stage explicitly changes behavior.
 
 ## 8. OPEN ITEMS
-1. **NOW:** owner approval to apply the Stage 0 migration to the shared DB.
-2. Stage 4b ships the teammate-visibility tightening (Dream/stats hidden) — flag for
+1. **NOW:** build Stage 2 (choke point v2). No further shared-DB writes needed until the
+   Stage 4a converge run.
+2. Legacy writes between Stage 1 and Stage 3 create unstamped rows by design — the
+   idempotent backfill re-runs at 4a (and can be re-run any time) to converge them.
+3. Stage 4b ships the teammate-visibility tightening (Dream/stats hidden) — flag for
    comms to existing users when it lands.
-3. Parent portal: separate initiative after this migration (design hooks already in place).
-4. Person-deletion operator script: written as part of Stage 6 scope.
+4. Parent portal: separate initiative after this migration (design hooks already in place).
+5. Person-deletion operator script: written as part of Stage 6 scope.
