@@ -20,9 +20,17 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// Hierarchy-rebuild roles. COACH is the LEGACY login-level value (User.role) and
+// is retired at decommission (Stage 6); the five real roles are used by
+// Membership.role (team scope; never ORG_ADMIN — app-enforced) and
+// RoleAssignment.role (org scope).
 enum Role {
-  COACH
+  COACH // legacy — do not use in new code
   PLAYER
+  ORG_ADMIN
+  HEAD_COACH
+  ASSISTANT_COACH
+  GENERAL_MANAGER
 }
 
 // Fixed-window rate-limit counters (lib/ratelimit.ts). DB-backed so limits hold
@@ -34,16 +42,196 @@ model RateLimit {
   createdAt DateTime @default(now())
 }
 
+// ============================================================================
+// HIERARCHY REBUILD (Stage 0 — additive; see plans/REVAMP docs).
+// Organization → Season → Team. `organizationId` is the AUTHORIZATION ANCHOR:
+// every permission check compares org ids, so Program/Division can be inserted
+// later as optional grouping FKs without touching a single permission check.
+// ============================================================================
+
+model Organization {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  seasons         Season[]
+  teams           Team[]
+  quests          Quest[]
+  roleAssignments RoleAssignment[]
+}
+
+model Season {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String // "2026–27", "Summer 2026"
+  startDate      DateTime?
+  endDate        DateTime?
+  // Exactly one current season per org — app-enforced transactionally (Prisma
+  // can't express a partial unique); a test owns this invariant.
+  isCurrent      Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  memberships Membership[]
+
+  @@index([organizationId, isCurrent])
+}
+
+// The PERMANENT PERSON. Development data (journal, reviews, points, streaks)
+// attaches here so it follows the athlete across teams and seasons. `userId` is
+// nullable ON PURPOSE: a profile may exist before anyone logs into it (future
+// roster-first / guardian flows).
+model Profile {
+  id     Int   @id @default(autoincrement())
+  userId Int?  @unique
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Identity ("card info" — the teammate-visible surface per the matrix)
+  name         String
+  photoUrl     String?
+  jerseyNumber Int? // preferred; Membership can override per team
+  position     String?
+  gradYear     Int?
+  bio          String?
+  heightInches Int?
+
+  // Personal (owner-visible; Dream lives on the athlete's own Home)
+  dream           String?
+  favoritePlayer  String?
+  favoriteTeam    String?
+  highlightUrl    String?
+  pointsPerGame   Float?
+  reboundsPerGame Float?
+  assistsPerGame  Float?
+
+  // Career aggregates: careerPoints = Σ ALL ledger rows for this profile
+  // (drives the card tier); streaks follow the person. Both kept in sync in
+  // the same transaction as every ledger write (same discipline as today).
+  careerPoints    Int     @default(0)
+  currentStreak   Int     @default(0)
+  bestStreak      Int     @default(0)
+  lastCheckInDay  String?
+  streakGraceUsed Boolean @default(false)
+
+  // The setup gate: EVERYONE completes profile setup (players: Dream + basics;
+  // staff: name/photo). Replaces PlayerProfile.onboardedAt at cutover.
+  setupCompletedAt DateTime?
+  createdAt        DateTime  @default(now())
+
+  contact               ProfileContact?
+  memberships           Membership[]
+  roleAssignments       RoleAssignment[]
+  journalEntries        JournalEntry[]
+  dailyReviews          DailyReview[]
+  mindsetTakeaways      MindsetTakeaway[]
+  questLogs             QuestLog[]
+  pointsLedger          PointsLedger[]
+  notificationReads     NotificationRead[]
+  messageReactions      MessageReaction[]
+  authoredNotifications Notification[]    @relation("NotificationAuthorProfile")
+  authoredMessages      TeamMessage[]     @relation("MessageAuthorProfile")
+}
+
+// Sensitive contact data — a SEPARATE table so it has a separate, permission-
+// gated read path (ORG_ADMIN: full; staff: emergency fields only — lib/authz).
+// Guardian fields exist for minors; a parent portal is a LATER initiative.
+// NO medical/allergy fields, by decision.
+model ProfileContact {
+  id        Int     @id @default(autoincrement())
+  profileId Int     @unique
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  dob          DateTime?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  zip          String?
+  phone        String?
+  email        String?
+
+  guardianName     String?
+  guardianRelation String?
+  guardianPhone    String?
+  guardianEmail    String?
+
+  emergencyName     String?
+  emergencyRelation String?
+  emergencyPhone    String?
+
+  // Audit only (plain id, no FK): who last touched it.
+  updatedByProfileId Int?
+  updatedAt          DateTime @updatedAt
+}
+
+// Participation of a person on a TEAM in a SEASON, with a role. Staff are on
+// the roster too (HEAD_COACH / ASSISTANT_COACH / GENERAL_MANAGER memberships);
+// team-scoped authority comes FROM membership. "Removing a player" ENDS the
+// membership (endedAt) — it never deletes a User or Profile.
+model Membership {
+  id        Int     @id @default(autoincrement())
+  profileId Int
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  teamId    Int
+  team      Team    @relation(fields: [teamId], references: [id])
+  seasonId  Int
+  season    Season  @relation(fields: [seasonId], references: [id])
+  role      Role // PLAYER | HEAD_COACH | ASSISTANT_COACH | GENERAL_MANAGER (never ORG_ADMIN/COACH)
+
+  jerseyNumber Int? // per-team override of Profile.jerseyNumber
+
+  startedAt        DateTime  @default(now())
+  endedAt          DateTime?
+  endedByProfileId Int? // audit only, no FK
+
+  // Team-leaderboard cache: Σ ledger rows stamped with this membership; updated
+  // in the SAME transaction as every ledger write.
+  points Int @default(0)
+
+  mindsetTakeaways MindsetTakeaway[]
+  questLogs        QuestLog[]
+  pointsLedger     PointsLedger[]
+
+  @@unique([profileId, teamId, seasonId])
+  @@index([teamId, seasonId, endedAt])
+  @@index([profileId, endedAt])
+}
+
+// A role AT a scope. V1 uses this ONLY for ORG_ADMIN at org scope (team-scoped
+// authority comes from Membership). `organizationId` is ALWAYS set — even for a
+// future team-scoped grant — so "scope is always org-bounded" is structural.
+model RoleAssignment {
+  id             Int          @id @default(autoincrement())
+  profileId      Int
+  profile        Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  role           Role
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  teamId         Int? // plain id; set only for team-scoped grants (unused in v1)
+  createdAt      DateTime     @default(now())
+  revokedAt      DateTime?
+
+  @@unique([profileId, role, organizationId, teamId])
+  @@index([profileId, revokedAt])
+}
+
 // A team is the private space a coach runs for their players.
 //
 // `parentId` is a nullable self-relation: a team can later belong to a larger
 // grouping (conference / region) so leaderboards can be scoped to any level
 // (CLAUDE.md section 3.5). It is intentionally unused in the UI for now — the
 // app shows a single-team view — but the model must never hard-code "one team".
+// STAGE 0: gains nullable organizationId (backfilled in Stage 1; parentId is
+// retired at decommission, superseded by the org anchor).
 model Team {
   id        Int      @id @default(autoincrement())
   name      String
   createdAt DateTime @default(now())
+
+  // Stage 0 (nullable → backfilled → NOT NULL at decommission).
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  memberships    Membership[]
 
   // IANA timezone for this team's calendar-day logic. Data-model prep: the app
   // currently uses the app-wide APP_TIMEZONE (lib/daykey); threading this value
@@ -125,6 +313,9 @@ model User {
 
   // Web Push subscriptions for the daily check-in reminder (player-owned).
   pushSubscriptions PushSubscription[]
+
+  // Stage 0: the permanent person this login belongs to (1:1 for now).
+  profileRecord Profile?
 }
 
 // One browser/device Web Push subscription. Endpoint is globally unique; a user
@@ -205,8 +396,14 @@ model JournalEntry {
   day        String   // calendar day "YYYY-MM-DD" (server-local time)
   createdAt  DateTime @default(now())
 
+  // Stage 0: person dimension (backfilled; becomes the key at decommission).
+  profileId Int?
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
   @@unique([userId, day])
+  @@unique([profileId, day])
   @@index([userId])
+  @@index([profileId])
 }
 
 // Did the day's plan happen? The player's own honest read.
@@ -233,8 +430,14 @@ model DailyReview {
   noteToTomorrow String?
   createdAt      DateTime      @default(now())
 
+  // Stage 0: person dimension (author-only data, same posture as JournalEntry).
+  profileId Int?
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
   @@unique([userId, day])
+  @@unique([profileId, day])
   @@index([userId])
+  @@index([profileId])
 }
 
 // One row per player per day: the "1-Minute Mindset" takeaway they wrote after
@@ -250,8 +453,18 @@ model MindsetTakeaway {
   day       String   // "YYYY-MM-DD" (server-local time)
   createdAt DateTime @default(now())
 
+  // Stage 0: person dimension + the AT-TIME membership stamp — coach visibility
+  // is scoped to staff of the team the athlete was on THAT DAY (the stamp),
+  // never past/future teams.
+  profileId    Int?
+  profile      Profile?    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  membershipId Int?
+  membership   Membership? @relation(fields: [membershipId], references: [id])
+
   @@unique([userId, day])
+  @@unique([profileId, day])
   @@index([userId])
+  @@index([membershipId])
 }
 
 // Where a points-earning event came from. New sources (quests, coach awards)
@@ -275,6 +488,15 @@ model PointsLedger {
   source    PointsSource
   createdAt DateTime     @default(now())
 
+  // Stage 0: career dimension (tier) + team dimension (leaderboards).
+  // membershipId is REQUIRED at write time for quest/coach-adjustment sources,
+  // NULLABLE for check-ins/reviews earned with no active membership (offseason
+  // — career points + streak keep working; counts toward no team board).
+  profileId    Int?
+  profile      Profile?    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  membershipId Int?
+  membership   Membership? @relation(fields: [membershipId], references: [id])
+
   // The quest completion that awarded this row (null for non-quest sources like
   // the daily check-in). 1:1 — set by logQuest, used by undoQuest. onDelete:
   // Cascade so undeleting a completion (deleting its QuestLog) removes this row.
@@ -282,6 +504,8 @@ model PointsLedger {
   questLog   QuestLog? @relation(fields: [questLogId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([profileId])
+  @@index([membershipId, createdAt]) // weekly boards
 }
 
 // Daily quests are shared, global definitions for the MVP (not team-specific).
@@ -302,7 +526,14 @@ model Quest {
   // plain one-tap quest.
   targetCount Int?
 
+  // Stage 0: quests become ORG-OWNED (global rows are cloned per org in the
+  // backfill; nullable until decommission).
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
   logs QuestLog[]
+
+  @@index([organizationId, active])
 }
 
 // Whether a quest completion has been awarded. Defaults to APPROVED so points
@@ -335,9 +566,19 @@ model QuestLog {
   // deleted with the log on undo.
   pointsLedger PointsLedger?
 
+  // Stage 0: person dimension + the membership the completion CREDITS. The
+  // [profileId, questId, day] unique = one completion per PERSON per quest per
+  // day, so context-switching can never double-dip points.
+  profileId    Int?
+  profile      Profile?    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  membershipId Int?
+  membership   Membership? @relation(fields: [membershipId], references: [id])
+
   @@unique([userId, questId, day])
+  @@unique([profileId, questId, day])
   @@index([userId])
   @@index([questId])
+  @@index([membershipId, day])
 }
 
 // A note a coach posts to their own team. Belongs to exactly one team
@@ -355,6 +596,14 @@ model Notification {
   isTimeout Boolean  @default(false)
   createdAt DateTime @default(now())
 
+  // Stage 0: author = person + ROLE SNAPSHOT for display ("Head Coach") —
+  // snapshot instead of a membership FK so an ORG_ADMIN (no membership) can
+  // post and display stays stable if their role later changes. SetNull so
+  // posts survive a (rare, operator-only) person deletion.
+  authorProfileId Int?
+  authorProfile   Profile? @relation("NotificationAuthorProfile", fields: [authorProfileId], references: [id], onDelete: SetNull)
+  authorRole      Role?
+
   reads NotificationRead[]
 
   @@index([teamId])
@@ -370,7 +619,12 @@ model NotificationRead {
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   readAt         DateTime     @default(now())
 
+  // Stage 0: reads are per-person.
+  profileId Int?
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
   @@unique([notificationId, userId])
+  @@unique([notificationId, profileId])
   @@index([userId])
 }
 
@@ -400,6 +654,11 @@ model TeamMessage {
   replies   TeamMessage[] @relation("MessageReplies")
   createdAt DateTime    @default(now())
   deletedAt DateTime?
+
+  // Stage 0: author person + role snapshot (same reasoning as Notification).
+  authorProfileId Int?
+  authorProfile   Profile? @relation("MessageAuthorProfile", fields: [authorProfileId], references: [id], onDelete: SetNull)
+  authorRole      Role?
 
   reactions MessageReaction[]
 
@@ -435,6 +694,11 @@ model MessageReaction {
   reactionType ReactionType
   createdAt    DateTime     @default(now())
 
+  // Stage 0: reactions are per-person.
+  profileId Int?
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
   @@unique([messageId, userId])
+  @@unique([messageId, profileId])
   @@index([messageId])
 }

@@ -1,11 +1,11 @@
 import { impersonate, stopImpersonating } from "@/app/dev/actions";
 
-type Role = "COACH" | "PLAYER";
-
+// Widened to string for the hierarchy rebuild (the Role enum now carries the
+// new scoped roles too); this component only renders a label from it.
 type SwitcherTeam = {
   id: number;
   name: string;
-  users: { id: number; name: string; role: Role }[];
+  users: { id: number; name: string; role: string }[];
 };
 
 // Dev-only widget (rendered only when NODE_ENV !== "production"; see layout).
