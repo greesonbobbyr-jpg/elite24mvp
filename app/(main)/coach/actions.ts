@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { can } from "@/lib/authz";
-import { getCurrentUser } from "@/lib/session";
 import { performAdjustPoints } from "@/lib/data/points";
 
 export type CoachActionState = { error?: string; ok?: boolean };
@@ -19,8 +18,17 @@ export async function adjustPoints(
   _prev: CoachActionState,
   formData: FormData,
 ): Promise<CoachActionState> {
-  const coach = await getCurrentUser();
-  if (!coach || coach.role !== "COACH") return { error: "Coaches only." };
+  const ctx = await getCurrentContext();
+  const coach = ctx?.user;
+  // Matrix (4e): adjust_points is HEAD_COACH / ORG_ADMIN only — assistants
+  // and GMs are denied. Legacy role check for pre-backfill logins only.
+  const scope = ctx ? actingScope(ctx) : null;
+  const mayAdjust = ctx
+    ? scope
+      ? can(ctx, "adjust_points", scope)
+      : coach!.role === "COACH"
+    : false;
+  if (!ctx || !coach || !mayAdjust) return { error: "You can't adjust points." };
 
   const playerId = Number.parseInt(String(formData.get("playerId") ?? ""), 10);
   if (!Number.isInteger(playerId)) return { error: "Invalid player." };
@@ -38,17 +46,26 @@ export async function adjustPoints(
     return { error: "A reason is required to remove points." };
   }
 
-  // Team-scoped: only a PLAYER on the coach's own team.
+  // Team-scoped (4e): a PLAYER with an ACTIVE membership on the acting team
+  // (legacy teamId equality only for pre-backfill targets).
   const player = await prisma.user.findUnique({
     where: { id: playerId },
-    include: { profile: true },
+    include: {
+      profile: true,
+      profileRecord: {
+        select: {
+          memberships: {
+            where: { teamId: coach.teamId, endedAt: null },
+            select: { id: true },
+          },
+        },
+      },
+    },
   });
-  if (
-    !player ||
-    player.role !== "PLAYER" ||
-    player.teamId !== coach.teamId ||
-    !player.profile
-  ) {
+  const onRoster = player?.profileRecord
+    ? player.profileRecord.memberships.length > 0
+    : player?.teamId === coach.teamId;
+  if (!player || player.role !== "PLAYER" || !player.profile || !onRoster) {
     return { error: "Not a player on your team." };
   }
 
@@ -59,9 +76,9 @@ export async function adjustPoints(
 
   const finalReason = reason || "Coach bonus"; // additions may omit a reason
 
-  // Ledger row + all caches in ONE transaction (lib/data/points — dual-writes
-  // the target's profileId/membershipId since Stage 3).
-  await performAdjustPoints({ id: player.id, teamId: player.teamId }, amount, finalReason);
+  // Ledger row + all caches in ONE transaction (lib/data/points — credits the
+  // membership on the ADJUSTING STAFF'S team, the acting scope of this action).
+  await performAdjustPoints({ id: player.id, teamId: coach.teamId }, amount, finalReason);
 
   revalidatePath(`/coach/player/${playerId}`);
   revalidatePath("/");

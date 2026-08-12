@@ -3,8 +3,9 @@
 import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentContext } from "@/lib/context";
-import { getCurrentUser } from "@/lib/session";
+import { actingScope, getCurrentContext, type Ctx } from "@/lib/context";
+import { can, type Action } from "@/lib/authz";
+import { endMembershipForUser } from "@/lib/data/memberships";
 import { uniqueJoinCode } from "@/lib/joincode";
 import { readBranding, validateImageDataUrl } from "@/lib/branding";
 import { hashPassword } from "@/lib/password";
@@ -12,11 +13,19 @@ import { storeImage } from "@/lib/photoStore";
 
 export type TeamSettingsState = { error?: string; ok?: boolean };
 
-// Regenerate the coach's OWN team join code (coach-only; team from the session,
-// never the client). Old code stops working immediately.
+// Matrix guard for this file's actions (4e) — legacy role check remains only
+// for pre-backfill logins (dies at Stage 6).
+function staffCan(ctx: Ctx, action: Action): boolean {
+  const scope = actingScope(ctx);
+  return scope ? can(ctx, action, scope) : ctx.user.role === "COACH";
+}
+
+// Regenerate the coach's OWN team join code (team_settings; team from the
+// session, never the client). Old code stops working immediately.
 export async function regenerateJoinCode() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "COACH") return;
+  const ctx = await getCurrentContext();
+  if (!ctx || !staffCan(ctx, "manage_join_code")) return;
+  const user = ctx.user;
   const joinCode = await uniqueJoinCode();
   await prisma.team.update({ where: { id: user.teamId }, data: { joinCode } });
   revalidatePath("/team");
@@ -29,7 +38,9 @@ export async function updateTeam(
 ): Promise<TeamSettingsState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "COACH") return { error: "Coaches only." };
+  if (!ctx || !user || !staffCan(ctx, "team_settings")) {
+    return { error: "Head coach only." };
+  }
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Team name can't be empty." };
 
@@ -97,75 +108,63 @@ export type RosterActionState = {
   resetPassword?: string;
 };
 
-// Resolve a roster target safely: must be a PLAYER on the coach's OWN team.
+// Resolve a roster target safely: a PLAYER with an ACTIVE membership on the
+// coach's OWN team (4e — membership is the roster truth; legacy teamId
+// equality only for pre-backfill targets, dies at Stage 6).
 async function resolveRosterTarget(playerIdRaw: unknown, coachTeamId: number) {
   const playerId = Number.parseInt(String(playerIdRaw ?? ""), 10);
   if (!Number.isInteger(playerId)) return null;
   const target = await prisma.user.findUnique({
     where: { id: playerId },
-    select: { id: true, name: true, role: true, teamId: true },
+    select: {
+      id: true,
+      name: true,
+      role: true,
+      teamId: true,
+      profileRecord: {
+        select: {
+          memberships: {
+            where: { teamId: coachTeamId, endedAt: null },
+            select: { id: true },
+          },
+        },
+      },
+    },
   });
-  if (!target || target.role !== "PLAYER" || target.teamId !== coachTeamId) {
-    return null;
-  }
-  return target;
+  if (!target || target.role !== "PLAYER") return null;
+  const onRoster = target.profileRecord
+    ? target.profileRecord.memberships.length > 0
+    : target.teamId === coachTeamId;
+  return onRoster ? target : null;
 }
 
-// HARD delete — for players who have genuinely left the team. Cascades remove
-// their profile, journal, points, quest logs, reviews, board messages, and
-// reactions (the confirm UI says so explicitly). Soft-delete/archive is a
-// deliberate later step.
+// REMOVE = END THE MEMBERSHIP (Stage 4e; locked decision #2). NOTHING is
+// deleted: the player keeps their login, journal, streaks, ledger, and career
+// points, and simply leaves this team's roster and boards. Re-joining with
+// the team code restores them (same profile). The old hard delete is GONE
+// from every org screen — person deletion is an operator-only script.
 export async function removePlayer(
   _prev: RosterActionState,
   formData: FormData,
 ): Promise<RosterActionState> {
   const ctx = await getCurrentContext();
   const coach = ctx?.user;
-  if (!ctx || !coach || coach.role !== "COACH") return { error: "Coaches only." };
+  if (!ctx || !coach || !staffCan(ctx, "end_membership")) {
+    return { error: "You can't remove players." };
+  }
 
   const target = await resolveRosterTarget(formData.get("playerId"), coach.teamId);
   if (!target) return { error: "Not a player on your team." };
 
-  // Legacy hard delete, unchanged in effect — plus dual-write consistency for
-  // the new world in the SAME transaction: the Profile survives (userId is
-  // set null by FK), so END its memberships and re-true the points caches,
-  // because the user cascade just deleted the ledger rows they summed.
-  // (Stage 4e replaces this surface with endMembership proper.)
-  await prisma.$transaction(async (tx) => {
-    const profile = await tx.profile.findUnique({
-      where: { userId: target.id },
-      select: { id: true },
-    });
-    await tx.user.delete({ where: { id: target.id } });
-    if (profile) {
-      await tx.membership.updateMany({
-        where: { profileId: profile.id, endedAt: null },
-        data: { endedAt: new Date(), endedByProfileId: ctx.profile?.id ?? null },
-      });
-      const career = await tx.pointsLedger.aggregate({
-        where: { profileId: profile.id },
-        _sum: { amount: true },
-      });
-      await tx.profile.update({
-        where: { id: profile.id },
-        data: { careerPoints: career._sum.amount ?? 0 },
-      });
-      const memberships = await tx.membership.findMany({
-        where: { profileId: profile.id },
-        select: { id: true },
-      });
-      for (const m of memberships) {
-        const sum = await tx.pointsLedger.aggregate({
-          where: { membershipId: m.id },
-          _sum: { amount: true },
-        });
-        await tx.membership.update({
-          where: { id: m.id },
-          data: { points: sum._sum.amount ?? 0 },
-        });
-      }
-    }
-  });
+  const result = await endMembershipForUser(
+    target.id,
+    coach.teamId,
+    ctx.profile?.id ?? null,
+  );
+  if (!result.ok) {
+    // Pre-backfill data only — nothing is ever deleted as a "fallback".
+    return { error: "This player's roster record isn't migrated yet — try again after the next sync." };
+  }
   revalidatePath("/team");
   revalidatePath("/");
   revalidatePath("/leaderboard");
@@ -185,8 +184,13 @@ export async function resetPlayerPassword(
   _prev: RosterActionState,
   formData: FormData,
 ): Promise<RosterActionState> {
-  const coach = await getCurrentUser();
-  if (!coach || coach.role !== "COACH") return { error: "Coaches only." };
+  const ctx = await getCurrentContext();
+  const coach = ctx?.user;
+  // Account administration rides with team_settings (HC/ORG_ADMIN) — the
+  // matrix has no dedicated row; assistants/GMs may not reset credentials.
+  if (!ctx || !coach || !staffCan(ctx, "team_settings")) {
+    return { error: "Head coach only." };
+  }
 
   const target = await resolveRosterTarget(formData.get("playerId"), coach.teamId);
   if (!target) return { error: "Not a player on your team." };

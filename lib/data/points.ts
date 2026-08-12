@@ -294,9 +294,11 @@ export async function performUndoQuest(ctx: WriteCtx, questId: number, day: stri
   });
 }
 
-// Coach adjustment (+/-) targeting a player. membershipId REQUIRED (team-
-// context source): stamps only when the TARGET has a profile AND an active
-// membership on their team; a legacy-only target gets the legacy write alone.
+// Coach adjustment (+/-) targeting a player's MEMBERSHIP on the given team
+// (4e: the adjusting staff's acting team — for a two-team athlete, only that
+// team's membership is credited). membershipId REQUIRED (team-context
+// source): stamps only when the TARGET has a profile AND an active membership
+// there; a legacy-only target gets the legacy write alone.
 export async function performAdjustPoints(
   target: { id: number; teamId: number },
   amount: number,

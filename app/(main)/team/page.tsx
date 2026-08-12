@@ -1,25 +1,51 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { actingScope, getCurrentContext } from "@/lib/context";
+import { can } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { JoinCodeCard } from "./JoinCodeCard";
 import { TeamSettingsForm } from "./TeamSettingsForm";
 import { RosterManager } from "./RosterManager";
 
-// Coach-only team settings: the join code (copy / regenerate) + team name and
-// branding. Team comes from the session (coach's own team) — never the client,
-// so a coach can only ever see/edit their own team.
+// Staff team page (4e: matrix-gated per section). ALL staff see the roster
+// (view_roster); the join code, team settings, and password resets are
+// team_settings (HEAD_COACH / ORG_ADMIN); the Remove control is
+// end_membership (HC / GM / ORG_ADMIN — not assistants). Team comes from the
+// session — a staffer only ever sees/edits their own team.
 export default async function TeamSettingsPage() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "COACH") redirect("/");
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user) redirect("/");
+
+  const scope = actingScope(ctx);
+  const isStaff = scope ? can(ctx, "view_roster", scope) && user.role === "COACH" : user.role === "COACH";
+  if (!isStaff) redirect("/");
+  const canManageSettings = scope ? can(ctx, "team_settings", scope) : true;
+  const canEndMembership = scope ? can(ctx, "end_membership", scope) : true;
 
   const team = await prisma.team.findUnique({ where: { id: user.teamId } });
   if (!team) redirect("/");
 
-  const players = await prisma.user.findMany({
-    where: { teamId: user.teamId, role: "PLAYER" },
-    select: { id: true, name: true, username: true },
-    orderBy: { name: "asc" },
+  // Roster = ACTIVE PLAYER memberships in the current season (4e); legacy
+  // user roster only for a pre-backfill team (dies at Stage 6).
+  const memberships = await prisma.membership.findMany({
+    where: { teamId: user.teamId, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
+    select: { profile: { select: { userId: true, name: true, user: { select: { username: true } } } } },
+    orderBy: { profile: { name: "asc" } },
   });
+  const players =
+    memberships.length > 0
+      ? memberships
+          .filter((m) => m.profile.userId != null)
+          .map((m) => ({
+            id: m.profile.userId!,
+            name: m.profile.name,
+            username: m.profile.user?.username ?? null,
+          }))
+      : await prisma.user.findMany({
+          where: { teamId: user.teamId, role: "PLAYER" },
+          select: { id: true, name: true, username: true },
+          orderBy: { name: "asc" },
+        });
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
@@ -30,27 +56,33 @@ export default async function TeamSettingsPage() {
         </h1>
       </header>
 
-      <JoinCodeCard code={team.joinCode} />
+      {canManageSettings && <JoinCodeCard code={team.joinCode} />}
 
-      {/* Roster — remove departed players / reset forgotten passwords */}
+      {/* Roster — all staff view; controls per the matrix */}
       <section>
         <p className="e24-eyebrow mb-2">Roster · {players.length}</p>
-        <RosterManager players={players} />
-      </section>
-
-      <section>
-        <p className="e24-eyebrow mb-2">Team details</p>
-        <TeamSettingsForm
-          team={{
-            name: team.name,
-            logoUrl: team.logoUrl,
-            primaryColor: team.primaryColor,
-            secondaryColor: team.secondaryColor,
-            checkInReminderHour: team.checkInReminderHour,
-          }}
-          coachPhotoUrl={user.photoUrl}
+        <RosterManager
+          players={players}
+          canRemove={canEndMembership}
+          canResetPassword={canManageSettings}
         />
       </section>
+
+      {canManageSettings && (
+        <section>
+          <p className="e24-eyebrow mb-2">Team details</p>
+          <TeamSettingsForm
+            team={{
+              name: team.name,
+              logoUrl: team.logoUrl,
+              primaryColor: team.primaryColor,
+              secondaryColor: team.secondaryColor,
+              checkInReminderHour: team.checkInReminderHour,
+            }}
+            coachPhotoUrl={user.photoUrl}
+          />
+        </section>
+      )}
     </main>
   );
 }

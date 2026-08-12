@@ -119,10 +119,12 @@ export function createMyReviewOp(
 // every select below is content-free (never `reflection`, `learned`,
 // `noteToTomorrow`, or `outcome`).
 
-// Check-in times for a whole team on one day (roster status column).
-export function checkInTimesForTeam(teamId: number, day: string) {
+// Check-in times for a set of players on one day (roster status column —
+// keyed by the ACTIVE roster's user ids since 4e, so a removed player's
+// activity never counts against a team they're no longer on).
+export function checkInTimesForUsers(userIds: number[], day: string) {
   return prisma.journalEntry.findMany({
-    where: { day, user: { teamId } },
+    where: { day, userId: { in: userIds } },
     select: { userId: true, createdAt: true },
   });
 }
