@@ -9,11 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **3 of 6 DONE** — dual-write live in branch code (`893ac1b`; Stage 2 `53777c7`; Stage 1 in prod: `6dcf636`/`466d1c5`/`3cf226c`) |
+| Stage | **4a of 6 DONE in branch** (`e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod: `6dcf636`/`466d1c5`/`3cf226c`) — prod quest flip awaits the merge runbook |
 | Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Branch writers now stamp both worlds in the same transactions (nothing deployed until merge) |
 | Tests | 123 passing (vitest): matrix, cross-org, acting, season invariant, shim identity, + end-to-end dual-write (check-in / quest / undo / measured / review / adjustments / offseason) asserting all three cache==Σledger invariants after every step |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | Stage 4 — surface-by-surface cutover (4a person-scope first, with the quest converge step) |
+| Next | Stage 4b — Brand/photo cutover (ships the visibility tightening). Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
 
 ---
 
@@ -317,12 +317,15 @@ cache==Σledger invariants after every step. Audit: no legacy query filters on a
 stamped column; the only new rows in legacy-queried tables are inactive signup clones.
 
 ### Stage 4 — Surface-by-surface cutover (easiest → hardest)
-- **4a** Person-scope: journal, check-in, Pro Review, mindset, quests → ctx + the
-  author-only reflections module. **Includes the quest converge step** (one scripted
-  operation shipped with this cutover): re-run the backfill to stamp/re-point rows the
-  legacy write path created since Stage 1, flip org clones `active=true` + globals
-  `active=false`, and move remaining today-logs to the clones — sequenced with the deploy
-  so neither read path ever sees a mixed state.
+- **4a** ✅ DONE in branch (`e5de7e6`) — home/quests/journal on getCurrentContext;
+  `listActiveQuestsForOrg` with a legacy-global fallback that makes the new code correct
+  in BOTH database states (no deploy/flip race — dies at Stage 6); org-bound guard on
+  quest actions; `scripts/converge-quests.ts`: the atomic, state-aware, idempotent flip
+  (logs re-point + clones inherit actives + globals retire, ONE transaction) with a
+  symmetric one-command `--rollback`. Round-trip proven on local PG, including the
+  ordering fact that a legacy-shape read post-flip shows every org's clones — hence the
+  runbook order: backfill re-run → **merge+deploy** → converge flip → verify. The prod
+  flip runs only on owner approval of that runbook.
 - **4b** Brand / photo route / identity chip → profile reads; team-equality checks become
   org-bounded `can()` checks; **implements the visibility tightening** (Dream + stats no
   longer teammate-visible; card info only).
