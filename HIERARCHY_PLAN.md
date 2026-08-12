@@ -9,11 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **4e of 6 DONE in branch** (`1bfa731`; 4d `d53629b`; 4c `36773fe`; 4b `a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence once surfaces are built and proven together (owner ruling) |
+| Stage | **STAGE 4 COMPLETE in branch** (4f `5a552aa`; 4e `1bfa731`; 4d `d53629b`; 4c `36773fe`; 4b `a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence (owner ruling) |
 | Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Branch writers now stamp both worlds in the same transactions (nothing deployed until merge) |
 | Tests | 123 passing (vitest): matrix, cross-org, acting, season invariant, shim identity, + end-to-end dual-write (check-in / quest / undo / measured / review / adjustments / offseason) asserting all three cache==Σledger invariants after every step |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | Stage 4f — signup / join / onboarding (returning-athlete path). Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
+| Next | Stage 5 — seed v2 + dev switcher (AC/GM/org-admin/two-team fixtures), then the merge runbook, then Stage 6 decommission after soak |
 
 ---
 
@@ -356,10 +356,17 @@ stamped column; the only new rows in legacy-queried tables are inactive signup c
   team's membership (two-team proven). Coach rosters/drill-in from active memberships;
   takeaway at-time scoping + view_takeaways gate live (proven both directions);
   HC/AC/GM UI + server guards per matrix (all denials proven).
-- **4f** Signup / join / onboarding → signup creates User+Profile+Org+Season+Team+
-  HEAD_COACH membership+ORG_ADMIN grant; join = membership into current season, with the
-  **returning-athlete path** (existing login joins a new team from inside the app); setup
-  gate for everyone; "no current season" join error.
+- **4f** ✅ DONE in branch (`5a552aa`) — signup already created the full world (Stage 3);
+  join resolves the code into the CURRENT season with a clear "ask your coach" error when
+  none exists (validated BEFORE account creation). **Returning athlete** shipped: a
+  rosterless player joins by code from Home — same team+season reactivates the exact
+  membership (board points return), otherwise fresh membership (career/journal carry).
+  **Season rollover** (E.9): org-admin surface; one transaction carries staff, retires
+  players to re-join by code (all proven). Re-home closes the 4e residual (rosterless
+  players redirected off team surfaces; team writes blocked). Setup gate reads
+  Profile.setupCompletedAt (staff complete at signup — recorded delta: no separate staff
+  confirm screen). Fallback hardening: legacy rosters only for teams with NO memberships
+  at all (a rollover-emptied roster is genuinely empty — caught by test).
 
 ### Stage 5 — Seed v2 + dev switcher
 Orgs/seasons/memberships/grants incl. an ASSISTANT_COACH, a GM, an org-admin-without-
