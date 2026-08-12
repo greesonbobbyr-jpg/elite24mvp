@@ -50,7 +50,16 @@ dbDescribe("compat shim identity", () => {
     const { prisma } = await import("../lib/prisma");
     const { resolveContextForUser } = await import("../lib/context");
 
-    const coach = await prisma.user.findFirst({ where: { role: "COACH" } });
+    // A coach who is HC + ORG_ADMIN (seed v2 also has AC/GM/org-admin staff).
+    const coach = await prisma.user.findFirst({
+      where: {
+        role: "COACH",
+        profileRecord: {
+          roleAssignments: { some: { role: "ORG_ADMIN", revokedAt: null } },
+          memberships: { some: { role: "HEAD_COACH", endedAt: null } },
+        },
+      },
+    });
     expect(coach).not.toBeNull();
     const ctx = await resolveContextForUser(coach!.id);
     expect(ctx!.profile).not.toBeNull();

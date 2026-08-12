@@ -38,16 +38,21 @@ dbDescribe("Stage 4c board + notifications", () => {
     return { team, season: team.organization!.seasons[0] };
   }
 
-  it("receipts: membership roster == legacy player roster for existing data", async () => {
+  it("receipts: Y == the team's ACTIVE current-season player memberships", async () => {
     const { prisma } = await import("../lib/prisma");
     const { getTeamReadStatus } = await import("../lib/notifications");
     const { team } = await teamA();
 
-    const legacyPlayers = await prisma.user.count({ where: { teamId: team.id, role: "PLAYER" } });
+    // (Seed v2 diverges from the legacy user roster BY DESIGN: an ended
+    // membership stays a user on the team; a two-team athlete is one user
+    // with two memberships. The membership roster is the truth.)
+    const activeMembers = await prisma.membership.count({
+      where: { teamId: team.id, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
+    });
     const status = await getTeamReadStatus(team.id);
     expect(status.length).toBeGreaterThan(0);
     for (const n of status) {
-      expect(n.totalPlayers).toBe(legacyPlayers);
+      expect(n.totalPlayers).toBe(activeMembers);
       expect(n.readCount + n.notYet.length).toBe(n.totalPlayers);
     }
   });
@@ -216,9 +221,17 @@ dbDescribe("Stage 4c board + notifications", () => {
       expect(can(hc.ctx, "post_special_message", hcScope)).toBe(true);
       expect(can(hc.ctx, "moderate_board", hcScope)).toBe(true);
 
-      // Seeded real coach (HEAD_COACH membership + ORG_ADMIN grant) — full set.
+      // Seeded real head coach (HEAD_COACH membership + ORG_ADMIN grant) —
+      // full set. (Seed v2 also has an AC/GM on this team — filter by grant.)
       const realCoach = await prisma.user.findFirstOrThrow({
-        where: { teamId: team.id, role: "COACH", profileRecord: { isNot: null } },
+        where: {
+          teamId: team.id,
+          role: "COACH",
+          profileRecord: {
+            roleAssignments: { some: { role: "ORG_ADMIN", revokedAt: null } },
+            memberships: { some: { teamId: team.id, endedAt: null } },
+          },
+        },
       });
       const coachCtx = (await resolveContextForUser(realCoach.id))!;
       const coachScope = actingScope(coachCtx)!;

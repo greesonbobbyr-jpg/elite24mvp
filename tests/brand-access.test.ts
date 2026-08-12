@@ -24,16 +24,17 @@ dbDescribe("Stage 4b brand/photo access", () => {
     await prisma.$disconnect();
   });
 
-  // Seeded world: two teams, each its own org, coach + players per team.
+  // Seeded world: two teams from DIFFERENT orgs (seed v2's Mustang org has
+  // two teams — cross-ORG denial must be tested across orgs, not teams).
   async function world() {
     const { prisma } = await import("../lib/prisma");
-    const teams = await prisma.team.findMany({
+    const all = await prisma.team.findMany({
       where: { organizationId: { not: null } },
       orderBy: { id: "asc" },
-      take: 2,
     });
-    expect(teams.length).toBe(2);
-    const [teamA, teamB] = teams;
+    const teamA = all[0];
+    const teamB = all.find((t) => t.organizationId !== teamA.organizationId)!;
+    expect(teamB).toBeDefined();
     const coachA = await prisma.user.findFirstOrThrow({
       where: { teamId: teamA.id, role: "COACH" },
     });

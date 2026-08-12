@@ -3,7 +3,11 @@ import { Roboto, Barlow_Semi_Condensed } from "next/font/google";
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/session";
-import { DevUserSwitcher } from "@/app/components/DevUserSwitcher";
+import { roleLabel } from "@/lib/format";
+import {
+  DevUserSwitcher,
+  type SwitcherOrg,
+} from "@/app/components/DevUserSwitcher";
 import { HomeFooter } from "@/app/components/HomeFooter";
 import { InstallBanner } from "@/app/components/InstallBanner";
 
@@ -42,24 +46,60 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
-// Renders the dev-only user switcher. Never shown in production (section 7).
-// Wrapped in try/catch so a not-yet-migrated database doesn't crash the app.
+// Renders the dev-only user switcher, grouped ORG → TEAM → MEMBER (Stage 5).
+// Never shown in production (section 7). Wrapped in try/catch so a
+// not-yet-migrated database doesn't crash the app.
 async function DevSwitcherSlot() {
   if (process.env.NODE_ENV === "production") return null;
   try {
-    const [teams, currentUserId] = await Promise.all([
-      prisma.team.findMany({
+    const [rawOrgs, currentUserId] = await Promise.all([
+      prisma.organization.findMany({
         orderBy: { id: "asc" },
         include: {
-          users: {
-            orderBy: [{ role: "asc" }, { name: "asc" }],
-            select: { id: true, name: true, role: true },
+          roleAssignments: {
+            where: { role: "ORG_ADMIN", revokedAt: null },
+            include: { profile: { select: { userId: true, name: true, memberships: { where: { endedAt: null, season: { isCurrent: true } }, select: { id: true } } } } },
+          },
+          teams: {
+            orderBy: { id: "asc" },
+            include: {
+              memberships: {
+                where: { endedAt: null, season: { isCurrent: true } },
+                orderBy: [{ role: "asc" }, { id: "asc" }],
+                include: { profile: { select: { userId: true, name: true } } },
+              },
+            },
           },
         },
       }),
       getCurrentUserId(),
     ]);
-    return <DevUserSwitcher teams={teams} currentUserId={currentUserId} />;
+    const orgs: SwitcherOrg[] = rawOrgs.map((o) => ({
+      id: o.id,
+      name: o.name,
+      // Org admins WITHOUT a roster spot appear at the org level.
+      admins: o.roleAssignments
+        .filter((r) => r.profile.userId != null && r.profile.memberships.length === 0)
+        .map((r) => ({
+          userId: r.profile.userId!,
+          name: r.profile.name,
+          label: "Org Admin",
+          membershipId: null,
+        })),
+      teams: o.teams.map((t) => ({
+        id: t.id,
+        name: t.name,
+        members: t.memberships
+          .filter((m) => m.profile.userId != null)
+          .map((m) => ({
+            userId: m.profile.userId!,
+            name: m.profile.name,
+            label: roleLabel(m.role) ?? "Player",
+            membershipId: m.id,
+          })),
+      })),
+    }));
+    return <DevUserSwitcher orgs={orgs} currentUserId={currentUserId} />;
   } catch {
     return null;
   }

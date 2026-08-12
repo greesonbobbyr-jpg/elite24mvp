@@ -5,6 +5,7 @@ import { getActiveTimeout, countUnreadForPlayer } from "@/lib/notifications";
 import { TimeoutTakeover } from "./TimeoutTakeover";
 import { NavMenu } from "./NavMenu";
 import { IdentityChip } from "./IdentityChip";
+import { TeamSwitcher } from "./TeamSwitcher";
 import { PlayerTabBar } from "./PlayerTabBar";
 import { CoachTabBar } from "./CoachTabBar";
 
@@ -110,6 +111,17 @@ export default async function MainLayout({
         {/* right: hamburger menu */}
         {user ? <NavMenu links={links} /> : <span />}
       </header>
+      {/* Context switcher — only for a person with 2+ active memberships. */}
+      {ctx && ctx.memberships.length > 1 && (
+        <TeamSwitcher
+          memberships={ctx.memberships.map((m) => ({
+            id: m.id,
+            role: m.role,
+            team: { name: m.team.name },
+          }))}
+          actingMembershipId={ctx.membership?.id ?? null}
+        />
+      )}
       {children}
       {/* Role bottom tab bars (z-40, below the TIME OUT takeover). */}
       {user?.role === "PLAYER" && <PlayerTabBar />}

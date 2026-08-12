@@ -87,13 +87,21 @@ dbDescribe("Stage 4d leaderboards + points economy", () => {
     return { user, profile, membership };
   }
 
-  it("existing data: membership board == legacy board (ids, points, ranks)", async () => {
+  it("existing data: membership board == legacy board on a 1:1 team (ids, points, ranks)", async () => {
     const { prisma } = await import("../lib/prisma");
     const { getTeamRanking } = await import("../lib/leaderboard");
-    const team = await prisma.team.findFirstOrThrow({
-      where: { organizationId: { notIn: [w.orgA, w.orgB] }, NOT: { organizationId: null } },
-      orderBy: { id: "asc" },
-    });
+    // Seed v2 deliberately diverges on the Mustang org (ended membership,
+    // two-team athlete) — the 1:1 equivalence claim holds on a CLEAN team,
+    // which mirrors what production data looks like (single-team org, no
+    // ended memberships): the seeded OKC Thunder.
+    const cleanOrg = (
+      await prisma.organization.findMany({
+        where: { id: { notIn: [w.orgA, w.orgB] } },
+        include: { _count: { select: { teams: true } }, teams: { select: { id: true } } },
+      })
+    ).find((o) => o._count.teams === 1);
+    expect(cleanOrg).toBeDefined();
+    const team = await prisma.team.findUniqueOrThrow({ where: { id: cleanOrg!.teams[0].id } });
     const board = await getTeamRanking(team.id);
     const legacy = await prisma.user.findMany({
       where: { teamId: team.id, role: "PLAYER" },
