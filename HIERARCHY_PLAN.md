@@ -9,11 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **4d of 6 DONE in branch** (`d53629b`; 4c `36773fe`; 4b `a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence once surfaces are built and proven together (owner ruling) |
+| Stage | **4e of 6 DONE in branch** (`1bfa731`; 4d `d53629b`; 4c `36773fe`; 4b `a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence once surfaces are built and proven together (owner ruling) |
 | Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Branch writers now stamp both worlds in the same transactions (nothing deployed until merge) |
 | Tests | 123 passing (vitest): matrix, cross-org, acting, season invariant, shim identity, + end-to-end dual-write (check-in / quest / undo / measured / review / adjustments / offseason) asserting all three cache==Σledger invariants after every step |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | Stage 4e — coach surfaces + matrix live (endMembership replaces the hard delete). Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
+| Next | Stage 4f — signup / join / onboarding (returning-athlete path). Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
 
 ---
 
@@ -348,9 +348,14 @@ stamped column; the only new rows in legacy-queried tables are inactive signup c
   (two-org athlete proven: per-org boards + combined tier); offseason NULL-membership
   rows count toward career and NO board (proven); boards keyed by acting team.
   4c follow-up shipped: the TIME OUT toggle is hidden without send_timeout.
-- **4e** Coach surfaces + matrix live → roster views via memberships; adjustPoints targets
-  a membership; **Remove becomes endMembership** (the destructive fix); HC/AC/GM
-  differentiated UI.
+- **4e** ✅ DONE in branch (`1bfa731`) — **Remove becomes endMembership** (two columns,
+  one row; two-team-athlete isolation proven; a source-scan test asserts no user/profile
+  delete exists in app/ or lib/). Re-join: same team+season REACTIVATES the membership
+  (board points return — flagged deviation from "fresh", forced by the unique slot + sum
+  invariant); different team/season = fresh membership. adjustPoints credits the acting
+  team's membership (two-team proven). Coach rosters/drill-in from active memberships;
+  takeaway at-time scoping + view_takeaways gate live (proven both directions);
+  HC/AC/GM UI + server guards per matrix (all denials proven).
 - **4f** Signup / join / onboarding → signup creates User+Profile+Org+Season+Team+
   HEAD_COACH membership+ORG_ADMIN grant; join = membership into current season, with the
   **returning-athlete path** (existing login joins a new team from inside the app); setup
