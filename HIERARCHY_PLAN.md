@@ -9,11 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **2 of 6 DONE** — choke point v2 built + tested (`53777c7`; Stage 1 in prod: `6dcf636`/`466d1c5`/`3cf226c`) |
-| Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Stage 2 wrote NO data — code only |
-| Tests | 115 passing (vitest): full §2.10 matrix, cross-org denial, acting fallbacks, season invariant, per-user shim identity. Reflections boundary enforced on every build (prebuild gate) |
+| Stage | **3 of 6 DONE** — dual-write live in branch code (`893ac1b`; Stage 2 `53777c7`; Stage 1 in prod: `6dcf636`/`466d1c5`/`3cf226c`) |
+| Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Branch writers now stamp both worlds in the same transactions (nothing deployed until merge) |
+| Tests | 123 passing (vitest): matrix, cross-org, acting, season invariant, shim identity, + end-to-end dual-write (check-in / quest / undo / measured / review / adjustments / offseason) asserting all three cache==Σledger invariants after every step |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | Stage 3 — dual-write (new columns stamped alongside legacy in every write path) |
+| Next | Stage 4 — surface-by-surface cutover (4a person-scope first, with the quest converge step) |
 
 ---
 
@@ -297,9 +297,24 @@ code map, cross-org denial before role logic, acting-membership fallbacks, the
 one-current-season invariant (sweep + rollover ×3), shim identity. Stage 2 wrote ZERO
 database rows (the Stage-1 incident class is structurally impossible here).
 
-### Stage 3 — Dual-write
-Every write path stamps new columns AND legacy ones; points transactions update legacy
-cache + careerPoints + membership.points together. Behavior identical; data converges.
+### Stage 3 — Dual-write ✅ DONE (`893ac1b`)
+**As built:** `lib/data/points.ts` holds the points write paths — extracted VERBATIM from
+the actions and extended so every transaction stamps `profileId`/`membershipId` and
+updates PlayerProfile.points + Profile.careerPoints + Membership.points in the SAME
+commit; undo reverses by the ledger row's OWN stamps. Offseason ruling applied
+(check-in/review: profile stamp + nullable membership; quests/adjustments:
+all-or-nothing). Stamps across every writer: reflections creates, takeaway (at-time
+membership; updates fill pre-Stage-3 rows), notification/message author snapshots,
+reads, reactions, onboarding/brand/coach-photo Profile mirrors. **join** now creates
+Profile + current-season Membership with the login; **signup** creates the whole world
+in both models (org, season, team, profile, HEAD_COACH membership, ORG_ADMIN grant,
+quest clones INACTIVE — the Stage 1 lesson applied at the source). **removePlayer**
+(still the legacy hard delete until 4e) now also ends the target's memberships and
+re-trues the new caches after the ledger cascade, in one transaction. Legacy-only
+logins (pre-Stage-3 signups) stamp nothing and converge at the 4a backfill re-run.
+End-to-end test suite drives the real write paths and asserts all three
+cache==Σledger invariants after every step. Audit: no legacy query filters on any
+stamped column; the only new rows in legacy-queried tables are inactive signup clones.
 
 ### Stage 4 — Surface-by-surface cutover (easiest → hardest)
 - **4a** Person-scope: journal, check-in, Pro Review, mindset, quests → ctx + the
@@ -345,8 +360,9 @@ rename `User.profileRecord`→`profile`; retire legacy `COACH` enum value.
   its cutover stage explicitly changes behavior.
 
 ## 8. OPEN ITEMS
-1. **NOW:** build Stage 3 (dual-write). No further shared-DB writes needed until the
-   Stage 4a converge run.
+1. **NOW:** build Stage 4a (person-scope cutover + quest converge step). Note the
+   dual-write code ships to prod only when the branch merges — until then prod keeps
+   writing legacy-only rows, all converged by the idempotent backfill re-run at 4a.
 2. Legacy writes between Stage 1 and Stage 3 create unstamped rows by design — the
    idempotent backfill re-runs at 4a (and can be re-run any time) to converge them.
 3. Stage 4b ships the teammate-visibility tightening (Dream/stats hidden) — flag for
