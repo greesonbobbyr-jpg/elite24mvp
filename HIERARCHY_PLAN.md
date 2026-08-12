@@ -9,10 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **1 of 6 DONE** — Stage 0 migration **applied to the shared DB**; backfill **executed + verified in production** (commits `6dcf636`, `466d1c5` + hotfix/hardening commit) |
-| Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them (re-verified post-run: 6 quests listed, leaderboards/points/streaks identical) |
+| Stage | **2 of 6 DONE** — choke point v2 built + tested (`53777c7`; Stage 1 in prod: `6dcf636`/`466d1c5`/`3cf226c`) |
+| Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Stage 2 wrote NO data — code only |
+| Tests | 115 passing (vitest): full §2.10 matrix, cross-org denial, acting fallbacks, season invariant, per-user shim identity. Reflections boundary enforced on every build (prebuild gate) |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | Stage 2 — choke point v2 (`lib/context.ts` + `lib/authz.ts` + compat shim) |
+| Next | Stage 3 — dual-write (new columns stamped alongside legacy in every write path) |
 
 ---
 
@@ -274,10 +275,27 @@ backfill script is now hardened so re-runs are legacy-invisible by construction:
 **clones are created INACTIVE** and **only `day < today` logs are re-pointed**; verify
 asserts both. Today-window logs converge at the Stage 4a cutover (below).
 
-### Stage 2 — Choke point v2
-`lib/context.ts` (getCurrentContext + acting cookie) + `lib/authz.ts` (matrix, unit-tested
-per cell, incl. the one-current-season invariant test) + compat `getCurrentUser` shim.
-All surfaces still on the shim → behavior identical.
+### Stage 2 — Choke point v2 ✅ DONE (`53777c7`)
+**As built:** `lib/context.ts` (getCurrentContext; acting membership implicit-when-one /
+`e24_ctx` cookie-when-2+, validated every request, most-recent fallback; cookie SETTER
+lands with the switcher UI at Stage 5) · `lib/authz.ts` (§2.10 matrix as a constant map;
+org-bound first; a membership carrying ORG_ADMIN fails CLOSED — org authority only via
+RoleAssignment; hole caught by the matrix tests) · `lib/data/reflections.ts` (the only
+module that may query JournalEntry/DailyReview; content fns derive the author from ctx —
+no profile parameter exists; coach status fns content-free; enforced by
+`scripts/check-reflections-boundary.mjs` on every build via npm prebuild, incl. Vercel) ·
+`lib/seasons.ts` startNewSeason transaction · compat `getCurrentUser()` shim.
+
+**Shim delta (recorded):** the shim returns `ctx.user` — the legacy row loaded by the
+VERBATIM legacy query — rather than reconstructing the shape from new-world fields as the
+design's mapping table sketched. Identity beats mapping while legacy columns still exist
+(they die with the shim in Stage 6). Proven byte-identical for every user by
+`tests/shim-identity.test.ts`, including a legacy-only login created after the backfill.
+
+**Tests:** 115 passing — every matrix cell transcribed from the plan independently of the
+code map, cross-org denial before role logic, acting-membership fallbacks, the
+one-current-season invariant (sweep + rollover ×3), shim identity. Stage 2 wrote ZERO
+database rows (the Stage-1 incident class is structurally impossible here).
 
 ### Stage 3 — Dual-write
 Every write path stamps new columns AND legacy ones; points transactions update legacy
@@ -327,7 +345,7 @@ rename `User.profileRecord`→`profile`; retire legacy `COACH` enum value.
   its cutover stage explicitly changes behavior.
 
 ## 8. OPEN ITEMS
-1. **NOW:** build Stage 2 (choke point v2). No further shared-DB writes needed until the
+1. **NOW:** build Stage 3 (dual-write). No further shared-DB writes needed until the
    Stage 4a converge run.
 2. Legacy writes between Stage 1 and Stage 3 create unstamped rows by design — the
    idempotent backfill re-runs at 4a (and can be re-run any time) to converge them.
