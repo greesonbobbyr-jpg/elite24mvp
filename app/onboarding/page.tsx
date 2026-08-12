@@ -1,14 +1,15 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
-import { isOnboarded } from "@/lib/onboarding";
+import { getCurrentContext } from "@/lib/context";
+import { isSetUp } from "@/lib/onboarding";
 import { OnboardingForm } from "./OnboardingForm";
 
 export default async function OnboardingPage() {
-  const user = await getCurrentUser();
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
 
-  // Only an un-onboarded player should see this. Coaches, onboarded players,
-  // and "no user selected" go back to the app.
-  if (!user || user.role !== "PLAYER" || isOnboarded(user)) {
+  // Only a player who hasn't completed setup should see this (4f: the gate
+  // reads Profile.setupCompletedAt). Everyone else goes back to the app.
+  if (!ctx || !user || user.role !== "PLAYER" || isSetUp(ctx)) {
     redirect("/");
   }
 

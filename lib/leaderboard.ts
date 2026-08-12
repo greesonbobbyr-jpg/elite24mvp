@@ -32,6 +32,14 @@ async function activePlayerMemberships(teamId: number) {
   });
 }
 
+// The legacy fallback applies ONLY to a team the backfill never reached (no
+// memberships of any kind, ever). A migrated team with an empty player roster
+// — e.g. right after a season rollover — shows a genuinely EMPTY board, not
+// the resurrected legacy user list. (Caught by the 4f rollover test.)
+async function isPreBackfillTeam(teamId: number) {
+  return (await prisma.membership.count({ where: { teamId } })) === 0;
+}
+
 // Standard "competition" (1224) ranking: equal points share a rank, the next
 // distinct score skips accordingly (two at 980 are both 3, the next is 5).
 function rank1224<T extends { points: number }>(sorted: T[]): (T & { rank: number })[] {
@@ -65,6 +73,7 @@ export async function getTeamRanking(teamId: number): Promise<RankedPlayer[]> {
       .sort((a, b) => b.points - a.points);
     return rank1224(sorted);
   }
+  if (!(await isPreBackfillTeam(teamId))) return []; // migrated + empty roster
 
   // LEGACY FALLBACK (pre-backfill team — dies at Stage 6).
   const players = await prisma.user.findMany({
@@ -151,6 +160,7 @@ export async function getWeeklyRanking(
       .sort((a, b) => b.weekPoints - a.weekPoints);
     return rank1224(sorted).map(({ points: _rankKey, ...p }) => p);
   }
+  if (!(await isPreBackfillTeam(teamId))) return []; // migrated + empty roster
 
   // LEGACY FALLBACK (pre-backfill team — dies at Stage 6).
   const [players, thisWeek, lastWeek] = await Promise.all([

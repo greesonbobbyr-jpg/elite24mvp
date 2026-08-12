@@ -1,10 +1,16 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { AuthError } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { signIn } from "@/auth";
+import { getCurrentContext } from "@/lib/context";
+import { resolveJoinableTeam, joinTeamForProfile } from "@/lib/data/join";
 import { rateLimit, clientIp, RATE_LIMITED_MESSAGE } from "@/lib/ratelimit";
+
+const NO_SEASON_MESSAGE =
+  "That team isn't accepting players right now — ask your coach to start the season.";
 
 // Player self-join by the coach's team code. Two steps, both server-validated:
 //  1. lookupJoinCode — confirm the code matches a team (read-only) and show its
@@ -81,6 +87,17 @@ export async function createPlayer(
   const taken = await prisma.user.findUnique({ where: { username } });
   if (taken) return { error: "That username is taken — try another." };
 
+  // 4f: an org with no current season FAILS the join with a clear error
+  // BEFORE any account is created — never a silent membership skip.
+  const joinable = await resolveJoinableTeam(code);
+  if (!joinable.ok) {
+    return {
+      error: joinable.reason === "bad_code"
+        ? "That code didn't match a team."
+        : NO_SEASON_MESSAGE,
+    };
+  }
+
   const passwordHash = await hashPassword(password);
   try {
     await prisma.$transaction(async (tx) => {
@@ -95,29 +112,18 @@ export async function createPlayer(
           email: null,
         },
       });
-      // Dual-write (Stage 3): the permanent person + their membership in the
-      // team's current season, so new joins never accumulate as legacy-only.
+      // The permanent person + their membership in the current season.
       const profile = await tx.profile.create({
         data: { userId: created.id, name },
       });
-      const season = team.organizationId
-        ? await tx.season.findFirst({
-            where: { organizationId: team.organizationId, isCurrent: true },
-            select: { id: true },
-          })
-        : null;
-      if (season) {
-        await tx.membership.create({
-          data: {
-            profileId: profile.id,
-            teamId: team.id,
-            seasonId: season.id,
-            role: "PLAYER",
-          },
-        });
-      }
-      // A team with no org/current season yet (legacy signup between stages)
-      // converges at the Stage 4a backfill re-run.
+      await tx.membership.create({
+        data: {
+          profileId: profile.id,
+          teamId: team.id,
+          seasonId: joinable.seasonId,
+          role: "PLAYER",
+        },
+      });
     });
   } catch {
     // Unique violation (rare race on username) → generic message.
@@ -139,4 +145,51 @@ export async function createPlayer(
     }
     throw error;
   }
+}
+
+export type JoinTeamState = { error?: string; ok?: boolean; teamName?: string };
+
+// RETURNING ATHLETE (Stage 4f): a logged-in player with no active membership
+// (removed, or the season rolled over) joins a team by code from INSIDE the
+// app — a membership on their EXISTING profile, so career points, journal,
+// and streaks carry. Same team + same season reactivates the exact ended
+// membership (board points return); otherwise a fresh membership (board 0).
+export async function joinTeamWithCode(
+  _prev: JoinTeamState,
+  formData: FormData,
+): Promise<JoinTeamState> {
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER") {
+    return { error: "Log in as a player to join a team." };
+  }
+  if (!ctx.profile) {
+    // Pre-backfill login — converges at the next backfill run.
+    return { error: "Your account isn't migrated yet — try again later." };
+  }
+  if (ctx.membership) {
+    return { error: "You're already on a team this season." };
+  }
+  if (!(await rateLimit("join-team", String(user.id), 10, 3600))) {
+    return { error: RATE_LIMITED_MESSAGE };
+  }
+
+  const code = normalizeCode(formData.get("code"));
+  const joinable = await resolveJoinableTeam(code);
+  if (!joinable.ok) {
+    return {
+      error: joinable.reason === "bad_code"
+        ? "That code didn't match a team."
+        : NO_SEASON_MESSAGE,
+    };
+  }
+
+  await joinTeamForProfile(
+    ctx.profile.id,
+    user.id,
+    joinable.team.id,
+    joinable.seasonId,
+  );
+  revalidatePath("/");
+  return { ok: true, teamName: joinable.team.name };
 }

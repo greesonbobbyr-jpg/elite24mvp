@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import {
   listTeamMessages,
   BOARD_PAGE_SIZE,
@@ -46,8 +46,12 @@ export default async function BoardPage({
 }: {
   searchParams: Promise<{ spotlight?: string; days?: string; limit?: string }>;
 }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/");
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user) redirect("/");
+  // Re-home (4f): a player with no roster spot this season has no team board —
+  // Home shows the join card. (Legacy fallback only for pre-backfill logins.)
+  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) redirect("/");
 
   // Coach arriving from a "Give a shoutout →" streak-milestone link: prefill a
   // SPOTLIGHT draft (fully editable — the coach writes/sends, never the app).

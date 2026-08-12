@@ -72,6 +72,9 @@ async function activeRoster(teamId: number) {
         currentStreak: m.profile.currentStreak,
       }));
   }
+  // A migrated team with an empty player roster (e.g. post-rollover) is
+  // genuinely empty — the legacy fallback is only for pre-backfill teams.
+  if ((await prisma.membership.count({ where: { teamId } })) > 0) return [];
   const players = await prisma.user.findMany({
     where: { teamId, role: "PLAYER" },
     select: {

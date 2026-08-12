@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { JoinCodeCard } from "./JoinCodeCard";
 import { TeamSettingsForm } from "./TeamSettingsForm";
 import { RosterManager } from "./RosterManager";
+import { StartSeasonForm } from "./StartSeasonForm";
 
 // Staff team page (4e: matrix-gated per section). ALL staff see the roster
 // (view_roster); the join code, team settings, and password resets are
@@ -21,6 +22,9 @@ export default async function TeamSettingsPage() {
   if (!isStaff) redirect("/");
   const canManageSettings = scope ? can(ctx, "team_settings", scope) : true;
   const canEndMembership = scope ? can(ctx, "end_membership", scope) : true;
+  // create_season is ORG_ADMIN only — no legacy fallback grants it, but every
+  // real coach holds an ORG_ADMIN grant from signup/backfill.
+  const canStartSeason = scope ? can(ctx, "create_season", scope) : true;
 
   const team = await prisma.team.findUnique({ where: { id: user.teamId } });
   if (!team) redirect("/");
@@ -32,6 +36,9 @@ export default async function TeamSettingsPage() {
     select: { profile: { select: { userId: true, name: true, user: { select: { username: true } } } } },
     orderBy: { profile: { name: "asc" } },
   });
+  const isPreBackfill =
+    memberships.length === 0 &&
+    (await prisma.membership.count({ where: { teamId: user.teamId } })) === 0;
   const players =
     memberships.length > 0
       ? memberships
@@ -41,11 +48,13 @@ export default async function TeamSettingsPage() {
             name: m.profile.name,
             username: m.profile.user?.username ?? null,
           }))
-      : await prisma.user.findMany({
-          where: { teamId: user.teamId, role: "PLAYER" },
-          select: { id: true, name: true, username: true },
-          orderBy: { name: "asc" },
-        });
+      : isPreBackfill
+        ? await prisma.user.findMany({
+            where: { teamId: user.teamId, role: "PLAYER" },
+            select: { id: true, name: true, username: true },
+            orderBy: { name: "asc" },
+          })
+        : []; // migrated + empty roster (post-rollover): players re-join by code
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
@@ -67,6 +76,13 @@ export default async function TeamSettingsPage() {
           canResetPassword={canManageSettings}
         />
       </section>
+
+      {canStartSeason && ctx.season && (
+        <section>
+          <p className="e24-eyebrow mb-2">Season</p>
+          <StartSeasonForm currentSeason={ctx.season.name} />
+        </section>
+      )}
 
       {canManageSettings && (
         <section>

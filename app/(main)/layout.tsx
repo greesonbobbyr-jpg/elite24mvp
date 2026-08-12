@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentContext } from "@/lib/context";
-import { isOnboarded } from "@/lib/onboarding";
+import { isSetUp } from "@/lib/onboarding";
 import { getActiveTimeout, countUnreadForPlayer } from "@/lib/notifications";
 import { TimeoutTakeover } from "./TimeoutTakeover";
 import { NavMenu } from "./NavMenu";
@@ -26,7 +26,10 @@ export default async function MainLayout({
   const ctx = await getCurrentContext();
   const user = ctx?.user;
 
-  if (user?.role === "PLAYER" && !isOnboarded(user)) {
+  // The setup gate (4f): reads the permanent Profile's setupCompletedAt
+  // (dual-written 1:1 with the legacy onboardedAt; legacy fallback for
+  // pre-backfill logins). Players write the Dream; staff complete at signup.
+  if (ctx && user && !isSetUp(ctx)) {
     redirect("/onboarding");
   }
 

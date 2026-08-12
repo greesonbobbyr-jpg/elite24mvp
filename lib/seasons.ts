@@ -21,3 +21,33 @@ export function startNewSeason(
     });
   });
 }
+
+// SEASON ROLLOVER (Stage 4f; E.9 ruling): retire the current season, open the
+// next, and CARRY STAFF memberships forward — players re-join by code each
+// season (their old memberships simply stop being current; nothing is ended
+// or deleted, and career points/journals carry on the person). One
+// transaction; the one-current-season invariant holds throughout.
+export function rolloverSeason(organizationId: number, name: string) {
+  return prisma.$transaction(async (tx) => {
+    const staff = await tx.membership.findMany({
+      where: {
+        endedAt: null,
+        role: { not: "PLAYER" },
+        season: { organizationId, isCurrent: true },
+        team: { organizationId },
+      },
+      select: { profileId: true, teamId: true, role: true, jerseyNumber: true },
+    });
+    await tx.season.updateMany({
+      where: { organizationId, isCurrent: true },
+      data: { isCurrent: false },
+    });
+    const season = await tx.season.create({
+      data: { organizationId, name, isCurrent: true },
+    });
+    for (const m of staff) {
+      await tx.membership.create({ data: { ...m, seasonId: season.id } });
+    }
+    return { season, staffCarried: staff.length };
+  });
+}

@@ -129,6 +129,8 @@ export default async function LeaderboardPage({
   const ctx = await getCurrentContext();
   const user = ctx?.user;
   if (!ctx || !user) redirect("/");
+  // Re-home (4f): no roster spot → no team board.
+  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) redirect("/");
 
   const { view } = await searchParams;
   const weekView = view === "week";

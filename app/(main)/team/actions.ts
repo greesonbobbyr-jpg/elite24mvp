@@ -207,3 +207,29 @@ export async function resetPlayerPassword(
   revalidatePath("/team");
   return { ok: true, resetName: target.name, resetPassword: password };
 }
+
+export type SeasonState = { error?: string; ok?: boolean; seasonName?: string };
+
+// SEASON ROLLOVER (4f; E.9 ruling) — create_season is ORG_ADMIN only. Retires
+// the current season, opens the next, carries STAFF memberships forward;
+// players re-join with the team code (their history stays on their profile).
+export async function startSeason(
+  _prev: SeasonState,
+  formData: FormData,
+): Promise<SeasonState> {
+  const ctx = await getCurrentContext();
+  if (!ctx || !staffCan(ctx, "create_season")) {
+    return { error: "Only the organization admin can start a season." };
+  }
+  const organizationId = ctx.team?.organizationId;
+  if (organizationId == null) return { error: "No organization found." };
+
+  const name = String(formData.get("seasonName") ?? "").trim();
+  if (!name) return { error: "Name the season (e.g. 2027)." };
+
+  const { rolloverSeason } = await import("@/lib/seasons");
+  const result = await rolloverSeason(organizationId, name);
+  revalidatePath("/team");
+  revalidatePath("/");
+  return { ok: true, seasonName: result.season.name };
+}

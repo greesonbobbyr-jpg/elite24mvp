@@ -33,6 +33,8 @@ export default async function NotificationsPage() {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
   if (!ctx || !user) redirect("/");
+  // Re-home (4f): no roster spot → no team notifications.
+  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) redirect("/");
 
   // ----- Coach: compose + per-message read receipts for their own team -----
   if (user.role === "COACH") {

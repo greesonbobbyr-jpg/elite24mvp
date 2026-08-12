@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentContext } from "@/lib/context";
-import { isOnboarded } from "@/lib/onboarding";
+import { isSetUp } from "@/lib/onboarding";
 
 export type OnboardingState = { error?: string };
 
@@ -25,8 +25,8 @@ export async function completeOnboarding(
 ): Promise<OnboardingState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  // Only an un-onboarded player may complete onboarding.
-  if (!ctx || !user || user.role !== "PLAYER" || isOnboarded(user)) {
+  // Only a player who hasn't completed setup may run this (4f gate).
+  if (!ctx || !user || user.role !== "PLAYER" || isSetUp(ctx)) {
     redirect("/");
   }
 

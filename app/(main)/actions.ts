@@ -292,6 +292,8 @@ export async function confirmRead(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
   if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  // 4f: read receipts belong to roster members only.
+  if (ctx.profile && !ctx.membership) return;
 
   const notificationId = Number.parseInt(
     String(formData.get("notificationId") ?? ""),

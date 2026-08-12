@@ -18,6 +18,7 @@ import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
 import { ReviewCard } from "./ReviewCard";
 import { CoachHome } from "./CoachHome";
+import { JoinTeamCard } from "./JoinTeamCard";
 import { Card } from "@/app/components/ui/Card";
 
 export default async function Home() {
@@ -75,6 +76,10 @@ export default async function Home() {
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
+      {/* No active roster spot (removed / season rolled over): the join card
+          leads; the daily loop below keeps working (offseason — career only). */}
+      {ctx.profile && !ctx.membership && <JoinTeamCard />}
+
       {/* The Dream — the material hero */}
       {profile?.dream && (
         <Card variant="material">

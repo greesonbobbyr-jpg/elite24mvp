@@ -25,6 +25,11 @@ export async function postMessage(
   if (!ctx || !user || (user.role !== "COACH" && !isOnboarded(user))) {
     return { error: "Only a team member can post." };
   }
+  // 4f: posting requires an ACTIVE roster spot — a removed player (or one
+  // whose season rolled over) is no longer a member of this board.
+  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) {
+    return { error: "Join a team to post." };
+  }
   const body = String(formData.get("body") ?? "").trim();
 
   // A GIF, if attached, must be one of the curated registry ids — never an
@@ -134,6 +139,8 @@ export async function toggleReaction(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
   if (!ctx || !user || (user.role !== "COACH" && !isOnboarded(user))) return;
+  // 4f: reacting requires an active roster spot (see postMessage).
+  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) return;
 
   // Each tap re-renders the whole board — cap rapid-fire tapping per user.
   if (!(await rateLimit("react", String(user.id), 60, 60))) return;
