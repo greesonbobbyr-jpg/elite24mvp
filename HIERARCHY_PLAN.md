@@ -9,11 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **STAGE 5 DONE in branch** (`faa04fd`; Stage 4 complete: 4a–4f; Stages 2–3 done; Stage 1 in prod) — everything before the merge is built. One merge with the full converge sequence (owner ruling), then Stage 6 after soak |
+| Stage | **MERGED + CONVERGED IN PRODUCTION 2026-08-12** (merge `aa00fb0`, deployed 22:27 UTC; converge flip executed: 1 log re-pointed, 12 clones active, 6 globals retired). All 21 verify checks PASS post-flip. **SOAK in progress** — Stage 6 decommission only after owner calls the soak done |
 | Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Branch writers now stamp both worlds in the same transactions (nothing deployed until merge) |
 | Tests | 123 passing (vitest): matrix, cross-org, acting, season invariant, shim identity, + end-to-end dual-write (check-in / quest / undo / measured / review / adjustments / offseason) asserting all three cache==Σledger invariants after every step |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | THE MERGE RUNBOOK (backfill re-run → merge+deploy → converge flip → verify; one-command rollback) on owner approval, then Stage 6 decommission after soak |
+| Next | Soak, then Stage 6 decommission. Post-flip rollback rule stands: `converge-quests.ts --rollback` FIRST, then (only if also needed) promote the previous Vercel deployment — never revert the deploy while converged |
 
 ---
 
