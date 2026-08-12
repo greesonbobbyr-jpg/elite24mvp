@@ -302,6 +302,65 @@ async function execute() {
           where: { authorId: user.id, authorProfileId: null },
           data: { authorProfileId: pid, authorRole },
         })).count);
+
+        // RE-SYNC the Profile mirror fields from the legacy truth (a re-run
+        // catches everything the legacy write path changed since the last
+        // run: photo, brand edits, streaks, onboarding). Idempotent — once
+        // dual-write is live both sides are already equal.
+        await tx.profile.update({
+          where: { id: pid },
+          data: {
+            name: user.name,
+            photoUrl: user.photoUrl ?? pp?.photoUrl ?? null,
+            jerseyNumber: pp?.jerseyNumber ?? null,
+            position: pp?.position ?? null,
+            heightInches: pp?.heightInches ?? null,
+            dream: pp?.dream ?? null,
+            favoritePlayer: pp?.favoritePlayer ?? null,
+            favoriteTeam: pp?.favoriteTeam ?? null,
+            highlightUrl: pp?.highlightUrl ?? null,
+            pointsPerGame: pp?.pointsPerGame ?? null,
+            reboundsPerGame: pp?.reboundsPerGame ?? null,
+            assistsPerGame: pp?.assistsPerGame ?? null,
+            currentStreak: pp?.currentStreak ?? 0,
+            bestStreak: pp?.bestStreak ?? 0,
+            lastCheckInDay: pp?.lastCheckInDay ?? null,
+            streakGraceUsed: pp?.streakGraceUsed ?? false,
+            setupCompletedAt:
+              user.role === Role.COACH
+                ? (pp?.onboardedAt ?? user.createdAt)
+                : (pp?.onboardedAt ?? null),
+          },
+        });
+      }
+
+      // RECOMPUTE the new-world point caches from the (now fully stamped)
+      // ledger — legacy writes since the last run moved PlayerProfile.points
+      // but not these. Same-transaction, so verify's sum invariants hold the
+      // moment this commits.
+      const profileSums = new Map(
+        (await tx.pointsLedger.groupBy({ by: ["profileId"], _sum: { amount: true } }))
+          .filter((r) => r.profileId != null)
+          .map((r) => [r.profileId!, r._sum.amount ?? 0]),
+      );
+      for (const p of await tx.profile.findMany({ select: { id: true, careerPoints: true } })) {
+        const sum = profileSums.get(p.id) ?? 0;
+        if (p.careerPoints !== sum) {
+          await tx.profile.update({ where: { id: p.id }, data: { careerPoints: sum } });
+          bump("careerPoints recomputed", 1);
+        }
+      }
+      const membershipSums = new Map(
+        (await tx.pointsLedger.groupBy({ by: ["membershipId"], _sum: { amount: true } }))
+          .filter((r) => r.membershipId != null)
+          .map((r) => [r.membershipId!, r._sum.amount ?? 0]),
+      );
+      for (const m of await tx.membership.findMany({ select: { id: true, points: true } })) {
+        const sum = membershipSums.get(m.id) ?? 0;
+        if (m.points !== sum) {
+          await tx.membership.update({ where: { id: m.id }, data: { points: sum } });
+          bump("membership.points recomputed", 1);
+        }
       }
     },
     { maxWait: 20_000, timeout: 300_000 },
@@ -360,22 +419,35 @@ async function verify() {
     ok(v === 0, `Stamped: ${k}`, v ? `${v} NULL rows remain` : "");
   }
 
-  // Quest cloning. During the legacy window clones are INACTIVE (the live app
-  // lists quests by `active` with no org filter) and today's logs stay on
-  // global ids; both flip at the Stage 4a cutover's converge run.
+  // Quest cloning — STATE-AWARE: during the legacy window clones are INACTIVE
+  // (the live app lists quests by `active` with no org filter) and today's
+  // logs stay on global ids; after the converge flip the truth inverts.
   const globalQuestCount = await prisma.quest.count({ where: { organizationId: null } });
   const cloneCount = await prisma.quest.count({ where: { organizationId: { not: null } } });
   const activeClones = await prisma.quest.count({
     where: { organizationId: { not: null }, active: true },
   });
+  const activeGlobals = await prisma.quest.count({
+    where: { organizationId: null, active: true },
+  });
+  const converged = activeGlobals === 0 && activeClones > 0;
   ok(cloneCount === globalQuestCount * orgCount,
     `Quest clones == ${globalQuestCount} global × ${orgCount} orgs`, `${cloneCount}`);
-  ok(activeClones === 0, "Clones inactive during legacy window", `${activeClones} active`);
-  ok(gaps["QuestLog on GLOBAL quests, day < today (must re-point)"] === 0,
-    "All historical QuestLogs re-pointed to org clones");
-  console.log(
-    `INFO  Today's logs on global ids (legacy-visible, converge at 4a): ${gaps["QuestLog on GLOBAL quests, today (moves at Stage 4a cutover)"]}`,
-  );
+  if (converged) {
+    ok(activeGlobals === 0, "CONVERGED: globals retired", `${activeClones} active clones`);
+    ok(
+      gaps["QuestLog on GLOBAL quests, day < today (must re-point)"] === 0 &&
+        gaps["QuestLog on GLOBAL quests, today (moves at Stage 4a cutover)"] === 0,
+      "CONVERGED: no QuestLog points at a global quest",
+    );
+  } else {
+    ok(activeClones === 0, "Clones inactive during legacy window", `${activeClones} active`);
+    ok(gaps["QuestLog on GLOBAL quests, day < today (must re-point)"] === 0,
+      "All historical QuestLogs re-pointed to org clones");
+    console.log(
+      `INFO  Today's logs on global ids (legacy-visible, converge at 4a): ${gaps["QuestLog on GLOBAL quests, today (moves at Stage 4a cutover)"]}`,
+    );
+  }
 
   // Sum invariants.
   const profiles = await prisma.profile.findMany({ select: { id: true, name: true, careerPoints: true } });
