@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
-import { listActiveQuests, getTodaysQuestLogs } from "@/lib/quests";
+import { getCurrentContext } from "@/lib/context";
+import { listActiveQuestsForOrg, getTodaysQuestLogs } from "@/lib/quests";
 import { listLedger, getPointsTotal } from "@/lib/points";
 import { todayKey } from "@/lib/journal";
 import { QuestList } from "../QuestList";
@@ -14,8 +14,9 @@ import { tierForPoints, TIERS } from "@/lib/cardTheme";
 // unchanged; the hero total, "+N today", and progress are derived from data the
 // page already loads (no new queries).
 export default async function QuestsPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/");
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user) redirect("/");
 
   // Coaches don't log quests or earn points (player-only loop).
   if (user.role === "COACH") {
@@ -32,7 +33,7 @@ export default async function QuestsPage() {
   }
 
   const [quests, todayLogs, points, ledger] = await Promise.all([
-    listActiveQuests(),
+    listActiveQuestsForOrg(ctx.org?.id),
     getTodaysQuestLogs(user.id),
     getPointsTotal(user.id),
     listLedger(user.id),

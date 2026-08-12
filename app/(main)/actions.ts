@@ -164,6 +164,9 @@ export async function completeQuest(formData: FormData): Promise<void> {
 
   const quest = await prisma.quest.findUnique({ where: { id: questId } });
   if (!quest || !quest.active || quest.targetCount == null) return;
+  // Org-bound (4a): an org quest must belong to the player's own org.
+  // (Globals pass — they exist only until the converge flip retires them.)
+  if (quest.organizationId != null && quest.organizationId !== ctx.org?.id) return;
   if (actual < 0 || actual > quest.targetCount) return;
 
   // Log + ledger + all caches in ONE transaction, incl. the leftover-PENDING
@@ -188,6 +191,8 @@ export async function logQuest(formData: FormData): Promise<void> {
 
   const quest = await prisma.quest.findUnique({ where: { id: questId } });
   if (!quest || !quest.active) return;
+  // Org-bound (4a): an org quest must belong to the player's own org.
+  if (quest.organizationId != null && quest.organizationId !== ctx.org?.id) return;
   // Measurable quests go through the predict-then-log flow, never one-tap.
   if (quest.targetCount != null) return;
 

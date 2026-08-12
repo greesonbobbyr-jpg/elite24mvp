@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import { todayKey } from "@/lib/journal";
 import {
   getMyTodaysEntry,
@@ -10,7 +10,7 @@ import {
 import { getTodaysTakeaway } from "@/lib/mindset-takeaway";
 import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { storyForDay } from "@/lib/mindset";
-import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
+import { listActiveQuestsForOrg, getTodaysCompletedQuestIds } from "@/lib/quests";
 import { getTeamRanking } from "@/lib/leaderboard";
 import { tierForPoints, TIERS } from "@/lib/cardTheme";
 import { CheckInForm } from "./CheckInForm";
@@ -20,10 +20,11 @@ import { CoachHome } from "./CoachHome";
 import { Card } from "@/app/components/ui/Card";
 
 export default async function Home() {
-  const user = await getCurrentUser();
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
 
   // Unauthenticated → login (middleware also enforces this; defense in depth).
-  if (!user) redirect("/login");
+  if (!ctx || !user) redirect("/login");
 
   // Coaches get the team dashboard + roster (player-only daily loop lives below).
   if (user.role === "COACH") {
@@ -40,13 +41,13 @@ export default async function Home() {
 
   // "Next up" counts + Pro Review data for the checked-in state; the note from
   // the player's last review surfaces above the check-in prompt otherwise.
-  let quests: Awaited<ReturnType<typeof listActiveQuests>> = [];
+  let quests: Awaited<ReturnType<typeof listActiveQuestsForOrg>> = [];
   let completedIds: number[] = [];
   let todaysReview: Awaited<ReturnType<typeof getMyTodaysReview>> = null;
   let lastNote: Awaited<ReturnType<typeof getMyLatestReviewNote>> = null;
   if (todaysEntry) {
     [quests, completedIds, todaysReview] = await Promise.all([
-      listActiveQuests(),
+      listActiveQuestsForOrg(ctx.org?.id),
       getTodaysCompletedQuestIds(user.id),
       getMyTodaysReview({ user }),
     ]);
