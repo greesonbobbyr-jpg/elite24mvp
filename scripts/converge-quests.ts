@@ -75,7 +75,12 @@ export async function convergeQuests(db: PrismaClient = prisma) {
     }
 
     let repointed = 0;
-    const orgs = await tx.organization.findMany({ select: { id: true } });
+    // Only orgs that HAVE teams can own quest logs (a team-less org — e.g. a
+    // test artifact — has nothing to converge and needs no clones).
+    const orgs = await tx.organization.findMany({
+      where: { teams: { some: {} } },
+      select: { id: true },
+    });
     for (const org of orgs) {
       for (const gq of globals) {
         const clone = cloneByOrgTitle.get(`${org.id}:${gq.title}`);

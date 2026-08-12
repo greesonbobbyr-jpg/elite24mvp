@@ -41,6 +41,9 @@ export default async function BrandPage({
   const fullView = access === "self" || access === "staff";
   const profile = target.profile;
   const height = formatHeight(profile.heightInches);
+  // Card tier/points = CAREER points (4d; crosses orgs by design — it's the
+  // athlete's own progression). Equals the legacy cache by proven invariant.
+  const careerPoints = target.profileRecord?.careerPoints ?? profile.points;
 
   const ranking = await getTeamRanking(target.teamId);
   const rank = ranking.findIndex((r) => r.id === target.id) + 1;
@@ -61,7 +64,7 @@ export default async function BrandPage({
             position: profile.position,
             heightInches: profile.heightInches,
             rank: rank > 0 ? rank : null,
-            points: profile.points,
+            points: careerPoints,
             photoUrl: photoSrc(target.id, profile.photoUrl),
           }}
           team={target.team}
@@ -80,7 +83,7 @@ export default async function BrandPage({
 
       {/* Points + standing */}
       <section className="grid grid-cols-2 gap-3">
-        <Stat label="Points" value={String(profile.points)} />
+        <Stat label="Points" value={String(careerPoints)} />
         <Stat label="Team rank" value={rank > 0 ? `#${rank} of ${total}` : "—"} />
       </section>
 

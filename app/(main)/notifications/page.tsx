@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { actingScope, getCurrentContext } from "@/lib/context";
+import { can } from "@/lib/authz";
 import {
   listTeamNotifications,
   getTeamReadStatus,
@@ -29,12 +30,19 @@ function initials(name: string): string {
 }
 
 export default async function NotificationsPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/");
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user) redirect("/");
 
   // ----- Coach: compose + per-message read receipts for their own team -----
   if (user.role === "COACH") {
     const items = await getTeamReadStatus(user.teamId);
+    // The TIME OUT toggle is hidden from staff without send_timeout (the
+    // server also enforces it; matrix: HEAD_COACH / ORG_ADMIN only).
+    const scope = actingScope(ctx);
+    const canSendTimeout = scope
+      ? can(ctx, "send_timeout", scope)
+      : user.role === "COACH";
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
         <header>
@@ -44,7 +52,7 @@ export default async function NotificationsPage() {
           </p>
         </header>
 
-        <NotificationComposer />
+        <NotificationComposer canSendTimeout={canSendTimeout} />
 
         {items.length === 0 ? (
           <EmptyCard line="No notifications yet. Post one above." />

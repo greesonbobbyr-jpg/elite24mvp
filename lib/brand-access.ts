@@ -29,7 +29,12 @@ export type BrandTarget = NonNullable<
 function loadBrandTarget(targetUserId: number) {
   return prisma.user.findUnique({
     where: { id: targetUserId },
-    include: { profile: true, team: { include: { organization: true } } },
+    include: {
+      profile: true,
+      // The permanent Profile (careerPoints drives the card tier since 4d).
+      profileRecord: { select: { careerPoints: true } },
+      team: { include: { organization: true } },
+    },
   });
 }
 

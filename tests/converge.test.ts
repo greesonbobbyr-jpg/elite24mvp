@@ -106,9 +106,14 @@ dbDescribe("Stage 4a quest converge — round trip", () => {
 
   it("ORDERING FACT: post-flip, a legacy-shape read shows EVERY org's clones (why deploy precedes flip)", async () => {
     const { prisma } = await import("../lib/prisma");
-    const orgCount = await prisma.organization.count();
+    const activeClones = await prisma.quest.count({
+      where: { organizationId: { not: null }, active: true },
+    });
     const legacyShape = await prisma.quest.count({ where: { active: true } });
-    expect(legacyShape).toBe(6 * orgCount); // doubled list under old code — old code must be gone first
+    // The legacy-shape read returns ALL orgs' active clones — a doubled+ list
+    // under old code, which is why the deploy must complete before the flip.
+    expect(legacyShape).toBe(activeClones);
+    expect(activeClones).toBeGreaterThanOrEqual(12); // ≥ 2 seeded orgs × 6
   });
 
   it("re-converge is a no-op (idempotent)", async () => {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentContext } from "@/lib/context";
+import { actingScope, getCurrentContext } from "@/lib/context";
+import { can } from "@/lib/authz";
 import { todayKey } from "@/lib/journal";
 import {
   getMyTodaysEntry,
@@ -28,7 +29,9 @@ export default async function Home() {
 
   // Coaches get the team dashboard + roster (player-only daily loop lives below).
   if (user.role === "COACH") {
-    return <CoachHome user={user} />;
+    const scope = actingScope(ctx);
+    const canSendTimeout = scope ? can(ctx, "send_timeout", scope) : true;
+    return <CoachHome user={user} canSendTimeout={canSendTimeout} />;
   }
 
   // Player (guaranteed onboarded by the (main) layout gate). Quests + points live
@@ -60,10 +63,11 @@ export default async function Home() {
     .map((q) => ({ title: q.title, points: q.points }));
 
   // Progress strip: streak / tier / rank — the "why come back" state, on the
-  // first screen instead of buried in /quests and /leaderboard.
-  const ranking = await getTeamRanking(user.teamId);
+  // first screen instead of buried in /quests and /leaderboard. Board = acting
+  // team; tier = careerPoints (4d; equals the legacy cache by invariant).
+  const ranking = await getTeamRanking(ctx.membership?.teamId ?? user.teamId);
   const myRank = ranking.find((r) => r.id === user.id)?.rank ?? 0;
-  const points = profile?.points ?? 0;
+  const points = ctx.profile?.careerPoints ?? profile?.points ?? 0;
   const tier = tierForPoints(points);
   const nextTier = TIERS[TIERS.findIndex((t) => t.key === tier.key) + 1] ?? null;
   const streak = profile?.currentStreak ?? 0;
