@@ -3,6 +3,7 @@ import type {
   Organization,
   PlayerProfile,
   Profile,
+  Role,
   Season,
   Team,
   User,
@@ -113,6 +114,15 @@ export async function resolveContextForUser(
     season: membership?.season ?? null,
     orgAdminOf: profile?.roleAssignments.map((r) => r.organizationId) ?? [],
   };
+}
+
+// Display-role snapshot stamped onto posts (Notification / TeamMessage): the
+// acting membership's role, or ORG_ADMIN for an admin with no membership.
+// Stored at write time so display stays stable if roles later change.
+export function snapshotAuthorRole(
+  ctx: Pick<Ctx, "membership" | "orgAdminOf">,
+): Role | null {
+  return ctx.membership?.role ?? (ctx.orgAdminOf.length > 0 ? "ORG_ADMIN" : null);
 }
 
 // Identity from the verified Auth.js session — no client-provided id is

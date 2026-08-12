@@ -15,6 +15,10 @@ export default defineConfig({
     // unit tests that import modules touching lib/prisma — it is never
     // connected to (DB tests overwrite it with TEST_DATABASE_URL first).
     environment: "node",
+    // The DB suites share one local Postgres — parallel files would see each
+    // other's mid-test worlds (e.g. the season sweep catching the dual-write
+    // suite's throwaway org between its create and teardown).
+    fileParallelism: false,
     env: {
       DATABASE_URL: "postgresql://placeholder:placeholder@localhost:9/placeholder",
     },

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import { isOnboarded } from "@/lib/onboarding";
 import { validateImageDataUrl } from "@/lib/branding";
 import { storeImage } from "@/lib/photoStore";
@@ -32,8 +32,9 @@ export async function updateBrand(
   _prevState: BrandState,
   formData: FormData,
 ): Promise<BrandState> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) {
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) {
     return { error: "Only the player can edit their own profile." };
   }
 
@@ -69,21 +70,29 @@ export async function updateBrand(
     ? await storeImage(photoRes.url, `players/${user.id}`)
     : null;
 
+  const brandFields = {
+    heightInches: optionalInt(formData.get("heightInches")),
+    position: optionalString(formData.get("position")),
+    jerseyNumber: optionalInt(formData.get("jerseyNumber")),
+    pointsPerGame: optionalFloat(formData.get("pointsPerGame")),
+    reboundsPerGame: optionalFloat(formData.get("reboundsPerGame")),
+    assistsPerGame: optionalFloat(formData.get("assistsPerGame")),
+    favoritePlayer: optionalString(formData.get("favoritePlayer")),
+    favoriteTeam: optionalString(formData.get("favoriteTeam")),
+    highlightUrl,
+    photoUrl: storedPhoto,
+  };
   await prisma.playerProfile.update({
     where: { userId: user.id },
-    data: {
-      heightInches: optionalInt(formData.get("heightInches")),
-      position: optionalString(formData.get("position")),
-      jerseyNumber: optionalInt(formData.get("jerseyNumber")),
-      pointsPerGame: optionalFloat(formData.get("pointsPerGame")),
-      reboundsPerGame: optionalFloat(formData.get("reboundsPerGame")),
-      assistsPerGame: optionalFloat(formData.get("assistsPerGame")),
-      favoritePlayer: optionalString(formData.get("favoritePlayer")),
-      favoriteTeam: optionalString(formData.get("favoriteTeam")),
-      highlightUrl,
-      photoUrl: storedPhoto,
-    },
+    data: brandFields,
   });
+  // Dual-write: same fields mirror onto the permanent Profile.
+  if (ctx.profile) {
+    await prisma.profile.update({
+      where: { id: ctx.profile.id },
+      data: brandFields,
+    });
+  }
 
   // The photo shows on the card across surfaces — refresh them too.
   revalidatePath(`/brand/${user.id}`);

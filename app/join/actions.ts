@@ -83,16 +83,41 @@ export async function createPlayer(
 
   const passwordHash = await hashPassword(password);
   try {
-    await prisma.user.create({
-      data: {
-        name,
-        username,
-        role: "PLAYER",
-        teamId: team.id,
-        passwordHash,
-        // No email for players — username + password only (§3.4).
-        email: null,
-      },
+    await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name,
+          username,
+          role: "PLAYER",
+          teamId: team.id,
+          passwordHash,
+          // No email for players — username + password only (§3.4).
+          email: null,
+        },
+      });
+      // Dual-write (Stage 3): the permanent person + their membership in the
+      // team's current season, so new joins never accumulate as legacy-only.
+      const profile = await tx.profile.create({
+        data: { userId: created.id, name },
+      });
+      const season = team.organizationId
+        ? await tx.season.findFirst({
+            where: { organizationId: team.organizationId, isCurrent: true },
+            select: { id: true },
+          })
+        : null;
+      if (season) {
+        await tx.membership.create({
+          data: {
+            profileId: profile.id,
+            teamId: team.id,
+            seasonId: season.id,
+            role: "PLAYER",
+          },
+        });
+      }
+      // A team with no org/current season yet (legacy signup between stages)
+      // converges at the Stage 4a backfill re-run.
     });
   } catch {
     // Unique violation (rare race on username) → generic message.

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ReactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
 import { isValidGifId } from "@/lib/gifs";
@@ -19,8 +20,9 @@ export async function postMessage(
   _prevState: BoardState,
   formData: FormData,
 ): Promise<BoardState> {
-  const user = await getCurrentUser();
-  if (!user || (user.role !== "COACH" && !isOnboarded(user))) {
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || (user.role !== "COACH" && !isOnboarded(user))) {
     return { error: "Only a team member can post." };
   }
   const body = String(formData.get("body") ?? "").trim();
@@ -59,7 +61,17 @@ export async function postMessage(
   }
 
   await prisma.teamMessage.create({
-    data: { teamId: user.teamId, authorId: user.id, body, type, gifId, replyToId },
+    data: {
+      teamId: user.teamId,
+      authorId: user.id,
+      body,
+      type,
+      gifId,
+      replyToId,
+      // Dual-write: person + role snapshot.
+      authorProfileId: ctx.profile?.id ?? null,
+      authorRole: ctx.profile ? snapshotAuthorRole(ctx) : null,
+    },
   });
   revalidatePath("/board");
   return { ok: true };
@@ -105,8 +117,9 @@ const REACTION_TYPES = new Set([
 ]);
 
 export async function toggleReaction(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user || (user.role !== "COACH" && !isOnboarded(user))) return;
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || (user.role !== "COACH" && !isOnboarded(user))) return;
 
   // Each tap re-renders the whole board — cap rapid-fire tapping per user.
   if (!(await rateLimit("react", String(user.id), 60, 60))) return;
@@ -129,7 +142,12 @@ export async function toggleReaction(formData: FormData): Promise<void> {
   });
   if (!existing) {
     await prisma.messageReaction.create({
-      data: { messageId, userId: user.id, reactionType: reactionType as ReactionType },
+      data: {
+        messageId,
+        userId: user.id,
+        reactionType: reactionType as ReactionType,
+        profileId: ctx.profile?.id ?? null, // dual-write stamp
+      },
     });
   } else if (existing.reactionType !== reactionType) {
     await prisma.messageReaction.update({

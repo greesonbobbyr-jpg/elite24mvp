@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import { isOnboarded } from "@/lib/onboarding";
 
 export type OnboardingState = { error?: string };
@@ -23,9 +23,10 @@ export async function completeOnboarding(
   _prevState: OnboardingState,
   formData: FormData,
 ): Promise<OnboardingState> {
-  const user = await getCurrentUser();
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
   // Only an un-onboarded player may complete onboarding.
-  if (!user || user.role !== "PLAYER" || isOnboarded(user)) {
+  if (!ctx || !user || user.role !== "PLAYER" || isOnboarded(user)) {
     redirect("/");
   }
 
@@ -50,6 +51,16 @@ export async function completeOnboarding(
     create: { userId: user.id, ...fields },
     update: fields,
   });
+
+  // Dual-write: mirror onto the permanent Profile (onboardedAt maps to the
+  // new setup gate). Legacy-only logins have no Profile — converge at 4a.
+  if (ctx.profile) {
+    const { onboardedAt, ...identity } = fields;
+    await prisma.profile.update({
+      where: { id: ctx.profile.id },
+      data: { ...identity, setupCompletedAt: onboardedAt },
+    });
+  }
 
   redirect("/");
 }

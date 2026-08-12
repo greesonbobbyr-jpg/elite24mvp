@@ -3,6 +3,7 @@
 import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { getCurrentContext } from "@/lib/context";
 import { getCurrentUser } from "@/lib/session";
 import { uniqueJoinCode } from "@/lib/joincode";
 import { readBranding, validateImageDataUrl } from "@/lib/branding";
@@ -26,8 +27,9 @@ export async function updateTeam(
   _prev: TeamSettingsState,
   formData: FormData,
 ): Promise<TeamSettingsState> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "COACH") return { error: "Coaches only." };
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "COACH") return { error: "Coaches only." };
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Team name can't be empty." };
 
@@ -73,6 +75,13 @@ export async function updateTeam(
     where: { id: user.id },
     data: { photoUrl: storedPhoto },
   });
+  // Dual-write: the coach's photo lives on the permanent Profile too.
+  if (ctx.profile) {
+    await prisma.profile.update({
+      where: { id: ctx.profile.id },
+      data: { photoUrl: storedPhoto },
+    });
+  }
   revalidatePath("/team");
   revalidatePath("/"); // team name + coach photo show on the dashboard/header
   return { ok: true };
@@ -110,13 +119,53 @@ export async function removePlayer(
   _prev: RosterActionState,
   formData: FormData,
 ): Promise<RosterActionState> {
-  const coach = await getCurrentUser();
-  if (!coach || coach.role !== "COACH") return { error: "Coaches only." };
+  const ctx = await getCurrentContext();
+  const coach = ctx?.user;
+  if (!ctx || !coach || coach.role !== "COACH") return { error: "Coaches only." };
 
   const target = await resolveRosterTarget(formData.get("playerId"), coach.teamId);
   if (!target) return { error: "Not a player on your team." };
 
-  await prisma.user.delete({ where: { id: target.id } });
+  // Legacy hard delete, unchanged in effect — plus dual-write consistency for
+  // the new world in the SAME transaction: the Profile survives (userId is
+  // set null by FK), so END its memberships and re-true the points caches,
+  // because the user cascade just deleted the ledger rows they summed.
+  // (Stage 4e replaces this surface with endMembership proper.)
+  await prisma.$transaction(async (tx) => {
+    const profile = await tx.profile.findUnique({
+      where: { userId: target.id },
+      select: { id: true },
+    });
+    await tx.user.delete({ where: { id: target.id } });
+    if (profile) {
+      await tx.membership.updateMany({
+        where: { profileId: profile.id, endedAt: null },
+        data: { endedAt: new Date(), endedByProfileId: ctx.profile?.id ?? null },
+      });
+      const career = await tx.pointsLedger.aggregate({
+        where: { profileId: profile.id },
+        _sum: { amount: true },
+      });
+      await tx.profile.update({
+        where: { id: profile.id },
+        data: { careerPoints: career._sum.amount ?? 0 },
+      });
+      const memberships = await tx.membership.findMany({
+        where: { profileId: profile.id },
+        select: { id: true },
+      });
+      for (const m of memberships) {
+        const sum = await tx.pointsLedger.aggregate({
+          where: { membershipId: m.id },
+          _sum: { amount: true },
+        });
+        await tx.membership.update({
+          where: { id: m.id },
+          data: { points: sum._sum.amount ?? 0 },
+        });
+      }
+    }
+  });
   revalidatePath("/team");
   revalidatePath("/");
   revalidatePath("/leaderboard");

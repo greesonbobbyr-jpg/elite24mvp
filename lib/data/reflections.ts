@@ -19,12 +19,13 @@ import { todayKey } from "../daykey";
 // that a reflection happened and when — never what was written. Every select
 // there is content-free; keep it that way.
 //
-// Stage 2 note: rows are still keyed by the legacy user id. Stage 3 adds the
-// profileId dual-write here (one module = one place to add it); Stage 4a moves
-// the keys to profileId.
+// Stage 3 (dual-write): creates stamp profileId alongside the legacy userId
+// when the caller's ctx carries a Profile (null for legacy-only logins — they
+// converge at the Stage 4a backfill re-run). Reads stay keyed by the legacy
+// user id until Stage 4a.
 
 // The slice of ctx we need — the caller's own identity, nothing else.
-type OwnCtx = { user: { id: number } };
+type OwnCtx = { user: { id: number }; profile?: { id: number } | null };
 
 // ---------------------------------------------------------------- content ---
 // Author-only. No function here takes a profile/user parameter.
@@ -65,7 +66,12 @@ export function createMyEntryInTx(
   day: string,
 ) {
   return tx.journalEntry.create({
-    data: { userId: ctx.user.id, reflection, day },
+    data: {
+      userId: ctx.user.id,
+      reflection,
+      day,
+      profileId: ctx.profile?.id ?? null, // dual-write stamp
+    },
   });
 }
 
@@ -102,7 +108,9 @@ export function createMyReviewOp(
     noteToTomorrow: string | null;
   },
 ) {
-  return prisma.dailyReview.create({ data: { userId: ctx.user.id, ...data } });
+  return prisma.dailyReview.create({
+    data: { userId: ctx.user.id, profileId: ctx.profile?.id ?? null, ...data },
+  });
 }
 
 // ----------------------------------------------------------------- status ---

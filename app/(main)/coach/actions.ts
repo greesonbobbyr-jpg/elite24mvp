@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { PointsSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { getCurrentUser } from "@/lib/session";
+import { performAdjustPoints } from "@/lib/data/points";
 
 export type CoachActionState = { error?: string; ok?: boolean };
 
@@ -57,21 +58,9 @@ export async function adjustPoints(
 
   const finalReason = reason || "Coach bonus"; // additions may omit a reason
 
-  // Ledger row + cache bump in ONE transaction (mirror of logQuest).
-  await prisma.$transaction(async (tx) => {
-    await tx.pointsLedger.create({
-      data: {
-        userId: playerId,
-        amount,
-        reason: finalReason,
-        source: PointsSource.COACH_ADJUSTMENT,
-      },
-    });
-    await tx.playerProfile.update({
-      where: { userId: playerId },
-      data: { points: { increment: amount } },
-    });
-  });
+  // Ledger row + all caches in ONE transaction (lib/data/points — dual-writes
+  // the target's profileId/membershipId since Stage 3).
+  await performAdjustPoints({ id: player.id, teamId: player.teamId }, amount, finalReason);
 
   revalidatePath(`/coach/player/${playerId}`);
   revalidatePath("/");
@@ -83,8 +72,9 @@ export async function adjustPoints(
 // OUT takeover). Reuses the normal notification machinery — players confirm,
 // the coach sees receipts. Copy is deliberately team-wide (no name-calling).
 export async function sendCheckInReminder(formData: FormData): Promise<void> {
-  const coach = await getCurrentUser();
-  if (!coach || coach.role !== "COACH") return;
+  const ctx = await getCurrentContext();
+  const coach = ctx?.user;
+  if (!ctx || !coach || coach.role !== "COACH") return;
 
   const isTimeout = formData.get("isTimeout") === "on";
   await prisma.notification.create({
@@ -94,6 +84,9 @@ export async function sendCheckInReminder(formData: FormData): Promise<void> {
       title: "Check-in reminder 🏀",
       body: "Get your daily check-in in — write today's plan and get after it. Your streak is counting on you.",
       isTimeout,
+      // Dual-write: person + role snapshot.
+      authorProfileId: ctx.profile?.id ?? null,
+      authorRole: ctx.profile ? snapshotAuthorRole(ctx) : null,
     },
   });
   revalidatePath("/notifications");
