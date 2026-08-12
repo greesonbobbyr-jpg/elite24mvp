@@ -9,11 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **4a of 6 DONE in branch** (`e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod: `6dcf636`/`466d1c5`/`3cf226c`) — prod quest flip awaits the merge runbook |
+| Stage | **4b of 6 DONE in branch** (`a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence once surfaces are built and proven together (owner ruling) |
 | Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Branch writers now stamp both worlds in the same transactions (nothing deployed until merge) |
 | Tests | 123 passing (vitest): matrix, cross-org, acting, season invariant, shim identity, + end-to-end dual-write (check-in / quest / undo / measured / review / adjustments / offseason) asserting all three cache==Σledger invariants after every step |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | Stage 4b — Brand/photo cutover (ships the visibility tightening). Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
+| Next | Stage 4c — board + notifications cutover. Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
 
 ---
 
@@ -326,9 +326,13 @@ stamped column; the only new rows in legacy-queried tables are inactive signup c
   ordering fact that a legacy-shape read post-flip shows every org's clones — hence the
   runbook order: backfill re-run → **merge+deploy** → converge flip → verify. The prod
   flip runs only on owner approval of that runbook.
-- **4b** Brand / photo route / identity chip → profile reads; team-equality checks become
-  org-bounded `can()` checks; **implements the visibility tightening** (Dream + stats no
-  longer teammate-visible; card info only).
+- **4b** ✅ DONE in branch (`a45fd3c`) — `lib/brand-access.ts` resolver (self / staff via
+  `view_player_detail` / teammate via `view_roster` / null, org-bound first; legacy
+  same-team fallback for profile-less viewers that can only narrow, dies at Stage 6);
+  Brand page ships the **visibility tightening** (teammate = card info only — no Dream,
+  no per-game stats; self/staff unchanged); photo route on the same resolver (staff
+  org-wide, cross-org 404); layout + IdentityChip on ctx/Profile fields. Both directions
+  proven by test on backfilled data: org staffer CAN, another org's coach CANNOT.
 - **4c** Board + notifications → author snapshots, receipts by membership roster,
   TIME OUT = acting team only.
 - **4d** Leaderboards + points → team boards from membership sums; weekly from
