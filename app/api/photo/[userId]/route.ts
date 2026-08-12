@@ -1,37 +1,32 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
+import { resolveBrandAccess } from "@/lib/brand-access";
 
 export const runtime = "nodejs";
 
 // Serves a user's profile photo as real image bytes instead of inlining the
 // stored data: URL into every list page's HTML (which made the leaderboard >1MB
-// for one roster). Auth-gated + TEAM-SCOPED: only someone on the same team can
-// load a photo (CLAUDE.md §3.2). Player photos live on PlayerProfile.photoUrl,
-// coach photos on User.photoUrl. Non-data values (http(s)/path) redirect.
+// for one roster). Auth-gated + ORG-BOUNDED (Stage 4b): access mirrors the
+// Brand page — self, org staff (view_player_detail), or a teammate on the
+// target's team (view_roster). Another org's members always get 404. Player
+// photos live on PlayerProfile.photoUrl, coach photos on User.photoUrl.
+// Non-data values (http(s)/path) redirect.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> },
 ) {
-  const viewer = await getCurrentUser();
-  if (!viewer) return new NextResponse("Not authorized", { status: 403 });
+  const ctx = await getCurrentContext();
+  if (!ctx) return new NextResponse("Not authorized", { status: 403 });
 
   const { userId } = await params;
   const id = Number.parseInt(userId, 10);
   if (!Number.isInteger(id)) return new NextResponse("Bad id", { status: 400 });
 
-  const target = await prisma.user.findUnique({
-    where: { id },
-    select: {
-      teamId: true,
-      role: true,
-      photoUrl: true,
-      profile: { select: { photoUrl: true } },
-    },
-  });
-  if (!target || target.teamId !== viewer.teamId) {
+  const resolved = await resolveBrandAccess(ctx, id);
+  if (!resolved || resolved.access === null) {
     return new NextResponse("Not found", { status: 404 });
   }
+  const { target } = resolved;
 
   const stored =
     target.role === "PLAYER"
@@ -53,7 +48,7 @@ export async function GET(
     headers: {
       "Content-Type": match[1],
       "Content-Length": String(bytes.length),
-      // Private (team-scoped) but cacheable; the ?v= content hash busts changes.
+      // Private (org-scoped) but cacheable; the ?v= content hash busts changes.
       "Cache-Control": "private, max-age=3600",
     },
   });

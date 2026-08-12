@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
-import { isOnboarded } from "@/lib/onboarding";
+import { getCurrentContext } from "@/lib/context";
+import { isSetUp } from "@/lib/onboarding";
 import { getActiveTimeout, countUnreadForPlayer } from "@/lib/notifications";
 import { TimeoutTakeover } from "./TimeoutTakeover";
 import { NavMenu } from "./NavMenu";
 import { IdentityChip } from "./IdentityChip";
+import { TeamSwitcher } from "./TeamSwitcher";
 import { PlayerTabBar } from "./PlayerTabBar";
 import { CoachTabBar } from "./CoachTabBar";
 
@@ -23,22 +24,30 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
 
-  if (user?.role === "PLAYER" && !isOnboarded(user)) {
+  // The setup gate (4f): reads the permanent Profile's setupCompletedAt
+  // (dual-written 1:1 with the legacy onboardedAt; legacy fallback for
+  // pre-backfill logins). Players write the Dream; staff complete at signup.
+  if (ctx && user && !isSetUp(ctx)) {
     redirect("/onboarding");
   }
 
+  // TIME OUT + unread badge are scoped to the ACTING membership's team (4c):
+  // a two-team athlete only ever gets their acting team's takeover. Falls back
+  // to the legacy teamId for pre-backfill logins.
+  const actingTeamId = ctx?.membership?.teamId ?? user?.teamId;
   const timeout =
-    user?.role === "PLAYER"
-      ? await getActiveTimeout(user.id, user.teamId)
+    user?.role === "PLAYER" && actingTeamId != null
+      ? await getActiveTimeout(user.id, actingTeamId)
       : null;
 
   // Nav links — same role-based set as before, now built here so the menu lives
   // in the shared header bar instead of floating on the home page only.
   let links: NavLink[] = [];
   if (user?.role === "PLAYER") {
-    const unreadCount = await countUnreadForPlayer(user.id, user.teamId);
+    const unreadCount = await countUnreadForPlayer(user.id, actingTeamId ?? user.teamId);
     // Overflow links only — Home/Team Circle/Quests live in the bottom tab bar.
     links = [
       { href: `/brand/${user.id}`, label: "Your Brand" },
@@ -63,8 +72,30 @@ export default async function MainLayout({
   return (
     <>
       <header className="relative flex items-center justify-between border-b border-zinc-900 px-3 py-2.5">
-        {/* left: player/coach identity avatar (photo or initials) */}
-        {user ? <IdentityChip user={user} /> : <span />}
+        {/* left: player/coach identity avatar (photo or initials). Profile
+            fields come from the permanent Profile since 4b (careerPoints ==
+            legacy points by invariant; photo dual-written) with a legacy
+            fallback for not-yet-backfilled logins. */}
+        {ctx && user ? (
+          <IdentityChip
+            user={{
+              id: user.id,
+              name: user.name,
+              role: user.role,
+              photoUrl: user.photoUrl,
+              team: user.team,
+              profile: ctx.profile
+                ? {
+                    photoUrl: ctx.profile.photoUrl,
+                    jerseyNumber: ctx.profile.jerseyNumber,
+                    points: ctx.profile.careerPoints,
+                  }
+                : user.profile,
+            }}
+          />
+        ) : (
+          <span />
+        )}
         {/* center: the Elite24MVP wordmark (live text, non-link) */}
         <div
           aria-label="Elite24MVP"
@@ -80,6 +111,17 @@ export default async function MainLayout({
         {/* right: hamburger menu */}
         {user ? <NavMenu links={links} /> : <span />}
       </header>
+      {/* Context switcher — only for a person with 2+ active memberships. */}
+      {ctx && ctx.memberships.length > 1 && (
+        <TeamSwitcher
+          memberships={ctx.memberships.map((m) => ({
+            id: m.id,
+            role: m.role,
+            team: { name: m.team.name },
+          }))}
+          actingMembershipId={ctx.membership?.id ?? null}
+        />
+      )}
       {children}
       {/* Role bottom tab bars (z-40, below the TIME OUT takeover). */}
       {user?.role === "PLAYER" && <PlayerTabBar />}

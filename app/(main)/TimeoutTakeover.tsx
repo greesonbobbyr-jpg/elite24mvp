@@ -10,7 +10,13 @@ import { WhistleIcon } from "@/app/components/WhistleIcon";
 export function TimeoutTakeover({
   notification,
 }: {
-  notification: { id: number; title: string; body: string; author: { name: string } };
+  notification: {
+    id: number;
+    title: string;
+    body: string;
+    authorName: string;
+    authorRoleLabel: string | null;
+  };
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm">
@@ -23,7 +29,10 @@ export function TimeoutTakeover({
         <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-200">
           {notification.body}
         </p>
-        <p className="mt-4 text-xs text-zinc-500">From {notification.author.name}</p>
+        <p className="mt-4 text-xs text-zinc-500">
+          From {notification.authorName}
+          {notification.authorRoleLabel ? ` · ${notification.authorRoleLabel}` : ""}
+        </p>
 
         <form action={confirmRead} className="mt-6">
           <input type="hidden" name="notificationId" value={notification.id} />

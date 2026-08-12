@@ -37,3 +37,22 @@ export function formatTime(date: Date): string {
     minute: "2-digit",
   });
 }
+
+// Display label for an author-role SNAPSHOT (stamped at write time — it
+// survives later promotions/demotions by design). PLAYER gets no badge.
+export function roleLabel(role: string | null | undefined): string | null {
+  switch (role) {
+    case "HEAD_COACH":
+      return "Head Coach";
+    case "ASSISTANT_COACH":
+      return "Assistant Coach";
+    case "GENERAL_MANAGER":
+      return "General Manager";
+    case "ORG_ADMIN":
+      return "Org Admin";
+    case "COACH": // legacy value on pre-rebuild rows
+      return "Coach";
+    default:
+      return null;
+  }
+}

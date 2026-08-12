@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { actingScope, getCurrentContext } from "@/lib/context";
+import { can } from "@/lib/authz";
 import {
   listTeamNotifications,
   getTeamReadStatus,
@@ -29,12 +30,21 @@ function initials(name: string): string {
 }
 
 export default async function NotificationsPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/");
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user) redirect("/");
+  // Re-home (4f): no roster spot → no team notifications.
+  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) redirect("/");
 
   // ----- Coach: compose + per-message read receipts for their own team -----
   if (user.role === "COACH") {
     const items = await getTeamReadStatus(user.teamId);
+    // The TIME OUT toggle is hidden from staff without send_timeout (the
+    // server also enforces it; matrix: HEAD_COACH / ORG_ADMIN only).
+    const scope = actingScope(ctx);
+    const canSendTimeout = scope
+      ? can(ctx, "send_timeout", scope)
+      : user.role === "COACH";
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
         <header>
@@ -44,7 +54,7 @@ export default async function NotificationsPage() {
           </p>
         </header>
 
-        <NotificationComposer />
+        <NotificationComposer canSendTimeout={canSendTimeout} />
 
         {items.length === 0 ? (
           <EmptyCard line="No notifications yet. Post one above." />
@@ -159,14 +169,19 @@ export default async function NotificationsPage() {
                         n.isTimeout ? "bg-red-950/30" : ""
                       }`}
                     >
-                      {/* coach identity row */}
+                      {/* author identity row — name + role snapshot (4c) */}
                       <div className="flex items-center gap-2.5">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-950 text-xs font-bold text-white ring-2 ring-red-500/60">
-                          {initials(n.author.name)}
+                          {initials(n.authorName)}
                         </span>
                         <div className="min-w-0 flex-1 leading-tight">
                           <p className="truncate text-sm font-semibold text-white">
-                            {n.author.name}
+                            {n.authorName}
+                            {n.authorRoleLabel && (
+                              <span className="font-normal text-zinc-400">
+                                {" "}· {n.authorRoleLabel}
+                              </span>
+                            )}
                           </p>
                           <p className="text-[11px] text-zinc-500">
                             {formatDateTime(n.createdAt)}

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { ReactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { can } from "@/lib/authz";
 import { isOnboarded } from "@/lib/onboarding";
 import { isValidGifId } from "@/lib/gifs";
 import { rateLimit } from "@/lib/ratelimit";
@@ -19,9 +20,15 @@ export async function postMessage(
   _prevState: BoardState,
   formData: FormData,
 ): Promise<BoardState> {
-  const user = await getCurrentUser();
-  if (!user || (user.role !== "COACH" && !isOnboarded(user))) {
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || (user.role !== "COACH" && !isOnboarded(user))) {
     return { error: "Only a team member can post." };
+  }
+  // 4f: posting requires an ACTIVE roster spot — a removed player (or one
+  // whose season rolled over) is no longer a member of this board.
+  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) {
+    return { error: "Join a team to post." };
   }
   const body = String(formData.get("body") ?? "").trim();
 
@@ -38,9 +45,16 @@ export async function postMessage(
     return { error: "Write a message or pick a GIF." };
   }
 
+  // Matrix (4c): special colored types are post_special_message — HEAD_COACH
+  // / ORG_ADMIN only (assistants and GMs post REGULAR like everyone else).
+  // Silent downgrade, as before. Legacy role check until Stage 6.
+  const scope = actingScope(ctx);
+  const maySpecial = scope
+    ? can(ctx, "post_special_message", scope)
+    : user.role === "COACH";
   const rawType = String(formData.get("type") ?? "REGULAR");
   const type =
-    user.role === "COACH" && SPECIAL_TYPES.has(rawType)
+    maySpecial && SPECIAL_TYPES.has(rawType)
       ? (rawType as "DISCUSSION" | "CHALLENGE" | "SPOTLIGHT")
       : "REGULAR";
 
@@ -59,7 +73,17 @@ export async function postMessage(
   }
 
   await prisma.teamMessage.create({
-    data: { teamId: user.teamId, authorId: user.id, body, type, gifId, replyToId },
+    data: {
+      teamId: user.teamId,
+      authorId: user.id,
+      body,
+      type,
+      gifId,
+      replyToId,
+      // Dual-write: person + role snapshot.
+      authorProfileId: ctx.profile?.id ?? null,
+      authorRole: ctx.profile ? snapshotAuthorRole(ctx) : null,
+    },
   });
   revalidatePath("/board");
   return { ok: true };
@@ -68,8 +92,9 @@ export async function postMessage(
 // The team coach may delete ANY message on their team; a player may delete only
 // their OWN. Strictly same team. Soft delete (deletedAt) for an audit trail.
 export async function deleteMessage(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user) return;
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user) return;
 
   const messageId = Number.parseInt(String(formData.get("messageId") ?? ""), 10);
   if (!Number.isInteger(messageId)) return;
@@ -81,7 +106,13 @@ export async function deleteMessage(formData: FormData): Promise<void> {
   if (!message || message.deletedAt) return;
   if (message.teamId !== user.teamId) return; // never another team's board
 
-  const allowed = user.role === "COACH" || message.authorId === user.id;
+  // Matrix (4c): your own message, or moderate_board (HEAD_COACH/ORG_ADMIN —
+  // assistants and GMs may NOT moderate). Legacy role check until Stage 6.
+  const scope = actingScope(ctx);
+  const mayModerate = scope
+    ? can(ctx, "moderate_board", scope)
+    : user.role === "COACH";
+  const allowed = mayModerate || message.authorId === user.id;
   if (!allowed) return;
 
   await prisma.teamMessage.update({
@@ -105,8 +136,11 @@ const REACTION_TYPES = new Set([
 ]);
 
 export async function toggleReaction(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user || (user.role !== "COACH" && !isOnboarded(user))) return;
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || (user.role !== "COACH" && !isOnboarded(user))) return;
+  // 4f: reacting requires an active roster spot (see postMessage).
+  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) return;
 
   // Each tap re-renders the whole board — cap rapid-fire tapping per user.
   if (!(await rateLimit("react", String(user.id), 60, 60))) return;
@@ -129,7 +163,12 @@ export async function toggleReaction(formData: FormData): Promise<void> {
   });
   if (!existing) {
     await prisma.messageReaction.create({
-      data: { messageId, userId: user.id, reactionType: reactionType as ReactionType },
+      data: {
+        messageId,
+        userId: user.id,
+        reactionType: reactionType as ReactionType,
+        profileId: ctx.profile?.id ?? null, // dual-write stamp
+      },
     });
   } else if (existing.reactionType !== reactionType) {
     await prisma.messageReaction.update({

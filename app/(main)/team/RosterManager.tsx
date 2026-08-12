@@ -15,10 +15,19 @@ type RosterPlayer = {
   username: string | null;
 };
 
-// Coach roster management: remove a player (HARD delete — two-tap confirm that
-// says exactly what goes with them) and reset a player's password (temp value
-// shown ONCE). Server actions re-enforce coach-only + own-team + player-only.
-export function RosterManager({ players }: { players: RosterPlayer[] }) {
+// Staff roster management (4e): remove a player (ENDS their membership — the
+// two-tap confirm says exactly what that means; nothing is deleted) and reset
+// a player's password (temp value shown ONCE). Controls render only for roles
+// that hold them; the server re-enforces the matrix regardless.
+export function RosterManager({
+  players,
+  canRemove = true,
+  canResetPassword = true,
+}: {
+  players: RosterPlayer[];
+  canRemove?: boolean;
+  canResetPassword?: boolean;
+}) {
   const [removeState, removeAction, removing] = useActionState(
     removePlayer,
     initial,
@@ -76,31 +85,36 @@ export function RosterManager({ players }: { players: RosterPlayer[] }) {
                     <p className="text-[11px] text-zinc-500">@{p.username}</p>
                   )}
                 </div>
-                <form action={resetAction} className="shrink-0">
-                  <input type="hidden" name="playerId" value={p.id} />
+                {canResetPassword && (
+                  <form action={resetAction} className="shrink-0">
+                    <input type="hidden" name="playerId" value={p.id} />
+                    <button
+                      type="submit"
+                      disabled={resetting}
+                      className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-zinc-300 transition hover:border-white/30 active:scale-95 disabled:opacity-60"
+                    >
+                      Reset password
+                    </button>
+                  </form>
+                )}
+                {canRemove && (
                   <button
-                    type="submit"
-                    disabled={resetting}
-                    className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-zinc-300 transition hover:border-white/30 active:scale-95 disabled:opacity-60"
+                    type="button"
+                    onClick={() => setConfirmingId(confirming ? null : p.id)}
+                    className="shrink-0 rounded-full border border-red-600/40 px-3 py-1 text-xs font-semibold text-red-400 transition hover:border-red-500 active:scale-95"
                   >
-                    Reset password
+                    {confirming ? "Cancel" : "Remove"}
                   </button>
-                </form>
-                <button
-                  type="button"
-                  onClick={() => setConfirmingId(confirming ? null : p.id)}
-                  className="shrink-0 rounded-full border border-red-600/40 px-3 py-1 text-xs font-semibold text-red-400 transition hover:border-red-500 active:scale-95"
-                >
-                  {confirming ? "Cancel" : "Remove"}
-                </button>
+                )}
               </div>
 
               {confirming && (
                 <div className="mt-2 rounded-lg border border-red-600/40 bg-red-950/20 p-3">
                   <p className="text-xs text-red-300">
-                    This permanently deletes {p.name.split(" ")[0]}&apos;s
-                    account — their journal, points, streak, and messages go
-                    with it. For players who have left the team.
+                    This removes {p.name.split(" ")[0]} from the roster and
+                    leaderboards. Their account, journal, streak, and career
+                    points are kept — they can re-join anytime with the team
+                    code.
                   </p>
                   <form action={removeAction} className="mt-2">
                     <input type="hidden" name="playerId" value={p.id} />

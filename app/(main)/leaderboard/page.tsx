@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import {
   getTeamRanking,
   getWeeklyRanking,
@@ -126,19 +126,24 @@ export default async function LeaderboardPage({
 }: {
   searchParams: Promise<{ view?: string }>;
 }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/");
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user) redirect("/");
+  // Re-home (4f): no roster spot → no team board.
+  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) redirect("/");
 
   const { view } = await searchParams;
   const weekView = view === "week";
 
+  // Boards are the ACTING membership's team (4d); legacy teamId fallback.
+  const boardTeamId = ctx.membership?.teamId ?? user.teamId;
   // photoSrc: serve photos via /api/photo instead of inlining base64 into HTML.
-  const ranked = (await getTeamRanking(user.teamId)).map((p) => ({
+  const ranked = (await getTeamRanking(boardTeamId)).map((p) => ({
     ...p,
     photoUrl: photoSrc(p.id, p.photoUrl),
   }));
   const weekly = weekView
-    ? (await getWeeklyRanking(user.teamId)).map((p) => ({
+    ? (await getWeeklyRanking(boardTeamId)).map((p) => ({
         ...p,
         photoUrl: photoSrc(p.id, p.photoUrl),
       }))

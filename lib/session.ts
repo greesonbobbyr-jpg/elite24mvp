@@ -1,26 +1,19 @@
-import { auth } from "@/auth";
-import { prisma } from "./prisma";
+import { getCurrentContext, getCurrentUserId } from "./context";
 
-// The single "who is the current user" choke point. Now backed by the real
-// Auth.js session (encrypted JWT cookie) instead of the old unsigned e24_uid
-// cookie. getCurrentUser() returns the SAME shape as before — a Prisma User with
-// team + profile (Int id) — so every existing page/action guard is unchanged.
-// Identity comes only from the verified session; no client-provided id is trusted.
+// COMPAT SHIM (hierarchy rebuild Stage 2). The single "who is the current
+// user" choke point is now getCurrentContext() in lib/context.ts; this module
+// keeps the legacy surface working unchanged on top of it.
+//
+// getCurrentUser() returns ctx.user — the SAME Prisma row, loaded by the SAME
+// query (`user.findUnique` incl. team + profile) this function has always run.
+// Identity, not reconstruction: nothing to drift, byte-for-byte identical.
+// Surfaces migrate onto ctx one at a time in Stage 4; this shim (and the
+// legacy columns it exposes) is removed in Stage 6.
 
-export async function getCurrentUserId(): Promise<number | null> {
-  const session = await auth();
-  const raw = session?.user?.id;
-  if (raw == null) return null;
-  const id = Number(raw);
-  return Number.isInteger(id) ? id : null;
-}
+export { getCurrentUserId };
 
 // Loads the authenticated user with their team and (for players) profile, or null.
 export async function getCurrentUser() {
-  const id = await getCurrentUserId();
-  if (id === null) return null;
-  return prisma.user.findUnique({
-    where: { id },
-    include: { team: true, profile: true },
-  });
+  const ctx = await getCurrentContext();
+  return ctx?.user ?? null;
 }

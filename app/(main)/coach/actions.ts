@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { PointsSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { can } from "@/lib/authz";
+import { performAdjustPoints } from "@/lib/data/points";
 
 export type CoachActionState = { error?: string; ok?: boolean };
 
@@ -17,8 +18,17 @@ export async function adjustPoints(
   _prev: CoachActionState,
   formData: FormData,
 ): Promise<CoachActionState> {
-  const coach = await getCurrentUser();
-  if (!coach || coach.role !== "COACH") return { error: "Coaches only." };
+  const ctx = await getCurrentContext();
+  const coach = ctx?.user;
+  // Matrix (4e): adjust_points is HEAD_COACH / ORG_ADMIN only — assistants
+  // and GMs are denied. Legacy role check for pre-backfill logins only.
+  const scope = ctx ? actingScope(ctx) : null;
+  const mayAdjust = ctx
+    ? scope
+      ? can(ctx, "adjust_points", scope)
+      : coach!.role === "COACH"
+    : false;
+  if (!ctx || !coach || !mayAdjust) return { error: "You can't adjust points." };
 
   const playerId = Number.parseInt(String(formData.get("playerId") ?? ""), 10);
   if (!Number.isInteger(playerId)) return { error: "Invalid player." };
@@ -36,17 +46,26 @@ export async function adjustPoints(
     return { error: "A reason is required to remove points." };
   }
 
-  // Team-scoped: only a PLAYER on the coach's own team.
+  // Team-scoped (4e): a PLAYER with an ACTIVE membership on the acting team
+  // (legacy teamId equality only for pre-backfill targets).
   const player = await prisma.user.findUnique({
     where: { id: playerId },
-    include: { profile: true },
+    include: {
+      profile: true,
+      profileRecord: {
+        select: {
+          memberships: {
+            where: { teamId: coach.teamId, endedAt: null },
+            select: { id: true },
+          },
+        },
+      },
+    },
   });
-  if (
-    !player ||
-    player.role !== "PLAYER" ||
-    player.teamId !== coach.teamId ||
-    !player.profile
-  ) {
+  const onRoster = player?.profileRecord
+    ? player.profileRecord.memberships.length > 0
+    : player?.teamId === coach.teamId;
+  if (!player || player.role !== "PLAYER" || !player.profile || !onRoster) {
     return { error: "Not a player on your team." };
   }
 
@@ -57,21 +76,9 @@ export async function adjustPoints(
 
   const finalReason = reason || "Coach bonus"; // additions may omit a reason
 
-  // Ledger row + cache bump in ONE transaction (mirror of logQuest).
-  await prisma.$transaction(async (tx) => {
-    await tx.pointsLedger.create({
-      data: {
-        userId: playerId,
-        amount,
-        reason: finalReason,
-        source: PointsSource.COACH_ADJUSTMENT,
-      },
-    });
-    await tx.playerProfile.update({
-      where: { userId: playerId },
-      data: { points: { increment: amount } },
-    });
-  });
+  // Ledger row + all caches in ONE transaction (lib/data/points — credits the
+  // membership on the ADJUSTING STAFF'S team, the acting scope of this action).
+  await performAdjustPoints({ id: player.id, teamId: coach.teamId }, amount, finalReason);
 
   revalidatePath(`/coach/player/${playerId}`);
   revalidatePath("/");
@@ -83,10 +90,20 @@ export async function adjustPoints(
 // OUT takeover). Reuses the normal notification machinery — players confirm,
 // the coach sees receipts. Copy is deliberately team-wide (no name-calling).
 export async function sendCheckInReminder(formData: FormData): Promise<void> {
-  const coach = await getCurrentUser();
-  if (!coach || coach.role !== "COACH") return;
-
-  const isTimeout = formData.get("isTimeout") === "on";
+  const ctx = await getCurrentContext();
+  const coach = ctx?.user;
+  if (!ctx || !coach) return;
+  // Matrix (4c): any staff role may post; TIME OUT needs send_timeout
+  // (HC/ORG_ADMIN) — otherwise it goes out as a normal reminder.
+  const scope = actingScope(ctx);
+  const mayPost = scope
+    ? can(ctx, "post_notification", scope)
+    : coach.role === "COACH";
+  if (!mayPost) return;
+  const maySendTimeout = scope
+    ? can(ctx, "send_timeout", scope)
+    : coach.role === "COACH";
+  const isTimeout = formData.get("isTimeout") === "on" && maySendTimeout;
   await prisma.notification.create({
     data: {
       teamId: coach.teamId,
@@ -94,6 +111,9 @@ export async function sendCheckInReminder(formData: FormData): Promise<void> {
       title: "Check-in reminder 🏀",
       body: "Get your daily check-in in — write today's plan and get after it. Your streak is counting on you.",
       isTimeout,
+      // Dual-write: person + role snapshot.
+      authorProfileId: ctx.profile?.id ?? null,
+      authorRole: ctx.profile ? snapshotAuthorRole(ctx) : null,
     },
   });
   revalidatePath("/notifications");

@@ -9,7 +9,13 @@ const initialState: NotificationState = {};
 const fieldClass =
   "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
 
-export function NotificationComposer() {
+// canSendTimeout: server-decided (matrix send_timeout — HEAD_COACH/ORG_ADMIN).
+// Staff without it never see the toggle; the server enforces it regardless.
+export function NotificationComposer({
+  canSendTimeout = true,
+}: {
+  canSendTimeout?: boolean;
+}) {
   const [state, formAction, pending] = useActionState(
     postNotification,
     initialState,
@@ -39,7 +45,9 @@ export function NotificationComposer() {
       />
 
       {/* TIME OUT toggle — an obviously-urgent kind of notification that takes
-          over players' screens until acknowledged. Posts `isTimeout` as "on". */}
+          over players' screens until acknowledged. Posts `isTimeout` as "on".
+          Hidden entirely from staff without send_timeout (4c follow-up). */}
+      {canSendTimeout && (
       <label className="relative z-10 flex cursor-pointer items-start gap-2 text-sm">
         <input
           type="checkbox"
@@ -58,6 +66,7 @@ export function NotificationComposer() {
           </span>
         </span>
       </label>
+      )}
 
       {state.error && (
         <p className="relative z-10 text-sm text-red-500">{state.error}</p>

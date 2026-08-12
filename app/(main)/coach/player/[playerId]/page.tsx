@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { actingScope, getCurrentContext } from "@/lib/context";
+import { can } from "@/lib/authz";
 import { getPlayerCoachView } from "@/lib/coach";
 import { formatTime } from "@/lib/format";
 import { AdjustPointsForm } from "./AdjustPointsForm";
@@ -17,14 +18,22 @@ export default async function CoachPlayerPage({
   params: Promise<{ playerId: string }>;
 }) {
   const { playerId } = await params;
-  const user = await getCurrentUser();
-  if (!user || user.role !== "COACH") redirect("/");
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "COACH") redirect("/");
+
+  // Matrix (4e): the drill-in is view_player_detail (all staff roles);
+  // adjust_points and view_takeaways gate their sections below.
+  const scope = actingScope(ctx);
+  if (scope && !can(ctx, "view_player_detail", scope)) redirect("/");
+  const canAdjust = scope ? can(ctx, "adjust_points", scope) : true;
+  const canSeeTakeaway = scope ? can(ctx, "view_takeaways", scope) : true;
 
   const id = Number.parseInt(playerId, 10);
   if (!Number.isInteger(id)) redirect("/");
 
-  const view = await getPlayerCoachView(user.teamId, id);
-  if (!view) redirect("/"); // not a player on the coach's team
+  const view = await getPlayerCoachView(user.teamId, id, canSeeTakeaway);
+  if (!view) redirect("/"); // not a player on the staffer's team
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
@@ -83,7 +92,9 @@ export default async function CoachPlayerPage({
       </section>
 
       {/* Today's Mindset takeaway — coach-visible by design (NOT the private
-          check-in reflection). */}
+          check-in reflection). Hidden entirely for roles without
+          view_takeaways (GMs); at-time team scoping is enforced in lib/coach. */}
+      {canSeeTakeaway && (
       <section>
         <p className="e24-eyebrow mb-2">Today&apos;s Mindset takeaway</p>
         {view.mindsetTakeaway ? (
@@ -98,6 +109,7 @@ export default async function CoachPlayerPage({
           </p>
         )}
       </section>
+      )}
 
       {/* This week */}
       <section>
@@ -116,7 +128,7 @@ export default async function CoachPlayerPage({
           <p className="mt-1 text-4xl font-black tabular-nums text-white">
             {view.points}
           </p>
-          <AdjustPointsForm playerId={view.id} />
+          {canAdjust && <AdjustPointsForm playerId={view.id} />}
         </div>
       </section>
 

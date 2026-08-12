@@ -12,6 +12,7 @@ import { photoSrc } from "@/lib/photoUrl";
 
 export async function CoachHome({
   user,
+  canSendTimeout = true,
 }: {
   user: {
     teamId: number;
@@ -22,6 +23,9 @@ export async function CoachHome({
       secondaryColor: string | null;
     };
   };
+  // Matrix send_timeout (HEAD_COACH/ORG_ADMIN) — staff without it never see
+  // the TIME OUT checkbox; the server enforces it regardless.
+  canSendTimeout?: boolean;
 }) {
   const { roster, totalPlayers, checkedInToday, questsDoneToday } =
     await getTeamOverview(user.teamId);
@@ -100,14 +104,16 @@ export async function CoachHome({
             >
               Send check-in reminder
             </button>
-            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-zinc-400">
-              <input
-                type="checkbox"
-                name="isTimeout"
-                className="h-3.5 w-3.5 accent-red-600"
-              />
-              Send as TIME OUT (takes over their screen)
-            </label>
+            {canSendTimeout && (
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-zinc-400">
+                <input
+                  type="checkbox"
+                  name="isTimeout"
+                  className="h-3.5 w-3.5 accent-red-600"
+                />
+                Send as TIME OUT (takes over their screen)
+              </label>
+            )}
           </form>
         )}
       </section>

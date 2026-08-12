@@ -1,53 +1,62 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
-import { getTodaysEntry, todayKey } from "@/lib/journal";
+import { actingScope, getCurrentContext } from "@/lib/context";
+import { can } from "@/lib/authz";
+import { todayKey } from "@/lib/journal";
+import {
+  getMyTodaysEntry,
+  getMyTodaysReview,
+  getMyLatestReviewNote,
+} from "@/lib/data/reflections";
 import { getTodaysTakeaway } from "@/lib/mindset-takeaway";
 import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { storyForDay } from "@/lib/mindset";
-import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
-import { getTodaysReview, getLatestReviewNote } from "@/lib/review";
+import { listActiveQuestsForOrg, getTodaysCompletedQuestIds } from "@/lib/quests";
 import { getTeamRanking } from "@/lib/leaderboard";
 import { tierForPoints, TIERS } from "@/lib/cardTheme";
 import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
 import { ReviewCard } from "./ReviewCard";
 import { CoachHome } from "./CoachHome";
+import { JoinTeamCard } from "./JoinTeamCard";
 import { Card } from "@/app/components/ui/Card";
 
 export default async function Home() {
-  const user = await getCurrentUser();
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
 
   // Unauthenticated → login (middleware also enforces this; defense in depth).
-  if (!user) redirect("/login");
+  if (!ctx || !user) redirect("/login");
 
   // Coaches get the team dashboard + roster (player-only daily loop lives below).
   if (user.role === "COACH") {
-    return <CoachHome user={user} />;
+    const scope = actingScope(ctx);
+    const canSendTimeout = scope ? can(ctx, "send_timeout", scope) : true;
+    return <CoachHome user={user} canSendTimeout={canSendTimeout} />;
   }
 
   // Player (guaranteed onboarded by the (main) layout gate). Quests + points live
   // on /quests; profile basics live on the Brand page. This page stays focused on
   // the Dream, the daily Mindset story, and the check-in/journal.
   const profile = user.profile;
-  const todaysEntry = await getTodaysEntry(user.id);
+  const todaysEntry = await getMyTodaysEntry({ user });
   const takeaway = await getTodaysTakeaway(user.id);
   const story = storyForDay(todayKey());
 
   // "Next up" counts + Pro Review data for the checked-in state; the note from
   // the player's last review surfaces above the check-in prompt otherwise.
-  let quests: Awaited<ReturnType<typeof listActiveQuests>> = [];
+  let quests: Awaited<ReturnType<typeof listActiveQuestsForOrg>> = [];
   let completedIds: number[] = [];
-  let todaysReview: Awaited<ReturnType<typeof getTodaysReview>> = null;
-  let lastNote: Awaited<ReturnType<typeof getLatestReviewNote>> = null;
+  let todaysReview: Awaited<ReturnType<typeof getMyTodaysReview>> = null;
+  let lastNote: Awaited<ReturnType<typeof getMyLatestReviewNote>> = null;
   if (todaysEntry) {
     [quests, completedIds, todaysReview] = await Promise.all([
-      listActiveQuests(),
+      listActiveQuestsForOrg(ctx.org?.id),
       getTodaysCompletedQuestIds(user.id),
-      getTodaysReview(user.id),
+      getMyTodaysReview({ user }),
     ]);
   } else {
-    lastNote = await getLatestReviewNote(user.id);
+    lastNote = await getMyLatestReviewNote({ user });
   }
   const questsDone = quests.filter((q) => completedIds.includes(q.id)).length;
   const loggedQuests = quests
@@ -55,10 +64,11 @@ export default async function Home() {
     .map((q) => ({ title: q.title, points: q.points }));
 
   // Progress strip: streak / tier / rank — the "why come back" state, on the
-  // first screen instead of buried in /quests and /leaderboard.
-  const ranking = await getTeamRanking(user.teamId);
+  // first screen instead of buried in /quests and /leaderboard. Board = acting
+  // team; tier = careerPoints (4d; equals the legacy cache by invariant).
+  const ranking = await getTeamRanking(ctx.membership?.teamId ?? user.teamId);
   const myRank = ranking.find((r) => r.id === user.id)?.rank ?? 0;
-  const points = profile?.points ?? 0;
+  const points = ctx.profile?.careerPoints ?? profile?.points ?? 0;
   const tier = tierForPoints(points);
   const nextTier = TIERS[TIERS.findIndex((t) => t.key === tier.key) + 1] ?? null;
   const streak = profile?.currentStreak ?? 0;
@@ -66,6 +76,10 @@ export default async function Home() {
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
+      {/* No active roster spot (removed / season rolled over): the join card
+          leads; the daily loop below keeps working (offseason — career only). */}
+      {ctx.profile && !ctx.membership && <JoinTeamCard />}
+
       {/* The Dream — the material hero */}
       {profile?.dream && (
         <Card variant="material">

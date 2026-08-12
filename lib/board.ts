@@ -26,6 +26,9 @@ export async function listTeamMessages(
           profile: { select: { photoUrl: true } },
         },
       },
+      // Display author (Stage 4c): permanent Profile + role SNAPSHOT taken at
+      // write time — a later role change never relabels old messages.
+      authorProfile: { select: { name: true, photoUrl: true } },
       reactions: { select: { userId: true, reactionType: true } },
       replyTo: {
         select: {
@@ -34,6 +37,7 @@ export async function listTeamMessages(
           gifId: true,
           deletedAt: true,
           author: { select: { name: true } },
+          authorProfile: { select: { name: true } },
         },
       },
     },

@@ -1,13 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma, PointsSource } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { can } from "@/lib/authz";
 import { isOnboarded } from "@/lib/onboarding";
 import { todayKey } from "@/lib/journal";
+import { hasMyEntryFor } from "@/lib/data/reflections";
+import {
+  performCheckIn,
+  performMeasuredQuest,
+  performOneTapQuest,
+  performReview,
+  performUndoQuest,
+} from "@/lib/data/points";
 import { POINTS_PER_CHECKIN, POINTS_PER_REVIEW } from "@/lib/points";
-import { advanceStreak } from "@/lib/streaks";
 
 export type CheckInState = { error?: string };
 
@@ -18,8 +26,9 @@ export async function submitCheckIn(
   _prevState: CheckInState,
   formData: FormData,
 ): Promise<CheckInState> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) {
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) {
     return { error: "Only a player can check in." };
   }
 
@@ -31,45 +40,10 @@ export async function submitCheckIn(
   // The check-in stands on its own — writing today's reflection is all it takes.
   // The 1-Minute Mindset takeaway is a separate, optional reflection and does NOT
   // gate this (it used to, which broke submitting the check-in first).
+  // The entry + ledger + all caches + streak commit in ONE transaction
+  // (lib/data/points — dual-writes the new-world columns since Stage 3).
   try {
-    const day = todayKey();
-    await prisma.$transaction(async (tx) => {
-      await tx.journalEntry.create({
-        data: { userId: user.id, reflection, day },
-      });
-      await tx.pointsLedger.create({
-        data: {
-          userId: user.id,
-          amount: POINTS_PER_CHECKIN,
-          reason: "Daily check-in",
-          source: PointsSource.DAILY_CHECK_IN,
-        },
-      });
-      // Advance the streak in the same transaction as the entry (the unique
-      // [userId, day] on JournalEntry guarantees this runs once per day).
-      const profile = await tx.playerProfile.findUnique({
-        where: { userId: user.id },
-        select: {
-          currentStreak: true,
-          bestStreak: true,
-          lastCheckInDay: true,
-          streakGraceUsed: true,
-        },
-      });
-      const streak = advanceStreak(
-        profile ?? {
-          currentStreak: 0,
-          bestStreak: 0,
-          lastCheckInDay: null,
-          streakGraceUsed: false,
-        },
-        day,
-      );
-      await tx.playerProfile.update({
-        where: { userId: user.id },
-        data: { points: { increment: POINTS_PER_CHECKIN }, ...streak },
-      });
-    });
+    await performCheckIn(ctx, reflection, todayKey(), POINTS_PER_CHECKIN);
   } catch (error) {
     // Unique violation = already checked in today. Treat as a no-op success.
     if (
@@ -95,8 +69,9 @@ export async function saveMindsetTakeaway(
   _prevState: TakeawayState,
   formData: FormData,
 ): Promise<TakeawayState> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) {
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) {
     return { error: "Only a player can do this." };
   }
   const text = String(formData.get("text") ?? "").trim();
@@ -104,11 +79,18 @@ export async function saveMindsetTakeaway(
     return { error: "Write a few words on what you took from it." };
   }
 
+  // Dual-write: the at-time membership stamp (coach visibility is scoped to
+  // the team the athlete was acting for THAT DAY). The update fills stamps on
+  // rows first written before Stage 3 — same day, same team, same semantics.
+  const stamps = {
+    profileId: ctx.profile?.id ?? null,
+    membershipId: ctx.profile ? (ctx.membership?.id ?? null) : null,
+  };
   const day = todayKey();
   await prisma.mindsetTakeaway.upsert({
     where: { userId_day: { userId: user.id, day } },
-    create: { userId: user.id, day, text },
-    update: { text },
+    create: { userId: user.id, day, text, ...stamps },
+    update: { text, ...stamps },
   });
   revalidatePath("/");
   return { ok: true };
@@ -125,8 +107,9 @@ export async function submitReview(
   _prevState: ReviewState,
   formData: FormData,
 ): Promise<ReviewState> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) {
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) {
     return { error: "Only a player can review their day." };
   }
 
@@ -143,32 +126,14 @@ export async function submitReview(
     String(formData.get("noteToTomorrow") ?? "").trim() || null;
 
   const day = todayKey();
-  const entry = await prisma.journalEntry.findUnique({
-    where: { userId_day: { userId: user.id, day } },
-    select: { id: true },
-  });
-  if (!entry) {
+  if (!(await hasMyEntryFor({ user }, day))) {
     return { error: "Check in first — the review looks back at today's plan." };
   }
 
+  // Review + ledger + all caches in ONE transaction (lib/data/points —
+  // dual-writes the new-world columns since Stage 3).
   try {
-    await prisma.$transaction([
-      prisma.dailyReview.create({
-        data: { userId: user.id, day, outcome, learned, noteToTomorrow },
-      }),
-      prisma.pointsLedger.create({
-        data: {
-          userId: user.id,
-          amount: POINTS_PER_REVIEW,
-          reason: "Pro Review",
-          source: PointsSource.REVIEW,
-        },
-      }),
-      prisma.playerProfile.update({
-        where: { userId: user.id },
-        data: { points: { increment: POINTS_PER_REVIEW } },
-      }),
-    ]);
+    await performReview(ctx, { day, outcome, learned, noteToTomorrow }, POINTS_PER_REVIEW);
   } catch (error) {
     // Unique violation = already reviewed today (no double award). No-op success.
     if (
@@ -190,8 +155,9 @@ export async function submitReview(
 // (A predict-first step existed briefly; the owner cut it — logging the real
 // count keeps the self-tracking value without the guessing homework.)
 export async function completeQuest(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) return;
 
   const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
   const actual = Number.parseInt(String(formData.get("actual") ?? ""), 10);
@@ -199,67 +165,14 @@ export async function completeQuest(formData: FormData): Promise<void> {
 
   const quest = await prisma.quest.findUnique({ where: { id: questId } });
   if (!quest || !quest.active || quest.targetCount == null) return;
+  // Org-bound (4a): an org quest must belong to the player's own org.
+  // (Globals pass — they exist only until the converge flip retires them.)
+  if (quest.organizationId != null && quest.organizationId !== ctx.org?.id) return;
   if (actual < 0 || actual > quest.targetCount) return;
 
-  const day = todayKey();
-
-  const award = (tx: Prisma.TransactionClient, questLogId: number) =>
-    Promise.all([
-      tx.pointsLedger.create({
-        data: {
-          userId: user.id,
-          amount: quest.points,
-          reason: quest.title,
-          source: PointsSource.QUEST,
-          questLogId,
-        },
-      }),
-      tx.playerProfile.update({
-        where: { userId: user.id },
-        data: { points: { increment: quest.points } },
-      }),
-    ]);
-
-  try {
-    await prisma.$transaction(async (tx) => {
-      const log = await tx.questLog.create({
-        data: {
-          userId: user.id,
-          questId: quest.id,
-          day,
-          status: "APPROVED",
-          actual,
-        },
-      });
-      await award(tx, log.id);
-    });
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      // A log already exists today. If it's a leftover PENDING one (from the
-      // brief predict-first flow), upgrade it and award once; done = no-op.
-      const existing = await prisma.questLog.findUnique({
-        where: {
-          userId_questId_day: { userId: user.id, questId: quest.id, day },
-        },
-      });
-      if (existing && existing.status === "PENDING") {
-        await prisma.$transaction(async (tx) => {
-          await tx.questLog.update({
-            where: { id: existing.id },
-            data: { actual, status: "APPROVED" },
-          });
-          await award(tx, existing.id);
-        });
-      }
-      revalidatePath("/quests");
-      revalidatePath("/");
-      return;
-    }
-    throw error;
-  }
+  // Log + ledger + all caches in ONE transaction, incl. the leftover-PENDING
+  // upgrade path (lib/data/points — dual-writes since Stage 3).
+  await performMeasuredQuest(ctx, quest, actual, todayKey());
 
   revalidatePath("/quests");
   revalidatePath("/");
@@ -270,38 +183,24 @@ export async function completeQuest(formData: FormData): Promise<void> {
 // (source QUEST, amount = the quest's points), and bump the cached total. The
 // @@unique([userId, questId, day]) guarantees one log per quest per day.
 export async function logQuest(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) return;
 
   const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
   if (!Number.isInteger(questId)) return;
 
   const quest = await prisma.quest.findUnique({ where: { id: questId } });
   if (!quest || !quest.active) return;
+  // Org-bound (4a): an org quest must belong to the player's own org.
+  if (quest.organizationId != null && quest.organizationId !== ctx.org?.id) return;
   // Measurable quests go through the predict-then-log flow, never one-tap.
   if (quest.targetCount != null) return;
 
+  // Log + ledger + all caches in ONE transaction (lib/data/points —
+  // dual-writes since Stage 3).
   try {
-    // Interactive transaction so the ledger row can link back to the created
-    // QuestLog (questLogId) — undoQuest uses that link to reverse the exact row.
-    await prisma.$transaction(async (tx) => {
-      const log = await tx.questLog.create({
-        data: { userId: user.id, questId: quest.id, day: todayKey() },
-      });
-      await tx.pointsLedger.create({
-        data: {
-          userId: user.id,
-          amount: quest.points,
-          reason: quest.title,
-          source: PointsSource.QUEST,
-          questLogId: log.id,
-        },
-      });
-      await tx.playerProfile.update({
-        where: { userId: user.id },
-        data: { points: { increment: quest.points } },
-      });
-    });
+    await performOneTapQuest(ctx, quest, todayKey());
   } catch (error) {
     // Unique violation = already logged this quest today. No-op success.
     if (
@@ -324,30 +223,16 @@ export async function logQuest(formData: FormData): Promise<void> {
 // all in one transaction. Scoped to the current user + this quest + TODAY, so it
 // can never touch another player's completion. Not-completed = harmless no-op.
 export async function undoQuest(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) return;
 
   const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
   if (!Number.isInteger(questId)) return;
 
-  const day = todayKey();
-  await prisma.$transaction(async (tx) => {
-    const log = await tx.questLog.findUnique({
-      where: { userId_questId_day: { userId: user.id, questId, day } },
-      include: { pointsLedger: true },
-    });
-    if (!log) return; // not completed today — nothing to undo
-
-    const amount = log.pointsLedger?.amount ?? 0;
-    // Deleting the log cascades its linked PointsLedger row (questLogId).
-    await tx.questLog.delete({ where: { id: log.id } });
-    if (amount > 0) {
-      await tx.playerProfile.update({
-        where: { userId: user.id },
-        data: { points: { decrement: amount } },
-      });
-    }
-  });
+  // Reverses the exact ledger row (by its own stamps) + all caches in ONE
+  // transaction (lib/data/points — dual-writes since Stage 3).
+  await performUndoQuest(ctx, questId, todayKey());
 
   revalidatePath("/quests");
   revalidatePath("/");
@@ -360,20 +245,40 @@ export async function postNotification(
   _prevState: NotificationState,
   formData: FormData,
 ): Promise<NotificationState> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "COACH") {
-    return { error: "Only a coach can post notifications." };
-  }
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user) return { error: "Only a coach can post notifications." };
+  // Matrix (4c): HEAD_COACH / ASSISTANT_COACH / GENERAL_MANAGER / ORG_ADMIN
+  // may post; legacy role check only for pre-backfill logins (dies Stage 6).
+  const scope = actingScope(ctx);
+  const mayPost = scope
+    ? can(ctx, "post_notification", scope)
+    : user.role === "COACH";
+  if (!mayPost) return { error: "Only a coach can post notifications." };
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   if (title === "" || body === "") {
     return { error: "Add a title and a message." };
   }
-  // Urgent takeover flag — coach-only is already enforced above.
-  const isTimeout = formData.get("isTimeout") === "on";
+  // Urgent takeover flag — send_timeout is HC/ORG_ADMIN only per the matrix;
+  // a staffer without it posts a NORMAL notification (silent downgrade, same
+  // pattern as special board types).
+  const maySendTimeout = scope
+    ? can(ctx, "send_timeout", scope)
+    : user.role === "COACH";
+  const isTimeout = formData.get("isTimeout") === "on" && maySendTimeout;
 
   await prisma.notification.create({
-    data: { teamId: user.teamId, authorId: user.id, title, body, isTimeout },
+    data: {
+      teamId: user.teamId,
+      authorId: user.id,
+      title,
+      body,
+      isTimeout,
+      // Dual-write: person + role snapshot ("Coach Gary · Head Coach").
+      authorProfileId: ctx.profile?.id ?? null,
+      authorRole: ctx.profile ? snapshotAuthorRole(ctx) : null,
+    },
   });
   revalidatePath("/notifications");
   revalidatePath("/");
@@ -384,8 +289,11 @@ export async function postNotification(
 // notification (DB unique). Team-private: a player can only confirm a
 // notification posted to their own team.
 export async function confirmRead(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  // 4f: read receipts belong to roster members only.
+  if (ctx.profile && !ctx.membership) return;
 
   const notificationId = Number.parseInt(
     String(formData.get("notificationId") ?? ""),
@@ -401,7 +309,11 @@ export async function confirmRead(formData: FormData): Promise<void> {
 
   try {
     await prisma.notificationRead.create({
-      data: { notificationId, userId: user.id },
+      data: {
+        notificationId,
+        userId: user.id,
+        profileId: ctx.profile?.id ?? null, // dual-write stamp
+      },
     });
   } catch (error) {
     // Unique violation = already confirmed. No-op success.

@@ -52,12 +52,61 @@ export async function signup(
 
   try {
     await prisma.$transaction(async (tx) => {
-      const team = await tx.team.create({
-        data: { name: teamName, joinCode, logoUrl, primaryColor, secondaryColor },
+      // Dual-write (Stage 3): a coach signup creates the WHOLE world in both
+      // models — same semantics the Stage 1 backfill applied to existing
+      // teams (org named after the team, one current season, quest clones
+      // created INACTIVE so the legacy quest list never sees them).
+      const org = await tx.organization.create({ data: { name: teamName } });
+      const season = await tx.season.create({
+        data: {
+          organizationId: org.id,
+          name: String(new Date().getFullYear()),
+          isCurrent: true,
+        },
       });
-      await tx.user.create({
+      const team = await tx.team.create({
+        data: {
+          name: teamName,
+          joinCode,
+          logoUrl,
+          primaryColor,
+          secondaryColor,
+          organizationId: org.id,
+        },
+      });
+      const coach = await tx.user.create({
         data: { name, email, role: "COACH", teamId: team.id, passwordHash },
       });
+      const profile = await tx.profile.create({
+        data: { userId: coach.id, name, setupCompletedAt: new Date() },
+      });
+      await tx.membership.create({
+        data: {
+          profileId: profile.id,
+          teamId: team.id,
+          seasonId: season.id,
+          role: "HEAD_COACH",
+        },
+      });
+      await tx.roleAssignment.create({
+        data: { profileId: profile.id, role: "ORG_ADMIN", organizationId: org.id },
+      });
+      const globalQuests = await tx.quest.findMany({
+        where: { organizationId: null },
+      });
+      for (const gq of globalQuests) {
+        await tx.quest.create({
+          data: {
+            organizationId: org.id,
+            title: gq.title,
+            description: gq.description,
+            points: gq.points,
+            targetCount: gq.targetCount,
+            active: false, // inactive until the Stage 4a cutover flips them
+            sortOrder: gq.sortOrder,
+          },
+        });
+      }
     });
   } catch {
     // Unique violation (rare race on email/joinCode) → generic message.

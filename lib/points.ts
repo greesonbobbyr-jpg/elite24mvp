@@ -15,12 +15,19 @@ export function listLedger(userId: number) {
   });
 }
 
-// The player's total points, read from the convenience cache on PlayerProfile
-// (kept in sync with the ledger in the same transaction as each write).
+// The player's CAREER total — Profile.careerPoints since Stage 4d (drives the
+// card tier; crosses orgs by design: it's the athlete's own progression).
+// Kept in sync with the ledger in the same transaction as each write. Legacy
+// PlayerProfile cache only for pre-backfill logins (dies at Stage 6).
 export async function getPointsTotal(userId: number): Promise<number> {
-  const profile = await prisma.playerProfile.findUnique({
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+    select: { careerPoints: true },
+  });
+  if (profile) return profile.careerPoints;
+  const legacy = await prisma.playerProfile.findUnique({
     where: { userId },
     select: { points: true },
   });
-  return profile?.points ?? 0;
+  return legacy?.points ?? 0;
 }

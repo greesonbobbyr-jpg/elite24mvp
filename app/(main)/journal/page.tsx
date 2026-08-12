@@ -1,18 +1,20 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
-import { listEntries, todayKey } from "@/lib/journal";
+import { getCurrentContext } from "@/lib/context";
+import { todayKey } from "@/lib/journal";
+import { listMyEntries } from "@/lib/data/reflections";
 import { JournalWall } from "../JournalWall";
 
-// The player's private journal — a "wall of days". Owner-only: server-enforced
-// via getCurrentUser + the player-only redirect, and listEntries is scoped to
-// the current user's id. Display only — entry creation/model are unchanged.
+// The player's private journal — a "wall of days". Owner-only STRUCTURALLY:
+// listMyEntries derives the author from the caller's own ctx (no id parameter
+// exists to pass someone else's). Display only — entry creation is unchanged.
 export default async function JournalPage() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "PLAYER") {
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user || user.role !== "PLAYER") {
     redirect("/");
   }
 
-  const entries = await listEntries(user.id);
+  const entries = await listMyEntries({ user });
   const today = todayKey();
 
   return (
