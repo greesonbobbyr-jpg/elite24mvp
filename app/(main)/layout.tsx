@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import { isOnboarded } from "@/lib/onboarding";
 import { getActiveTimeout, countUnreadForPlayer } from "@/lib/notifications";
 import { TimeoutTakeover } from "./TimeoutTakeover";
@@ -23,7 +23,8 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
 
   if (user?.role === "PLAYER" && !isOnboarded(user)) {
     redirect("/onboarding");
@@ -63,8 +64,30 @@ export default async function MainLayout({
   return (
     <>
       <header className="relative flex items-center justify-between border-b border-zinc-900 px-3 py-2.5">
-        {/* left: player/coach identity avatar (photo or initials) */}
-        {user ? <IdentityChip user={user} /> : <span />}
+        {/* left: player/coach identity avatar (photo or initials). Profile
+            fields come from the permanent Profile since 4b (careerPoints ==
+            legacy points by invariant; photo dual-written) with a legacy
+            fallback for not-yet-backfilled logins. */}
+        {ctx && user ? (
+          <IdentityChip
+            user={{
+              id: user.id,
+              name: user.name,
+              role: user.role,
+              photoUrl: user.photoUrl,
+              team: user.team,
+              profile: ctx.profile
+                ? {
+                    photoUrl: ctx.profile.photoUrl,
+                    jerseyNumber: ctx.profile.jerseyNumber,
+                    points: ctx.profile.careerPoints,
+                  }
+                : user.profile,
+            }}
+          />
+        ) : (
+          <span />
+        )}
         {/* center: the Elite24MVP wordmark (live text, non-link) */}
         <div
           aria-label="Elite24MVP"

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
+import { getCurrentContext } from "@/lib/context";
+import { resolveBrandAccess } from "@/lib/brand-access";
 import { getTeamRanking } from "@/lib/leaderboard";
 import { EditBrandForm } from "../EditBrandForm";
 import { Card } from "@/app/components/ui/Card";
@@ -12,31 +12,33 @@ function formatHeight(inches: number | null): string | null {
   return `${Math.floor(inches / 12)}'${inches % 12}"`;
 }
 
-// A player's team-facing "Your Brand" profile. Viewable by anyone on the SAME
-// team (read-only); editable only by the owner. Strictly same-team — a cross-
-// team id is refused (CLAUDE.md section 3.2). The journal link is owner-only.
+// A player's team-facing "Your Brand" profile. Access is org-bounded via
+// lib/brand-access (Stage 4b): the owner sees everything and can edit; org
+// STAFF get the full read-only view (unchanged from before); a TEAMMATE gets
+// CARD INFO ONLY — the Dream and per-game stats are deliberately no longer
+// teammate-visible (§2.10 ruling: the Dream lives on the athlete's own Home).
+// Anyone else — including all of other organizations — is refused.
 export default async function BrandPage({
   params,
 }: {
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = await params;
-  const viewer = await getCurrentUser();
-  if (!viewer) redirect("/");
+  const ctx = await getCurrentContext();
+  if (!ctx) redirect("/");
 
   const targetId = Number.parseInt(userId, 10);
   if (!Number.isInteger(targetId)) redirect("/");
 
-  const target = await prisma.user.findUnique({
-    where: { id: targetId },
-    include: { profile: true, team: true },
-  });
+  const resolved = await resolveBrandAccess(ctx, targetId);
+  if (!resolved || resolved.access === null) redirect("/");
+  const { target, access } = resolved;
   // Brand pages exist only for onboarded players.
-  if (!target || target.role !== "PLAYER" || !target.profile) redirect("/");
-  // Strictly same team.
-  if (viewer.teamId !== target.teamId) redirect("/");
+  if (target.role !== "PLAYER" || !target.profile) redirect("/");
 
-  const isOwner = viewer.id === target.id;
+  const isOwner = access === "self";
+  // Card info only for teammates — Dream + per-game stats are staff/self.
+  const fullView = access === "self" || access === "staff";
   const profile = target.profile;
   const height = formatHeight(profile.heightInches);
 
@@ -66,13 +68,15 @@ export default async function BrandPage({
         />
       </div>
 
-      {/* The Dream */}
-      <Card>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-red-500">
-          The Dream
-        </h2>
-        <p className="mt-1 text-lg font-medium">{profile.dream}</p>
-      </Card>
+      {/* The Dream — self + staff only (no longer teammate-visible) */}
+      {fullView && (
+        <Card>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-red-500">
+            The Dream
+          </h2>
+          <p className="mt-1 text-lg font-medium">{profile.dream}</p>
+        </Card>
+      )}
 
       {/* Points + standing */}
       <section className="grid grid-cols-2 gap-3">
@@ -80,20 +84,20 @@ export default async function BrandPage({
         <Stat label="Team rank" value={rank > 0 ? `#${rank} of ${total}` : "—"} />
       </section>
 
-      {/* Stats */}
+      {/* Stats — per-game numbers are self + staff only */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {profile.position && <Stat label="Position" value={profile.position} />}
         {height && <Stat label="Height" value={height} />}
         {profile.jerseyNumber != null && (
           <Stat label="Jersey" value={`#${profile.jerseyNumber}`} />
         )}
-        {profile.pointsPerGame != null && (
+        {fullView && profile.pointsPerGame != null && (
           <Stat label="PPG" value={String(profile.pointsPerGame)} />
         )}
-        {profile.reboundsPerGame != null && (
+        {fullView && profile.reboundsPerGame != null && (
           <Stat label="RPG" value={String(profile.reboundsPerGame)} />
         )}
-        {profile.assistsPerGame != null && (
+        {fullView && profile.assistsPerGame != null && (
           <Stat label="APG" value={String(profile.assistsPerGame)} />
         )}
         {profile.favoritePlayer && (
