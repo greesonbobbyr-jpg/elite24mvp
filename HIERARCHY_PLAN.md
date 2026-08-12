@@ -9,11 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **STAGE 4 COMPLETE in branch** (4f `5a552aa`; 4e `1bfa731`; 4d `d53629b`; 4c `36773fe`; 4b `a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence (owner ruling) |
+| Stage | **STAGE 5 DONE in branch** (`faa04fd`; Stage 4 complete: 4a–4f; Stages 2–3 done; Stage 1 in prod) — everything before the merge is built. One merge with the full converge sequence (owner ruling), then Stage 6 after soak |
 | Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Branch writers now stamp both worlds in the same transactions (nothing deployed until merge) |
 | Tests | 123 passing (vitest): matrix, cross-org, acting, season invariant, shim identity, + end-to-end dual-write (check-in / quest / undo / measured / review / adjustments / offseason) asserting all three cache==Σledger invariants after every step |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | Stage 5 — seed v2 + dev switcher (AC/GM/org-admin/two-team fixtures), then the merge runbook, then Stage 6 decommission after soak |
+| Next | THE MERGE RUNBOOK (backfill re-run → merge+deploy → converge flip → verify; one-command rollback) on owner approval, then Stage 6 decommission after soak |
 
 ---
 
@@ -368,10 +368,17 @@ stamped column; the only new rows in legacy-queried tables are inactive signup c
   confirm screen). Fallback hardening: legacy rosters only for teams with NO memberships
   at all (a rollover-emptied roster is genuinely empty — caught by test).
 
-### Stage 5 — Seed v2 + dev switcher
-Orgs/seasons/memberships/grants incl. an ASSISTANT_COACH, a GM, an org-admin-without-
-membership, and a two-team athlete (exercises matrix + switcher). DailyReview demo rows
-(existing gap). Dev switcher groups org→team→member and sets the acting cookie.
+### Stage 5 — Seed v2 + dev switcher ✅ DONE (`faa04fd`)
+**As built:** new-world-first seed — Mustang org with TWO teams (Varsity/JV) + the clean
+1:1 Thunder org; AC (Dana), GM (Morgan), JV HC (Jamie), ORG_ADMIN-without-membership
+(Alex), two-team athlete (Casey, activity split across both memberships, cookie-less
+default = legacy anchor), ended membership (Devon → the join-a-team card), 37 seeded
+DailyReviews (the old gap), quests in the production pre-converge state, every row
+stamped, all three caches == ledger (owned by the seed-integrity suite). Dev switcher
+grouped org→team→member, each entry impersonates AND sets the acting cookie + legacy
+anchor. **The real context-switcher UI shipped too** (it was small): a "Playing for
+<team>" bar rendered only for 2+ active memberships; setActingTeam validates against the
+caller's own memberships and re-points the legacy anchor.
 
 ### Stage 6 — Decommission (the ONLY destructive stage; after merge → deploy → soak)
 Remove shim + legacy reads; drop User.role/teamId/photoUrl, legacy userId columns,
