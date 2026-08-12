@@ -9,11 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **4c of 6 DONE in branch** (`36773fe`; 4b `a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence once surfaces are built and proven together (owner ruling) |
+| Stage | **4d of 6 DONE in branch** (`d53629b`; 4c `36773fe`; 4b `a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence once surfaces are built and proven together (owner ruling) |
 | Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Branch writers now stamp both worlds in the same transactions (nothing deployed until merge) |
 | Tests | 123 passing (vitest): matrix, cross-org, acting, season invariant, shim identity, + end-to-end dual-write (check-in / quest / undo / measured / review / adjustments / offseason) asserting all three cache==Σledger invariants after every step |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | Stage 4d — leaderboards + points economy cutover. Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
+| Next | Stage 4e — coach surfaces + matrix live (endMembership replaces the hard delete). Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
 
 ---
 
@@ -341,8 +341,13 @@ stamped column; the only new rows in legacy-queried tables are inactive signup c
   special/moderate = HC/ORG_ADMIN, denials proven per role through the wired path).
   A staffer without send_timeout silently posts a normal notification (mirrors the
   special-type downgrade pattern).
-- **4d** Leaderboards + points → team boards from membership sums; weekly from
-  ledger(membershipId); tier from careerPoints.
+- **4d** ✅ DONE in branch (`d53629b`) — team boards = active-membership points (ended
+  membership off the board, ledger/career untouched, proven); weekly = Σ ledger by
+  (membershipId, createdAt) with the Monday-12am boundary proven at the exact second;
+  1224 tie-ranking preserved (proven); card tier = careerPoints, cross-org by design
+  (two-org athlete proven: per-org boards + combined tier); offseason NULL-membership
+  rows count toward career and NO board (proven); boards keyed by acting team.
+  4c follow-up shipped: the TIME OUT toggle is hidden without send_timeout.
 - **4e** Coach surfaces + matrix live → roster views via memberships; adjustPoints targets
   a membership; **Remove becomes endMembership** (the destructive fix); HC/AC/GM
   differentiated UI.
