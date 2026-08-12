@@ -397,9 +397,31 @@ rename `User.profileRecord`→`profile`; retire legacy `COACH` enum value.
   its cutover stage explicitly changes behavior.
 
 ## 8. OPEN ITEMS
-1. **NOW:** build Stage 4a (person-scope cutover + quest converge step). Note the
-   dual-write code ships to prod only when the branch merges — until then prod keeps
-   writing legacy-only rows, all converged by the idempotent backfill re-run at 4a.
+1. **NOW:** the merge runbook on owner approval; Stage 6 decommission after soak.
+
+### POST-MERGE ROADMAP (owner-ruled 2026-08-12 — design as ONE phase, own plan)
+**"Person-first entry & org tier"** — the front door becomes a PERSON setting up a
+profile first (like a social app), then choosing their path during setup. The migrated
+model already supports every piece of this (Profile = permanent person, nullable login,
+memberships/roles separate, team-less profiles = the offseason state); this phase
+replaces three thin screens (signup / join / onboarding) and adds the org experience.
+1. **Person-first front door:** create profile (name, photo, basics) BEFORE any
+   team/role decision.
+2. **Role chooser during setup:** Player (team code — optionally later; team-less
+   profiles are first-class), Staff (join an org via invite), **Organization — gated by
+   an Elite24MVP-issued code** (org creation is the platform trust boundary; open
+   self-signup retires; fits the sales-led parents/schools model).
+3. **Org console:** a genuinely different ORG_ADMIN experience vs coach (cross-team,
+   rollups; owner has further ideas — collect at design time). Today ORG_ADMIN is a
+   permissions superset with a coach's UI.
+4. **Staff invites:** role-scoped invites for HC/AC/GM/org-admin — currently NO in-app
+   way to create these roles (seed-only).
+5. **Contact data ruling (owner + assistant agreed, matches locked §2.10):** emergency
+   contact (name + phone) visible to ALL staff — safety at practice beats privacy
+   tiering; FULL contact (DOB, address, guardian details, exports) is ORG_ADMIN only —
+   least-privilege on minors' PII, defensible to parents/schools. ProfileContact exists
+   in schema with NO UI yet; collection UI lands with this phase and/or the parent
+   portal initiative.
 2. Legacy writes between Stage 1 and Stage 3 create unstamped rows by design — the
    idempotent backfill re-runs at 4a (and can be re-run any time) to converge them.
 3. Stage 4b ships the teammate-visibility tightening (Dream/stats hidden) — flag for
