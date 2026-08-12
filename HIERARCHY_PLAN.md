@@ -9,11 +9,11 @@
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |
-| Stage | **4b of 6 DONE in branch** (`a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence once surfaces are built and proven together (owner ruling) |
+| Stage | **4c of 6 DONE in branch** (`36773fe`; 4b `a45fd3c`; 4a `e5de7e6`; Stage 3 `893ac1b`; Stage 2 `53777c7`; Stage 1 in prod) — one merge with the full converge sequence once surfaces are built and proven together (owner ruling) |
 | Database | Shared Supabase Postgres — new-world rows exist and all invariants pass; the live app reads none of them. Branch writers now stamp both worlds in the same transactions (nothing deployed until merge) |
 | Tests | 123 passing (vitest): matrix, cross-org, acting, season invariant, shim identity, + end-to-end dual-write (check-in / quest / undo / measured / review / adjustments / offseason) asserting all three cache==Σledger invariants after every step |
 | Deploys | Only `main` auto-deploys. This branch never deploys until merged. |
-| Next | Stage 4c — board + notifications cutover. Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
+| Next | Stage 4d — leaderboards + points economy cutover. Prod converge sequence documented in Stage 4a below, gated on owner approval at merge time |
 
 ---
 
@@ -333,8 +333,14 @@ stamped column; the only new rows in legacy-queried tables are inactive signup c
   no per-game stats; self/staff unchanged); photo route on the same resolver (staff
   org-wide, cross-org 404); layout + IdentityChip on ctx/Profile fields. Both directions
   proven by test on backfilled data: org staffer CAN, another org's coach CANNOT.
-- **4c** Board + notifications → author snapshots, receipts by membership roster,
-  TIME OUT = acting team only.
+- **4c** ✅ DONE in branch (`36773fe`) — author display from Profile + write-time role
+  snapshot ("· Head Coach"; survives promotion, proven); receipts count ACTIVE PLAYER
+  memberships (ended memberships in neither X nor Y, proven); TIME OUT + unread badge
+  scoped to the acting membership's team (two-team athlete proven with cookie
+  selection); matrix wired into comms actions (post = all staff; TIME OUT +
+  special/moderate = HC/ORG_ADMIN, denials proven per role through the wired path).
+  A staffer without send_timeout silently posts a normal notification (mirrors the
+  special-type downgrade pattern).
 - **4d** Leaderboards + points → team boards from membership sums; weekly from
   ledger(membershipId); tier from careerPoints.
 - **4e** Coach surfaces + matrix live → roster views via memberships; adjustPoints targets
