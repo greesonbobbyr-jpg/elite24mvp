@@ -6,6 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isOnboarded } from "@/lib/onboarding";
 import { todayKey } from "@/lib/journal";
+import {
+  createMyEntryInTx,
+  createMyReviewOp,
+  hasMyEntryFor,
+} from "@/lib/data/reflections";
 import { POINTS_PER_CHECKIN, POINTS_PER_REVIEW } from "@/lib/points";
 import { advanceStreak } from "@/lib/streaks";
 
@@ -34,9 +39,7 @@ export async function submitCheckIn(
   try {
     const day = todayKey();
     await prisma.$transaction(async (tx) => {
-      await tx.journalEntry.create({
-        data: { userId: user.id, reflection, day },
-      });
+      await createMyEntryInTx(tx, { user }, reflection, day);
       await tx.pointsLedger.create({
         data: {
           userId: user.id,
@@ -143,19 +146,13 @@ export async function submitReview(
     String(formData.get("noteToTomorrow") ?? "").trim() || null;
 
   const day = todayKey();
-  const entry = await prisma.journalEntry.findUnique({
-    where: { userId_day: { userId: user.id, day } },
-    select: { id: true },
-  });
-  if (!entry) {
+  if (!(await hasMyEntryFor({ user }, day))) {
     return { error: "Check in first — the review looks back at today's plan." };
   }
 
   try {
     await prisma.$transaction([
-      prisma.dailyReview.create({
-        data: { userId: user.id, day, outcome, learned, noteToTomorrow },
-      }),
+      createMyReviewOp({ user }, { day, outcome, learned, noteToTomorrow }),
       prisma.pointsLedger.create({
         data: {
           userId: user.id,

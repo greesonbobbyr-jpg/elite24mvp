@@ -1,0 +1,149 @@
+import { describe, expect, it } from "vitest";
+import { Role } from "@prisma/client";
+import {
+  can,
+  requireCan,
+  MATRIX,
+  type Action,
+  type AuthzCtx,
+} from "../lib/authz";
+
+// EVERY CELL of the HIERARCHY_PLAN.md §2.10 matrix is exercised here, spelled
+// out row by row (not derived from MATRIX itself — the whole point is that an
+// accidental edit to the map fails a test that encodes the plan independently).
+
+const ALL_ACTIONS: Action[] = [
+  "view_roster", "view_player_detail", "adjust_points", "end_membership",
+  "change_member_role", "team_settings", "manage_join_code", "post_notification",
+  "send_timeout", "view_takeaways", "post_special_message", "moderate_board",
+  "view_emergency_contact", "view_full_contact", "edit_contact", "create_team",
+  "create_season", "manage_quests", "export_org_data",
+];
+
+// The plan's matrix, transcribed as the set of GRANTED actions per role.
+const EXPECTED: Record<string, Set<Action>> = {
+  ORG_ADMIN: new Set(ALL_ACTIONS),
+  HEAD_COACH: new Set<Action>([
+    "view_roster", "view_player_detail", "adjust_points", "end_membership",
+    "change_member_role", "team_settings", "manage_join_code",
+    "post_notification", "send_timeout", "view_takeaways",
+    "post_special_message", "moderate_board", "view_emergency_contact",
+  ]),
+  ASSISTANT_COACH: new Set<Action>([
+    "view_roster", "view_player_detail", "post_notification", "view_takeaways",
+    "view_emergency_contact",
+  ]),
+  GENERAL_MANAGER: new Set<Action>([
+    "view_roster", "view_player_detail", "end_membership", "post_notification",
+    "view_emergency_contact",
+  ]),
+  PLAYER: new Set<Action>(["view_roster"]),
+};
+
+const ORG = 1;
+const OTHER_ORG = 2;
+const TEAM = 10;
+const OTHER_TEAM_SAME_ORG = 11;
+
+function memberCtx(role: Role): AuthzCtx {
+  return {
+    orgAdminOf: [],
+    memberships: [{ teamId: TEAM, role, team: { organizationId: ORG } }],
+  };
+}
+
+const orgAdminCtx: AuthzCtx = { orgAdminOf: [ORG], memberships: [] };
+const target = { organizationId: ORG, teamId: TEAM };
+
+describe("permission matrix — every cell", () => {
+  for (const [roleName, granted] of Object.entries(EXPECTED)) {
+    const ctx =
+      roleName === "ORG_ADMIN" ? orgAdminCtx : memberCtx(roleName as Role);
+    for (const action of ALL_ACTIONS) {
+      const expected = granted.has(action);
+      it(`${roleName} ${expected ? "CAN" : "CANNOT"} ${action}`, () => {
+        expect(can(ctx, action, target)).toBe(expected);
+      });
+    }
+  }
+
+  it("the in-code MATRIX matches the plan transcription exactly", () => {
+    for (const [role, granted] of Object.entries(EXPECTED)) {
+      expect([...(MATRIX[role as Role] ?? new Set())].sort()).toEqual(
+        [...granted].sort(),
+      );
+    }
+  });
+});
+
+describe("org bound comes FIRST — cross-org access fails before role logic", () => {
+  // Even the most powerful role, asking for the most harmless action, in an
+  // org it has no tie to → false. If role logic ran first, these would pass.
+  it("ORG_ADMIN of org 1 gets NOTHING in org 2", () => {
+    for (const action of ALL_ACTIONS) {
+      expect(can(orgAdminCtx, action, { organizationId: OTHER_ORG, teamId: TEAM })).toBe(false);
+    }
+  });
+
+  it("HEAD_COACH membership in org 1 grants nothing in org 2 — even against their own teamId", () => {
+    const ctx = memberCtx(Role.HEAD_COACH);
+    for (const action of ALL_ACTIONS) {
+      expect(can(ctx, action, { organizationId: OTHER_ORG, teamId: TEAM })).toBe(false);
+    }
+  });
+
+  it("a membership never leaks across teams: HEAD_COACH of team 10 is not staff of team 11", () => {
+    const ctx = memberCtx(Role.HEAD_COACH);
+    expect(can(ctx, "adjust_points", { organizationId: ORG, teamId: OTHER_TEAM_SAME_ORG })).toBe(false);
+    // ...but an ORG_ADMIN grant does span the org's teams:
+    expect(can(orgAdminCtx, "adjust_points", { organizationId: ORG, teamId: OTHER_TEAM_SAME_ORG })).toBe(true);
+  });
+
+  it("team-scoped actions with no teamId in the target deny for membership-only actors", () => {
+    const ctx = memberCtx(Role.HEAD_COACH);
+    expect(can(ctx, "adjust_points", { organizationId: ORG })).toBe(false);
+  });
+
+  it("a membership whose team has no organizationId (pre-backfill data) matches no org", () => {
+    const ctx: AuthzCtx = {
+      orgAdminOf: [],
+      memberships: [{ teamId: TEAM, role: Role.HEAD_COACH, team: { organizationId: null } }],
+    };
+    expect(can(ctx, "view_roster", target)).toBe(false);
+  });
+});
+
+describe("structural absences", () => {
+  it("legacy COACH and ORG_ADMIN-as-membership-role resolve to zero permissions", () => {
+    // Neither should ever appear on a Membership row (backfill maps COACH away;
+    // ORG_ADMIN is app-forbidden as a membership role) — but if bad data shows
+    // up, it must fail closed, not open.
+    for (const role of [Role.COACH, Role.ORG_ADMIN]) {
+      const ctx = memberCtx(role);
+      for (const action of ALL_ACTIONS) {
+        // Note: role: ORG_ADMIN via MEMBERSHIP must not grant the org-admin
+        // row — only a RoleAssignment (orgAdminOf) does.
+        if (role === Role.ORG_ADMIN) {
+          expect(can(ctx, action, target)).toBe(false);
+        } else {
+          expect(can(ctx, action, target)).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("there is no journal/review action to grant", () => {
+    // The Action union is closed; this documents that no member of it touches
+    // reflections. (The real guarantee is the reflections module boundary +
+    // the build-time grep.)
+    for (const action of ALL_ACTIONS) {
+      expect(action.includes("journal")).toBe(false);
+      expect(action.includes("review")).toBe(false);
+    }
+  });
+
+  it("requireCan throws on deny and passes on allow", () => {
+    expect(() => requireCan(orgAdminCtx, "manage_quests", { organizationId: OTHER_ORG })).toThrow();
+    expect(() => requireCan(orgAdminCtx, "manage_quests", { organizationId: ORG })).not.toThrow();
+  });
+});

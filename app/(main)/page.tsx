@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { getTodaysEntry, todayKey } from "@/lib/journal";
+import { todayKey } from "@/lib/journal";
+import {
+  getMyTodaysEntry,
+  getMyTodaysReview,
+  getMyLatestReviewNote,
+} from "@/lib/data/reflections";
 import { getTodaysTakeaway } from "@/lib/mindset-takeaway";
 import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { storyForDay } from "@/lib/mindset";
 import { listActiveQuests, getTodaysCompletedQuestIds } from "@/lib/quests";
-import { getTodaysReview, getLatestReviewNote } from "@/lib/review";
 import { getTeamRanking } from "@/lib/leaderboard";
 import { tierForPoints, TIERS } from "@/lib/cardTheme";
 import { CheckInForm } from "./CheckInForm";
@@ -30,7 +34,7 @@ export default async function Home() {
   // on /quests; profile basics live on the Brand page. This page stays focused on
   // the Dream, the daily Mindset story, and the check-in/journal.
   const profile = user.profile;
-  const todaysEntry = await getTodaysEntry(user.id);
+  const todaysEntry = await getMyTodaysEntry({ user });
   const takeaway = await getTodaysTakeaway(user.id);
   const story = storyForDay(todayKey());
 
@@ -38,16 +42,16 @@ export default async function Home() {
   // the player's last review surfaces above the check-in prompt otherwise.
   let quests: Awaited<ReturnType<typeof listActiveQuests>> = [];
   let completedIds: number[] = [];
-  let todaysReview: Awaited<ReturnType<typeof getTodaysReview>> = null;
-  let lastNote: Awaited<ReturnType<typeof getLatestReviewNote>> = null;
+  let todaysReview: Awaited<ReturnType<typeof getMyTodaysReview>> = null;
+  let lastNote: Awaited<ReturnType<typeof getMyLatestReviewNote>> = null;
   if (todaysEntry) {
     [quests, completedIds, todaysReview] = await Promise.all([
       listActiveQuests(),
       getTodaysCompletedQuestIds(user.id),
-      getTodaysReview(user.id),
+      getMyTodaysReview({ user }),
     ]);
   } else {
-    lastNote = await getLatestReviewNote(user.id);
+    lastNote = await getMyLatestReviewNote({ user });
   }
   const questsDone = quests.filter((q) => completedIds.includes(q.id)).length;
   const loggedQuests = quests

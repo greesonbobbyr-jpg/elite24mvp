@@ -1,5 +1,11 @@
 import { prisma } from "./prisma";
 import { todayKey } from "./journal";
+import {
+  checkInCountForPlayer,
+  checkInTimeForPlayer,
+  checkInTimesForTeam,
+  reviewDoneForPlayer,
+} from "./data/reflections";
 import { getTeamRanking } from "./leaderboard";
 
 // Coach-facing team data. STRICTLY team-scoped (callers pass the coach's own
@@ -55,11 +61,9 @@ export async function getTeamOverview(teamId: number): Promise<TeamOverview> {
         },
       },
     }),
-    // status + time only — never the reflection text.
-    prisma.journalEntry.findMany({
-      where: { day, user: { teamId } },
-      select: { userId: true, createdAt: true },
-    }),
+    // status + time only — never the reflection text (structural: the
+    // reflections module's status reads are content-free by contract).
+    checkInTimesForTeam(teamId, day),
     prisma.questLog.findMany({
       where: { day, user: { teamId } },
       select: { userId: true },
@@ -139,25 +143,18 @@ export async function getPlayerCoachView(
   weekStart.setDate(weekStart.getDate() - 6);
   const weekStartKey = todayKey(weekStart);
 
-  const [todayEntry, todayTakeaway, todayReview, checkins, questsDone, pointsAgg, ranking] =
+  const [checkedInAt, todayTakeaway, reviewDone, checkins, questsDone, pointsAgg, ranking] =
     await Promise.all([
-      prisma.journalEntry.findUnique({
-        where: { userId_day: { userId: playerId, day: todayKey() } },
-        select: { createdAt: true }, // status/time only — no reflection
-      }),
+      // status/time only — no reflection (content-free by module contract)
+      checkInTimeForPlayer(playerId, todayKey()),
       // Coach-visible BY DESIGN (unlike the private reflection).
       prisma.mindsetTakeaway.findUnique({
         where: { userId_day: { userId: playerId, day: todayKey() } },
         select: { text: true },
       }),
       // Status only — never the review text (player-private by design).
-      prisma.dailyReview.findUnique({
-        where: { userId_day: { userId: playerId, day: todayKey() } },
-        select: { id: true },
-      }),
-      prisma.journalEntry.count({
-        where: { userId: playerId, day: { gte: weekStartKey } },
-      }),
+      reviewDoneForPlayer(playerId, todayKey()),
+      checkInCountForPlayer(playerId, weekStartKey),
       prisma.questLog.count({
         where: { userId: playerId, day: { gte: weekStartKey } },
       }),
@@ -184,9 +181,9 @@ export async function getPlayerCoachView(
       ? ranking.find((r) => r.id === playerId)!.rank
       : 0,
     total: ranking.length,
-    checkedInAt: todayEntry?.createdAt ?? null,
+    checkedInAt,
     mindsetTakeaway: todayTakeaway?.text ?? null,
-    reviewDoneToday: Boolean(todayReview),
+    reviewDoneToday: reviewDone,
     week: {
       checkins,
       questsDone,
