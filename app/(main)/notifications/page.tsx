@@ -159,14 +159,19 @@ export default async function NotificationsPage() {
                         n.isTimeout ? "bg-red-950/30" : ""
                       }`}
                     >
-                      {/* coach identity row */}
+                      {/* author identity row — name + role snapshot (4c) */}
                       <div className="flex items-center gap-2.5">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-950 text-xs font-bold text-white ring-2 ring-red-500/60">
-                          {initials(n.author.name)}
+                          {initials(n.authorName)}
                         </span>
                         <div className="min-w-0 flex-1 leading-tight">
                           <p className="truncate text-sm font-semibold text-white">
-                            {n.author.name}
+                            {n.authorName}
+                            {n.authorRoleLabel && (
+                              <span className="font-normal text-zinc-400">
+                                {" "}· {n.authorRoleLabel}
+                              </span>
+                            )}
                           </p>
                           <p className="text-[11px] text-zinc-500">
                             {formatDateTime(n.createdAt)}

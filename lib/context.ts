@@ -116,6 +116,17 @@ export async function resolveContextForUser(
   };
 }
 
+// The org-bounded authorization scope of the ACTING membership, for can()
+// calls on team surfaces. Null when the viewer has no acting membership or
+// their team predates the backfill (callers fall back to legacy role checks
+// until Stage 6).
+export function actingScope(
+  ctx: Pick<Ctx, "membership" | "team">,
+): { organizationId: number; teamId: number } | null {
+  if (!ctx.membership || ctx.team?.organizationId == null) return null;
+  return { organizationId: ctx.team.organizationId, teamId: ctx.membership.teamId };
+}
+
 // Display-role snapshot stamped onto posts (Notification / TeamMessage): the
 // acting membership's role, or ORG_ADMIN for an admin with no membership.
 // Stored at write time so display stays stable if roles later change.

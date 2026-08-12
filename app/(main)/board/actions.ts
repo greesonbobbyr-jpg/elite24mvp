@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { ReactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentContext, snapshotAuthorRole } from "@/lib/context";
-import { getCurrentUser } from "@/lib/session";
+import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { can } from "@/lib/authz";
 import { isOnboarded } from "@/lib/onboarding";
 import { isValidGifId } from "@/lib/gifs";
 import { rateLimit } from "@/lib/ratelimit";
@@ -40,9 +40,16 @@ export async function postMessage(
     return { error: "Write a message or pick a GIF." };
   }
 
+  // Matrix (4c): special colored types are post_special_message — HEAD_COACH
+  // / ORG_ADMIN only (assistants and GMs post REGULAR like everyone else).
+  // Silent downgrade, as before. Legacy role check until Stage 6.
+  const scope = actingScope(ctx);
+  const maySpecial = scope
+    ? can(ctx, "post_special_message", scope)
+    : user.role === "COACH";
   const rawType = String(formData.get("type") ?? "REGULAR");
   const type =
-    user.role === "COACH" && SPECIAL_TYPES.has(rawType)
+    maySpecial && SPECIAL_TYPES.has(rawType)
       ? (rawType as "DISCUSSION" | "CHALLENGE" | "SPOTLIGHT")
       : "REGULAR";
 
@@ -80,8 +87,9 @@ export async function postMessage(
 // The team coach may delete ANY message on their team; a player may delete only
 // their OWN. Strictly same team. Soft delete (deletedAt) for an audit trail.
 export async function deleteMessage(formData: FormData): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user) return;
+  const ctx = await getCurrentContext();
+  const user = ctx?.user;
+  if (!ctx || !user) return;
 
   const messageId = Number.parseInt(String(formData.get("messageId") ?? ""), 10);
   if (!Number.isInteger(messageId)) return;
@@ -93,7 +101,13 @@ export async function deleteMessage(formData: FormData): Promise<void> {
   if (!message || message.deletedAt) return;
   if (message.teamId !== user.teamId) return; // never another team's board
 
-  const allowed = user.role === "COACH" || message.authorId === user.id;
+  // Matrix (4c): your own message, or moderate_board (HEAD_COACH/ORG_ADMIN —
+  // assistants and GMs may NOT moderate). Legacy role check until Stage 6.
+  const scope = actingScope(ctx);
+  const mayModerate = scope
+    ? can(ctx, "moderate_board", scope)
+    : user.role === "COACH";
+  const allowed = mayModerate || message.authorId === user.id;
   if (!allowed) return;
 
   await prisma.teamMessage.update({

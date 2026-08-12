@@ -6,7 +6,7 @@ import {
   BOARD_PAGE_SIZE,
   BOARD_MAX_LIMIT,
 } from "@/lib/board";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, roleLabel } from "@/lib/format";
 import { deleteMessage } from "./actions";
 import { MessageComposer } from "./MessageComposer";
 import { MessageReactions } from "./MessageReactions";
@@ -125,7 +125,13 @@ export default async function BoardPage({
             {messages.map((message, i) => {
               const isMine = message.author.id === user.id;
               const canDelete = user.role === "COACH" || isMine;
-              const isCoachAuthor = message.author.role === "COACH";
+              // Staff badge from the role SNAPSHOT taken at write time
+              // ("Head Coach" stays "Head Coach" even after a role change);
+              // legacy fallback for unstamped rows.
+              const authorBadge =
+                roleLabel(message.authorRole) ??
+                (message.author.role === "COACH" ? "Coach" : null);
+              const authorName = message.authorProfile?.name ?? message.author.name;
 
               // Group consecutive messages from the same author.
               const prevSame =
@@ -175,10 +181,11 @@ export default async function BoardPage({
                           <PlayerCard
                             size="avatar"
                             player={{
-                              name: message.author.name,
+                              name: authorName,
                               photoUrl: photoSrc(
                                 message.author.id,
-                                message.author.profile?.photoUrl,
+                                message.authorProfile?.photoUrl ??
+                                  message.author.profile?.photoUrl,
                               ),
                               points: 0,
                             }}
@@ -194,15 +201,15 @@ export default async function BoardPage({
                         isMine ? "items-end" : "items-start"
                       }`}
                     >
-                      {/* name + coach tag — OTHERS, once per group */}
+                      {/* name + staff tag — OTHERS, once per group */}
                       {!isMine && isFirstOfGroup && (
                         <div className="mb-1 flex items-center gap-1.5 px-1">
                           <span className="text-xs font-semibold text-zinc-300">
-                            {message.author.name}
+                            {authorName}
                           </span>
-                          {isCoachAuthor && (
+                          {authorBadge && (
                             <span className="rounded bg-red-600/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-400">
-                              Coach
+                              {authorBadge}
                             </span>
                           )}
                         </div>
@@ -212,7 +219,7 @@ export default async function BoardPage({
                       {parent && (
                         <QuotedMessage
                           parentId={parent.id}
-                          authorName={parent.author.name}
+                          authorName={parent.authorProfile?.name ?? parent.author.name}
                           snippet={parentSnippet}
                           align={isMine ? "right" : "left"}
                           removed={!!parent.deletedAt}
@@ -225,7 +232,7 @@ export default async function BoardPage({
                         messageId={message.id}
                         counts={counts}
                         myType={myType}
-                        authorName={message.author.name}
+                        authorName={authorName}
                         snippet={snippetOf(message.body, message.gifId)}
                         time={formatDateTime(message.createdAt)}
                       >

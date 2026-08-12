@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { can } from "@/lib/authz";
 import { isOnboarded } from "@/lib/onboarding";
 import { todayKey } from "@/lib/journal";
 import { hasMyEntryFor } from "@/lib/data/reflections";
@@ -246,16 +247,26 @@ export async function postNotification(
 ): Promise<NotificationState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "COACH") {
-    return { error: "Only a coach can post notifications." };
-  }
+  if (!ctx || !user) return { error: "Only a coach can post notifications." };
+  // Matrix (4c): HEAD_COACH / ASSISTANT_COACH / GENERAL_MANAGER / ORG_ADMIN
+  // may post; legacy role check only for pre-backfill logins (dies Stage 6).
+  const scope = actingScope(ctx);
+  const mayPost = scope
+    ? can(ctx, "post_notification", scope)
+    : user.role === "COACH";
+  if (!mayPost) return { error: "Only a coach can post notifications." };
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   if (title === "" || body === "") {
     return { error: "Add a title and a message." };
   }
-  // Urgent takeover flag — coach-only is already enforced above.
-  const isTimeout = formData.get("isTimeout") === "on";
+  // Urgent takeover flag — send_timeout is HC/ORG_ADMIN only per the matrix;
+  // a staffer without it posts a NORMAL notification (silent downgrade, same
+  // pattern as special board types).
+  const maySendTimeout = scope
+    ? can(ctx, "send_timeout", scope)
+    : user.role === "COACH";
+  const isTimeout = formData.get("isTimeout") === "on" && maySendTimeout;
 
   await prisma.notification.create({
     data: {

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { can } from "@/lib/authz";
 import { getCurrentUser } from "@/lib/session";
 import { performAdjustPoints } from "@/lib/data/points";
 
@@ -74,9 +75,18 @@ export async function adjustPoints(
 export async function sendCheckInReminder(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const coach = ctx?.user;
-  if (!ctx || !coach || coach.role !== "COACH") return;
-
-  const isTimeout = formData.get("isTimeout") === "on";
+  if (!ctx || !coach) return;
+  // Matrix (4c): any staff role may post; TIME OUT needs send_timeout
+  // (HC/ORG_ADMIN) — otherwise it goes out as a normal reminder.
+  const scope = actingScope(ctx);
+  const mayPost = scope
+    ? can(ctx, "post_notification", scope)
+    : coach.role === "COACH";
+  if (!mayPost) return;
+  const maySendTimeout = scope
+    ? can(ctx, "send_timeout", scope)
+    : coach.role === "COACH";
+  const isTimeout = formData.get("isTimeout") === "on" && maySendTimeout;
   await prisma.notification.create({
     data: {
       teamId: coach.teamId,

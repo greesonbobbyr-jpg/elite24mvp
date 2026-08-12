@@ -30,16 +30,20 @@ export default async function MainLayout({
     redirect("/onboarding");
   }
 
+  // TIME OUT + unread badge are scoped to the ACTING membership's team (4c):
+  // a two-team athlete only ever gets their acting team's takeover. Falls back
+  // to the legacy teamId for pre-backfill logins.
+  const actingTeamId = ctx?.membership?.teamId ?? user?.teamId;
   const timeout =
-    user?.role === "PLAYER"
-      ? await getActiveTimeout(user.id, user.teamId)
+    user?.role === "PLAYER" && actingTeamId != null
+      ? await getActiveTimeout(user.id, actingTeamId)
       : null;
 
   // Nav links — same role-based set as before, now built here so the menu lives
   // in the shared header bar instead of floating on the home page only.
   let links: NavLink[] = [];
   if (user?.role === "PLAYER") {
-    const unreadCount = await countUnreadForPlayer(user.id, user.teamId);
+    const unreadCount = await countUnreadForPlayer(user.id, actingTeamId ?? user.teamId);
     // Overflow links only — Home/Team Circle/Quests live in the bottom tab bar.
     links = [
       { href: `/brand/${user.id}`, label: "Your Brand" },
