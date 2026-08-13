@@ -409,7 +409,13 @@ permission check); join codes stay on the team. Additive migration
 (dry/execute/verify, idempotent, chain-consistency checks) + `/org` admin page
 (create/rename/reorder/assign/create-team; create_team tier; org-bounded data paths).
 Deploy runbook (owner-gated): migrate deploy → backfill execute+verify → push → verify.
-**Chunk 2 (read-only Org View tree for staff) is planned separately.**
+**Chunk 2 — ✅ BUILT (`c1fed06`): the read-only Org View** at `/org/view` (same gate;
+Manage|Browse tabs). One loader (`lib/orgview.ts`, card-info-only allowlist test-locked;
+disclosure flags passed through verbatim), everyone rendered via the existing PlayerCard
+with role labels, org-scoped search with jump+highlight, desktop rails with rollup
+counts, mobile focus-and-expand via the View Transitions API (URL/back-gesture state,
+reduced-motion instant). tests/authz.test.ts untouched. Both chunks branch-only —
+deploy runbook (migrate deploy → backfill-structure → push) awaits owner approval.
 
 ### POST-MERGE ROADMAP (owner-ruled 2026-08-12 — design as ONE phase, own plan)
 **"Person-first entry & org tier"** — the front door becomes a PERSON setting up a
