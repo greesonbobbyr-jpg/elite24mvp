@@ -60,6 +60,23 @@ dbDescribe("Stage 5 seed integrity", () => {
     expect(await prisma.dailyReview.count()).toBeGreaterThan(0); // the old gap, closed
   });
 
+  it("structure: every org'd team sits in a division of its OWN org (chain consistency)", async () => {
+    const { prisma } = await import("../lib/prisma");
+    expect(
+      await prisma.team.count({ where: { organizationId: { not: null }, divisionId: null } }),
+    ).toBe(0);
+    const teams = await prisma.team.findMany({
+      where: { divisionId: { not: null } },
+      select: {
+        organizationId: true,
+        division: { select: { program: { select: { organizationId: true } } } },
+      },
+    });
+    for (const t of teams) {
+      expect(t.division!.program.organizationId).toBe(t.organizationId);
+    }
+  });
+
   it("the two-team athlete's cookie-less default acting team matches their legacy anchor", async () => {
     const { prisma } = await import("../lib/prisma");
     const { resolveContextForUser } = await import("../lib/context");

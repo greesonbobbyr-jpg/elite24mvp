@@ -62,8 +62,12 @@ export default async function MainLayout({
     ];
   } else if (user?.role === "COACH") {
     // Overflow only — Home/Team Circle/Alerts live in the coach bottom tab bar.
+    // "Organization" (structure page) is org-admin only — grant-gated, with
+    // the pre-backfill legacy fallback (dies at Stage 6).
+    const isOrgAdmin = ctx?.profile ? (ctx?.orgAdminOf.length ?? 0) > 0 : true;
     links = [
       { href: "/team", label: "Team settings" },
+      ...(isOrgAdmin ? [{ href: "/org", label: "Organization" }] : []),
       { href: "/leaderboard", label: "Team leaderboard" },
       { href: "/library", label: "Playbook" },
     ];

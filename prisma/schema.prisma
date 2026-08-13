@@ -58,6 +58,39 @@ model Organization {
   teams           Team[]
   quests          Quest[]
   roleAssignments RoleAssignment[]
+  programs        Program[]
+}
+
+// Grouping layers (structure Chunk 1). DISPLAY/ROLLUP ONLY — never traversed
+// by a permission check; authorization stays anchored on organizationId.
+// Program and Division PERSIST across seasons ("12U in 2026" = the 12U
+// division's teams whose memberships are in the 2026 season). Layers with a
+// single entry are hidden by the UI (progressive disclosure — a display rule,
+// never a data rule; every org always has at least a default of each).
+model Program {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  name           String
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+
+  divisions Division[]
+
+  @@index([organizationId, sortOrder])
+}
+
+model Division {
+  id        Int      @id @default(autoincrement())
+  programId Int
+  program   Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  teams Team[]
+
+  @@index([programId, sortOrder])
 }
 
 model Season {
@@ -233,6 +266,11 @@ model Team {
   organization   Organization? @relation(fields: [organizationId], references: [id])
   memberships    Membership[]
 
+  // Grouping (Chunk 1): nullable during migration → backfilled → NOT NULL at a
+  // later cleanup. Restrict: a division holding teams can't be deleted.
+  divisionId Int?
+  division   Division? @relation(fields: [divisionId], references: [id], onDelete: Restrict)
+
   // IANA timezone for this team's calendar-day logic. Data-model prep: the app
   // currently uses the app-wide APP_TIMEZONE (lib/daykey); threading this value
   // through every todayKey() call site is a later refactor.
@@ -264,6 +302,8 @@ model Team {
   users         User[]
   notifications Notification[]
   teamMessages  TeamMessage[]
+
+  @@index([divisionId])
 }
 
 // A user is either a COACH (team admin) or a PLAYER. Both belong to one team.

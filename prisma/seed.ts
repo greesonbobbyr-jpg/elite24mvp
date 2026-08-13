@@ -593,6 +593,28 @@ async function main() {
     data: { name: "OKC Thunder", joinCode: "THUNDR", primaryColor: "#007ac1", secondaryColor: "#ef3b24", organizationId: thunderOrg.id },
   });
 
+  // Grouping structure (Chunk 1) — both disclosure shapes:
+  // Mustang: ONE program (hidden) with TWO divisions (shown), a team in each.
+  // Thunder: default Main/Main — all structure hidden (small-club shape).
+  const mustangProgram = await prisma.program.create({
+    data: { organizationId: mustangOrg.id, name: "Boys Basketball" },
+  });
+  const varsityDivision = await prisma.division.create({
+    data: { programId: mustangProgram.id, name: "Varsity", sortOrder: 0 },
+  });
+  const jvDivision = await prisma.division.create({
+    data: { programId: mustangProgram.id, name: "JV", sortOrder: 1 },
+  });
+  await prisma.team.update({ where: { id: varsity.id }, data: { divisionId: varsityDivision.id } });
+  await prisma.team.update({ where: { id: jv.id }, data: { divisionId: jvDivision.id } });
+  const thunderProgram = await prisma.program.create({
+    data: { organizationId: thunderOrg.id, name: "Main" },
+  });
+  const thunderDivision = await prisma.division.create({
+    data: { programId: thunderProgram.id, name: "Main" },
+  });
+  await prisma.team.update({ where: { id: thunder.id }, data: { divisionId: thunderDivision.id } });
+
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 12);
 
   // ---- Staff: the whole matrix -------------------------------------------

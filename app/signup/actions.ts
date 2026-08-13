@@ -64,6 +64,15 @@ export async function signup(
           isCurrent: true,
         },
       });
+      // Grouping defaults (Chunk 1): every org carries a Program/Division
+      // skeleton from birth — hidden by progressive disclosure until the org
+      // grows a second one, renameable in the org page.
+      const program = await tx.program.create({
+        data: { organizationId: org.id, name: "Main" },
+      });
+      const division = await tx.division.create({
+        data: { programId: program.id, name: "Main" },
+      });
       const team = await tx.team.create({
         data: {
           name: teamName,
@@ -72,6 +81,7 @@ export async function signup(
           primaryColor,
           secondaryColor,
           organizationId: org.id,
+          divisionId: division.id,
         },
       });
       const coach = await tx.user.create({
