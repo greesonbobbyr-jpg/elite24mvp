@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentContext } from "@/lib/context";
 import { can } from "@/lib/authz";
@@ -41,7 +42,20 @@ export default async function OrgPage() {
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
       <header>
-        <p className="e24-eyebrow">Organization</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="e24-eyebrow">Organization</p>
+          <div className="flex gap-2">
+            <span className="rounded-full border border-red-500 bg-red-600/20 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-red-300">
+              Manage
+            </span>
+            <Link
+              href="/org/view"
+              className="rounded-full border border-white/15 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-zinc-400 transition hover:border-white/30"
+            >
+              Browse
+            </Link>
+          </div>
+        </div>
         <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">
           {org.name}
         </h1>

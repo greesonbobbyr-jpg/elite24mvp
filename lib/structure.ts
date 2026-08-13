@@ -24,7 +24,14 @@ export async function getOrgStructure(organizationId: number) {
           include: {
             teams: {
               orderBy: { name: "asc" },
-              select: { id: true, name: true, joinCode: true, logoUrl: true },
+              select: {
+                id: true,
+                name: true,
+                joinCode: true,
+                logoUrl: true,
+                primaryColor: true,
+                secondaryColor: true,
+              },
             },
           },
         },
@@ -34,7 +41,14 @@ export async function getOrgStructure(organizationId: number) {
     prisma.team.findMany({
       where: { organizationId, divisionId: null },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, joinCode: true, logoUrl: true },
+      select: {
+        id: true,
+        name: true,
+        joinCode: true,
+        logoUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+      },
     }),
   ]);
 

@@ -130,6 +130,15 @@ body {
   color: #ef4444; /* red-500 */
 }
 
+/* Org View focus-and-expand (Chunk 2): the browser's View Transitions API
+   morphs nodes between layout states (center ↔ sibling strip). Kept short and
+   ease-out to match .e24-reveal's feel. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+}
+
 /* Respect users who prefer less motion (child-safe / accessible). */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -138,5 +147,12 @@ body {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+  /* View-transition pseudos live outside the * selector — zero them too (the
+     JS guard also skips startViewTransition entirely under reduced motion). */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }
