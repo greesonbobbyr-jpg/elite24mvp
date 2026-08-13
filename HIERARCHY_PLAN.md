@@ -399,6 +399,18 @@ rename `User.profileRecord`→`profile`; retire legacy `COACH` enum value.
 ## 8. OPEN ITEMS
 1. **NOW:** the merge runbook on owner approval; Stage 6 decommission after soak.
 
+### GROUPING CHUNK 1 — ✅ BUILT in branch `grouping-layers` (`55dd79b`, 2026-08-13)
+Organization → Program → Division → Team, per the five locked rulings: both layers now;
+they persist across seasons; progressive disclosure is a display rule (single-entry
+layers hidden; defaults "Main"/"Main" provisioned at signup + backfill); **authz
+untouched** (tests/authz.test.ts passes with zero edits — grouping is never in a
+permission check); join codes stay on the team. Additive migration
+`20260813123937_grouping_program_division` + `scripts/backfill-structure.ts`
+(dry/execute/verify, idempotent, chain-consistency checks) + `/org` admin page
+(create/rename/reorder/assign/create-team; create_team tier; org-bounded data paths).
+Deploy runbook (owner-gated): migrate deploy → backfill execute+verify → push → verify.
+**Chunk 2 (read-only Org View tree for staff) is planned separately.**
+
 ### POST-MERGE ROADMAP (owner-ruled 2026-08-12 — design as ONE phase, own plan)
 **"Person-first entry & org tier"** — the front door becomes a PERSON setting up a
 profile first (like a social app), then choosing their path during setup. The migrated
