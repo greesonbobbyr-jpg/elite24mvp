@@ -17,7 +17,10 @@ const DATA_DIR = join(tmpdir(), "e24-localpg-data");
 const PORT = 5433;
 const USER = "postgres";
 const PASSWORD = "localtest";
-const DB = "e24local";
+// Optional 2nd arg picks the database: the card-redesign branch uses its own
+// "e24cards" DB so its local-only migration never collides with e24local
+// (which carries the grouping-layers migration from the other workstream).
+const DB = process.argv[3] ?? "e24local";
 
 const pg = new EmbeddedPostgres({
   databaseDir: DATA_DIR,
