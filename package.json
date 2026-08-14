@@ -14,12 +14,13 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate && node scripts/copy-bg-removal-assets.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.4.5",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "next": "16.2.7",
@@ -30,6 +31,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@imgly/background-removal-data": "^1.4.5",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",

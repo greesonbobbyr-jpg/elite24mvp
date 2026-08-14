@@ -22,6 +22,8 @@ type EditableProfile = {
   favoriteTeam: string | null;
   highlightUrl: string | null;
   photoUrl: string | null;
+  photoCutoutUrl: string | null;
+  photoMeta: unknown;
 };
 
 export function EditBrandForm({ profile }: { profile: EditableProfile }) {
@@ -36,7 +38,11 @@ export function EditBrandForm({ profile }: { profile: EditableProfile }) {
         Edit my brand
       </summary>
       <form action={formAction} className="mt-4 flex flex-col gap-4">
-        <PhotoUploadField defaultPhotoUrl={profile.photoUrl} />
+        <PhotoUploadField
+          defaultPhotoUrl={profile.photoUrl}
+          defaultCutoutUrl={profile.photoCutoutUrl}
+          defaultMeta={profile.photoMeta ? JSON.stringify(profile.photoMeta) : null}
+        />
 
         <fieldset className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="col-span-2 sm:col-span-1">

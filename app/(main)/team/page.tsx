@@ -96,6 +96,8 @@ export default async function TeamSettingsPage() {
               checkInReminderHour: team.checkInReminderHour,
             }}
             coachPhotoUrl={user.photoUrl}
+            coachCutoutUrl={user.photoCutoutUrl}
+            coachPhotoMeta={user.photoMeta ? JSON.stringify(user.photoMeta) : null}
           />
         </section>
       )}

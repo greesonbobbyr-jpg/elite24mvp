@@ -7,9 +7,15 @@ import { actingScope, getCurrentContext, type Ctx } from "@/lib/context";
 import { can, type Action } from "@/lib/authz";
 import { endMembershipForUser } from "@/lib/data/memberships";
 import { uniqueJoinCode } from "@/lib/joincode";
-import { readBranding, validateImageDataUrl } from "@/lib/branding";
+import {
+  readBranding,
+  validateImageDataUrl,
+  validateCutoutDataUrl,
+  parsePhotoMeta,
+} from "@/lib/branding";
 import { hashPassword } from "@/lib/password";
 import { storeImage } from "@/lib/photoStore";
+import { Prisma } from "@prisma/client";
 
 export type TeamSettingsState = { error?: string; ok?: boolean };
 
@@ -55,6 +61,10 @@ export async function updateTeam(
     "photo",
   );
   if ("error" in photoRes) return { error: photoRes.error };
+  // Card-portrait cutout + metadata (photo pipeline A; see brand/actions.ts).
+  const cutoutRes = validateCutoutDataUrl(String(formData.get("photoCutoutUrl") ?? ""));
+  if ("error" in cutoutRes) return { error: cutoutRes.error };
+  const photoMeta = parsePhotoMeta(String(formData.get("photoMeta") ?? ""));
 
   // Daily check-in reminder hour (team-local; "" = off). Whitelisted range.
   const rawHour = String(formData.get("reminderHour") ?? "").trim();
@@ -71,6 +81,16 @@ export async function updateTeam(
   const storedPhoto = photoRes.url
     ? await storeImage(photoRes.url, `coaches/${user.id}`)
     : null;
+  const storedCutout =
+    photoRes.url && cutoutRes.url
+      ? await storeImage(cutoutRes.url, `coaches/${user.id}-cutout`)
+      : null;
+  const photoFields = {
+    photoUrl: storedPhoto,
+    photoCutoutUrl: storedCutout,
+    photoMeta:
+      storedCutout && photoMeta ? (photoMeta as Prisma.InputJsonValue) : Prisma.DbNull,
+  };
 
   await prisma.team.update({
     where: { id: user.teamId },
@@ -84,13 +104,13 @@ export async function updateTeam(
   });
   await prisma.user.update({
     where: { id: user.id },
-    data: { photoUrl: storedPhoto },
+    data: photoFields,
   });
   // Dual-write: the coach's photo lives on the permanent Profile too.
   if (ctx.profile) {
     await prisma.profile.update({
       where: { id: ctx.profile.id },
-      data: { photoUrl: storedPhoto },
+      data: photoFields,
     });
   }
   revalidatePath("/team");

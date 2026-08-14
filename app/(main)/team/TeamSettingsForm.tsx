@@ -21,6 +21,8 @@ function hourLabel(h: number): string {
 export function TeamSettingsForm({
   team,
   coachPhotoUrl,
+  coachCutoutUrl = null,
+  coachPhotoMeta = null,
 }: {
   team: {
     name: string;
@@ -30,6 +32,8 @@ export function TeamSettingsForm({
     checkInReminderHour: number | null;
   };
   coachPhotoUrl: string | null;
+  coachCutoutUrl?: string | null;
+  coachPhotoMeta?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(updateTeam, initialState);
 
@@ -69,7 +73,11 @@ export function TeamSettingsForm({
 
       {/* The coach's OWN photo (shows in their header identity chip). */}
       <div className="border-t border-white/10 pt-4">
-        <PhotoUploadField defaultPhotoUrl={coachPhotoUrl} />
+        <PhotoUploadField
+          defaultPhotoUrl={coachPhotoUrl}
+          defaultCutoutUrl={coachCutoutUrl}
+          defaultMeta={coachPhotoMeta}
+        />
       </div>
 
       {state.error && <p className="text-sm text-red-500">{state.error}</p>}

@@ -4,8 +4,13 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentContext } from "@/lib/context";
 import { isOnboarded } from "@/lib/onboarding";
-import { validateImageDataUrl } from "@/lib/branding";
+import {
+  validateImageDataUrl,
+  validateCutoutDataUrl,
+  parsePhotoMeta,
+} from "@/lib/branding";
 import { storeImage } from "@/lib/photoStore";
+import { Prisma } from "@prisma/client";
 
 export type BrandState = { error?: string };
 
@@ -65,10 +70,20 @@ export async function updateBrand(
     "photo",
   );
   if ("error" in photoRes) return { error: photoRes.error };
+  // Card-portrait cutout + normalization metadata (photo pipeline A). The
+  // client pipeline fills these only on full success (Δ5 — a failed upload
+  // submits nothing new); clearing the photo clears both.
+  const cutoutRes = validateCutoutDataUrl(String(formData.get("photoCutoutUrl") ?? ""));
+  if ("error" in cutoutRes) return { error: cutoutRes.error };
+  const photoMeta = parsePhotoMeta(String(formData.get("photoMeta") ?? ""));
   // Offload to Supabase Storage when configured (no-op passthrough otherwise).
   const storedPhoto = photoRes.url
     ? await storeImage(photoRes.url, `players/${user.id}`)
     : null;
+  const storedCutout =
+    photoRes.url && cutoutRes.url
+      ? await storeImage(cutoutRes.url, `players/${user.id}-cutout`)
+      : null;
 
   const brandFields = {
     heightInches: optionalInt(formData.get("heightInches")),
@@ -81,6 +96,9 @@ export async function updateBrand(
     favoriteTeam: optionalString(formData.get("favoriteTeam")),
     highlightUrl,
     photoUrl: storedPhoto,
+    photoCutoutUrl: storedCutout,
+    photoMeta:
+      storedCutout && photoMeta ? (photoMeta as Prisma.InputJsonValue) : Prisma.DbNull,
   };
   await prisma.playerProfile.update({
     where: { userId: user.id },

@@ -37,6 +37,8 @@ import {
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { join as pathJoin } from "node:path";
 import { todayKey as tzDayKey } from "../lib/daykey";
 import { advanceStreak, type StreakState } from "../lib/streaks";
 
@@ -296,6 +298,46 @@ async function createPlayer(
     orgId,
   });
   return { user, profile, membership };
+}
+
+// ---------------------------------------------------- sample portraits ------
+
+// DEV-ONLY sample portraits (card redesign §49/§55): if the owner has dropped
+// the Cason Wallace sample into design/reference/, every seeded person gets it
+// so cards/leaderboard/roster/chat evaluate with a real portrait. Preferred:
+// sample-athlete-cutout.png (background already removed, real alpha); else
+// sample-athlete.* is used for BOTH original and cutout (un-cut placeholder).
+// The seed only ever runs against local/dev DBs (SEED_CONFIRM guard) — this
+// sample is never production data.
+async function seedSamplePortraits(): Promise<number> {
+  const refDir = pathJoin(process.cwd(), "design", "reference");
+  const read = (name: string): string | null => {
+    for (const ext of ["png", "webp", "jpg", "jpeg"]) {
+      const p = pathJoin(refDir, `${name}.${ext}`);
+      if (existsSync(p)) {
+        const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+        return `data:${mime};base64,${readFileSync(p).toString("base64")}`;
+      }
+    }
+    return null;
+  };
+  const original = read("sample-athlete");
+  const cutout = read("sample-athlete-cutout") ?? original;
+  if (!cutout) return 0;
+  const photoMeta = { version: 1, seeded: true };
+  const photoFields = {
+    photoUrl: original ?? cutout,
+    photoCutoutUrl: cutout,
+    photoMeta,
+  };
+  const [players, users, profiles] = await Promise.all([
+    prisma.playerProfile.updateMany({ data: photoFields }),
+    prisma.user.updateMany({ data: photoFields }),
+    prisma.profile.updateMany({ data: photoFields }),
+  ]);
+  void users;
+  void profiles;
+  return players.count;
 }
 
 // ------------------------------------------------------------- activity ------
@@ -716,6 +758,8 @@ async function main() {
     await prisma.membership.update({ where: { id: m.id }, data: { points: sum._sum.amount ?? 0 } });
   }
 
+  const sampledPortraits = await seedSamplePortraits();
+
   // ---- Summary ------------------------------------------------------------
   const [orgCount, teamCount, profileCount, membershipCount, reviewCount] = await Promise.all([
     prisma.organization.count(),
@@ -725,6 +769,11 @@ async function main() {
     prisma.dailyReview.count(),
   ]);
   console.log("Seed v2 complete:");
+  if (sampledPortraits > 0) {
+    console.log(`  Sample portraits applied to ${sampledPortraits} players (design/reference).`);
+  } else {
+    console.log("  No sample portrait found (design/reference/sample-athlete.*) — cards show initials.");
+  }
   console.log(
     `  ${orgCount} orgs · ${teamCount} teams · ${profileCount} profiles · ${membershipCount} memberships (1 ended, 1 two-team) · ${reviewCount} reviews`,
   );

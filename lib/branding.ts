@@ -41,6 +41,51 @@ export function validateImageDataUrl(
   return { error: `That ${label} isn't a valid image.` };
 }
 
+// Card-portrait cutout validation (photo pipeline A). Alpha-capable formats
+// only (the cutout IS transparency) with a higher cap — alpha PNGs run larger
+// than the flat originals. Same http(s)/path pass-through as other images.
+const CUTOUT_DATA_RE = /^data:image\/(png|webp);base64,/i;
+export const MAX_CUTOUT_IMAGE_BYTES = 600 * 1024;
+
+export function validateCutoutDataUrl(
+  raw: string,
+): { url: string | null } | { error: string } {
+  const v = raw.trim();
+  if (!v) return { url: null };
+  if (v.startsWith("data:")) {
+    if (!CUTOUT_DATA_RE.test(v)) return { error: "That photo cutout isn't supported." };
+    if (dataUrlBytes(v) > MAX_CUTOUT_IMAGE_BYTES) {
+      return { error: "That photo cutout is too large." };
+    }
+    return { url: v };
+  }
+  if (/^https?:\/\//i.test(v)) return { url: v };
+  if (v.startsWith("/") && !v.startsWith("//")) return { url: v };
+  return { error: "That photo cutout isn't valid." };
+}
+
+// Shallow-validate the client's normalization metadata JSON (photoMeta).
+// Accepts only a small object with numeric/scalar fields — never trusted for
+// anything but re-rendering transforms; empty/invalid → null.
+export function parsePhotoMeta(raw: string): Record<string, unknown> | null {
+  const v = raw.trim();
+  if (!v || v.length > 2048) return null;
+  try {
+    const parsed: unknown = JSON.parse(v);
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed) ||
+      typeof (parsed as { version?: unknown }).version !== "number"
+    ) {
+      return null;
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 export function readBranding(
   formData: FormData,
 ): { data: Branding } | { error: string } {
