@@ -2,19 +2,13 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
-  cardGradient,
   accentColor,
-  numberColor,
-  tierForPoints,
   withAlpha,
-  shade,
-  hexToRgb,
   BOTTOM_VIGNETTE,
   APP_RED,
   FINISHES,
   finishForStars,
   starsForPoints,
-  type Tier,
   type Finish,
   type FinishKey,
 } from "@/lib/cardTheme";
@@ -40,15 +34,16 @@ import { CardFrame, FaceBevel } from "@/app/components/card/CardFrame";
 import { CardStars } from "@/app/components/card/CardStars";
 import { DepthShadow, RimLight } from "@/app/components/card/CutoutLighting";
 import { TeamLogoBadge, TopRightSlot } from "@/app/components/card/TeamLogoBadge";
-import { CLIP_FACE, CLIP_OUTER } from "@/app/components/card/chrome";
+import { CLIP_FACE, CLIP_OUTER, chamferClip } from "@/app/components/card/chrome";
 
-// The flagship player identity card. ONE skeleton, three sizes, fully driven by
-// team.primaryColor / secondaryColor (never hardcoded). Readability is a hard
-// rule: text always sits on a dark scrim/panel, never colored-on-colored. The
-// full size adds a holo tilt + a solid beveled-metal TIER border (the tier IS
-// the border) with a diagonal light sweep that glints the metal edge. Self-
-// contained: the keyframes live in a component <style> so globals.css stays
-// untouched and the component is drop-in reusable later.
+// THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, four
+// sizes — full (the locked master), wide, compact, avatar — each RECOMPOSED
+// for its context, never scaled down (§44). Geometry lives in
+// lib/cardGeometry (one card, locked after the milestone); material finishes
+// in lib/cardTheme FINISHES (level changes swap tokens only — Δ4). The team
+// is an environmental accent (§51); readability is a hard rule: text always
+// sits on darkness. Keyframes live in a component <style> so globals.css
+// stays untouched and the component is drop-in reusable.
 
 export type CardSize = "full" | "wide" | "compact" | "avatar";
 
@@ -93,13 +88,6 @@ function formatHeight(inches?: number | null): string | null {
   return `${Math.floor(inches / 12)}'${inches % 12}"`;
 }
 
-// A full, solid metallic ring — the tier "material". A conic sweep of the tier's
-// stops gives each side a different tone (light catching a beveled frame). No gap,
-// no spin: the border is a static shined-metal frame.
-function conicMetal(colors: string[]): string {
-  return `conic-gradient(from 130deg, ${colors.join(", ")}, ${colors[0]})`;
-}
-
 export function PlayerCard({
   size,
   player,
@@ -132,63 +120,6 @@ export function PlayerCard({
   );
 }
 
-// Shared beveled-metal frame styling (the tier border) for full + wide. `radius`
-// is the outer corner; `pad` the ring thickness.
-function metalFrameStyle(tier: Tier, radius: number, pad: number): CSSProperties {
-  return {
-    position: "relative",
-    background: conicMetal(tier.ring),
-    padding: pad,
-    borderRadius: radius,
-    boxShadow: [
-      "0 22px 46px -20px rgba(0,0,0,.65)", // drop shadow
-      "0 0 0 1px rgba(0,0,0,.55)", // crisp outer edge line
-      tier.glow ? `0 0 22px ${tier.glow}` : "", // outer tier glow (raised)
-      "inset 0 1.5px 1px rgba(255,255,255,.30)", // top bevel highlight
-      "inset 0 -2px 3px rgba(0,0,0,.55)", // bottom bevel shadow
-    ]
-      .filter(Boolean)
-      .join(", "),
-  };
-}
-
-// The thin dark line + inset top highlight between the metal ring and the face.
-const BODY_EDGE = "0 0 0 1px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)";
-
-// The giant ghosted jersey-number watermark. Outline-only, stroked in the team
-// SECONDARY color when there is one (hollow, secondary-edged); otherwise a faint
-// solid white fill (the original look). Shared by full + wide.
-function GhostNumber({
-  number,
-  strokeColor,
-  size,
-  className,
-}: {
-  number: number;
-  strokeColor: string | null;
-  size: number;
-  className: string;
-}) {
-  return (
-    <span
-      aria-hidden
-      className={`pointer-events-none absolute select-none font-black italic leading-none ${className}`}
-      style={{
-        fontFamily: "var(--font-barlow)",
-        fontSize: size,
-        ...(strokeColor
-          ? {
-              color: "transparent",
-              WebkitTextStrokeWidth: "2px",
-              WebkitTextStrokeColor: strokeColor,
-            }
-          : { color: "rgba(255,255,255,0.08)" }),
-      }}
-    >
-      {number}
-    </span>
-  );
-}
 
 // ---------------------------------------------------------------- FULL ------
 //
@@ -769,93 +700,188 @@ function statPanelStyle(finish: Finish): CSSProperties {
   };
 }
 
+// ------------------------------------------------------- SHARED (redesign) --
+
+/** Finish + portrait context every recomposed size derives from. */
+function useCardContext(player: CardPlayer) {
+  const total = player.total ?? player.points;
+  const stars = starsForPoints(total);
+  const finish = finishForStars(stars);
+  const meta = isPortraitMetaV2(player.photoMeta) ? player.photoMeta : null;
+  const cutout = player.cutoutUrl ?? null;
+  return { total, stars, finish, meta, cutout };
+}
+
+/**
+ * Head-crop placement for circular sizes: scales/positions the cutout so the
+ * stored face box fills the disc naturally. Falls back to null without meta.
+ */
+function headCropStyle(
+  meta: { faceBox: { x: number; y: number; w: number; h: number }; srcW: number },
+  disc: number,
+): CSSProperties {
+  const k = (disc * 0.62) / meta.faceBox.h;
+  const faceCx = meta.faceBox.x + meta.faceBox.w / 2;
+  const faceCy = meta.faceBox.y + meta.faceBox.h * 0.48;
+  return {
+    position: "absolute",
+    width: meta.srcW * k,
+    left: disc / 2 - faceCx * k,
+    top: disc * 0.5 - faceCy * k,
+    maxWidth: "none",
+  };
+}
+
+const WIDE_ASPECT = 16 / 10;
+
 // ---------------------------------------------------------------- WIDE ------
 
-// Horizontal banner (~16:10) — same design system as FULL, re-arranged: photo
-// left, huge name right, #·pos·height under, team logo anchored right, ghost
-// number behind the right half. Metallic tier border; NO tilt; no animated sweep
-// (the gradient's built-in sheen carries the material feel).
+// Horizontal recomposition of the master's TOP HALF (§44): same finish
+// language — chamfered metal, dark environment, ghosted number behind the
+// right side, cutout bust left, name block dominant, micro star group. No
+// tilt; the finish carries the material feel.
 function WideCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
-  const gradient = cardGradient(team.primaryColor);
+  const { total, stars, finish, cutout } = useCardContext(player);
   const accent = accentColor(team.primaryColor, team.secondaryColor);
-  const numColor = numberColor(team.primaryColor, team.secondaryColor);
-  const hasSecondary = !!(team.secondaryColor && hexToRgb(team.secondaryColor));
   const initials = player.initials || makeInitials(player.name);
-  const tier = tierForPoints(player.points);
   const height = formatHeight(player.heightInches);
+  const words = player.name.trim().split(/\s+/);
+  const surname = words.length > 1 ? words[words.length - 1] : words[0];
+  const firstName = words.length > 1 ? words.slice(0, -1).join(" ") : null;
+  const bigNumber = giantNumber(player.jerseyNumber);
+  const clipOuter = chamferClip(0, 0.055, WIDE_ASPECT);
+  const clipFace = chamferClip(0.012, 0.045, WIDE_ASPECT);
 
   return (
-    <div style={{ ...metalFrameStyle(tier, 22, 5), width: 360, maxWidth: "100%" }}>
-      <div
-        className="pc-body relative overflow-hidden"
+    <div
+      className="relative"
+      style={{
+        width: 360,
+        maxWidth: "100%",
+        aspectRatio: `${WIDE_ASPECT}`,
+        filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
+      }}
+    >
+      {/* thin finish frame */}
+      <span
+        aria-hidden
+        className="absolute inset-0"
         style={{
-          background: gradient,
-          borderRadius: 17,
-          aspectRatio: "16 / 10",
-          boxShadow: BODY_EDGE,
+          clipPath: clipOuter,
+          background: `conic-gradient(from 130deg at 50% 46%, ${finish.metal.join(", ")}, ${finish.metal[0]})`,
         }}
-      >
-        {/* ghost number — lower-right so it clears the name up top. RAW secondary. */}
-        {player.jerseyNumber != null && (
-          <GhostNumber
-            number={player.jerseyNumber}
-            strokeColor={
-              hasSecondary ? withAlpha(team.secondaryColor as string, 0.4) : null
-            }
-            size={120}
-            className={`${
-              String(player.jerseyNumber).length <= 1 ? "right-6" : "right-2"
-            } bottom-1`}
-          />
-        )}
-        {/* left scrim so the name stays on darkness over the watermark */}
+      />
+      {/* face */}
+      <div className="absolute inset-0" style={{ clipPath: clipFace }}>
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0"
+          className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.12) 55%, rgba(0,0,0,0) 100%)",
+              `radial-gradient(90% 90% at 22% 50%, ${withAlpha(finish.lightHue, 0.14)} 0%, transparent 60%),` +
+              `radial-gradient(110% 90% at 85% 110%, ${withAlpha(accent, 0.1)} 0%, transparent 55%),` +
+              `linear-gradient(120deg, ${finish.background.top} 0%, ${finish.background.mid} 55%, ${finish.background.bottom} 100%)`,
           }}
         />
-        {/* team logo anchored top-right */}
-        <div className="absolute right-3 top-3 z-10">
-          <LogoChip team={team} size={46} />
-        </div>
-
-        <div className="relative z-10 flex h-full flex-col p-4">
-          {/* info line — top (clears the top-right logo via pr) */}
-          <p className="flex flex-wrap items-center gap-x-2 pr-14 text-[10px] font-bold uppercase tracking-[0.14em] text-white/80">
-            {player.jerseyNumber != null && (
-              <span style={{ color: numColor }}>#{player.jerseyNumber}</span>
-            )}
-            {[player.position, height].filter(Boolean).map((part, i) => (
-              <span key={i} className="flex items-center gap-2">
-                <span aria-hidden className="text-white/30">
-                  ·
-                </span>
-                {part}
-              </span>
-            ))}
-          </p>
-
-          {/* photo + big name — aligned up so the name sits high, clear of the number */}
-          <div className="flex flex-1 items-start gap-4">
-            <PhotoDisc
-              initials={initials}
-              photoUrl={player.photoUrl}
-              accent={accent}
-              size={120}
-            />
-            <h2
-              className="min-w-0 flex-1 pr-10 text-3xl font-black italic uppercase leading-[0.9] text-white"
-              style={{
-                fontFamily: "var(--font-barlow)",
-                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-              }}
+        {/* ghosted number behind the right half */}
+        {bigNumber && (
+          <span
+            aria-hidden
+            className="absolute -top-2 right-2 select-none font-black italic leading-none"
+            style={{
+              fontFamily: "var(--font-barlow)",
+              fontSize: 132,
+              letterSpacing: "-0.04em",
+              color: "transparent",
+              WebkitTextStrokeWidth: 1.5,
+              WebkitTextStrokeColor: withAlpha(finish.metalHighlight, 0.32),
+            }}
+          >
+            {bigNumber}
+          </span>
+        )}
+        {/* cutout bust, bottom-anchored left */}
+        {cutout ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={cutout}
+            alt=""
+            className="absolute bottom-0 left-0 h-[96%] w-[42%] object-contain object-bottom"
+            style={{
+              filter: `drop-shadow(0 0 14px ${withAlpha(finish.lightHue, 0.3 * finish.lightIntensity)})`,
+            }}
+          />
+        ) : (
+          <span
+            className="absolute bottom-0 left-0 flex h-full w-[42%] items-center justify-center font-black uppercase italic text-white/80"
+            style={{ fontFamily: "var(--font-barlow)", fontSize: 44 }}
+          >
+            {initials}
+          </span>
+        )}
+        {/* readability scrim under the text side */}
+        <span
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(0,0,0,0) 30%, rgba(0,0,0,0.3) 55%, rgba(0,0,0,0.45) 100%)",
+          }}
+        />
+        {/* name block */}
+        <div className="absolute inset-y-0 left-[44%] right-3 flex flex-col justify-center">
+          {firstName && (
+            <p
+              className="truncate text-[11px] font-bold uppercase leading-none"
+              style={{ letterSpacing: "0.14em", color: accent }}
             >
-              {player.name}
-            </h2>
+              {firstName}
+            </p>
+          )}
+          <p
+            className="truncate font-black uppercase italic leading-[0.95]"
+            style={{
+              fontFamily: "var(--font-barlow)",
+              fontSize: surname.length > 9 ? 26 : 32,
+              color: "transparent",
+              backgroundImage:
+                "linear-gradient(180deg, #ffffff 0%, #eef2f6 42%, #a7b2bf 55%, #e3e9f0 74%, #cfd7df 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.55))",
+            }}
+          >
+            {surname}
+          </p>
+          <p className="mt-1.5 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-white/80">
+            {[
+              player.jerseyNumber != null ? `#${player.jerseyNumber}` : null,
+              player.position,
+              height,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <CardStars count={stars} finish={finish} sizePx={11} gapPx={3} />
+            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/70">
+              Prospect
+            </span>
+            <span className="ml-auto text-[10px] font-bold tabular-nums text-white/80">
+              {total} pts
+            </span>
           </div>
+        </div>
+        {/* logo — top-left, same as the master */}
+        <div className="absolute left-2 top-2 h-10 w-10">
+          {team.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={team.logoUrl}
+              alt=""
+              className="h-full w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.55)]"
+            />
+          ) : null}
         </div>
       </div>
     </div>
@@ -864,6 +890,10 @@ function WideCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
 
 // -------------------------------------------------------------- COMPACT -----
 
+// COMPACT (§44): a mini identity row in the same finish language — thin metal
+// frame, cutout bust breaking the top edge over a small ghost number,
+// condensed name, rank/points, micro star group. General-UI resilience keeps
+// initials/photo fallbacks here (Δ5 applies to full-card CREATION only).
 function CompactCard({
   player,
   team,
@@ -871,100 +901,138 @@ function CompactCard({
   player: CardPlayer;
   team: CardTeam;
 }) {
-  const gradient = cardGradient(team.primaryColor);
+  const { total, stars, finish, cutout } = useCardContext(player);
   const accent = accentColor(team.primaryColor, team.secondaryColor);
-  const initials = player.initials || makeInitials(player.name);
-  const tier = tierForPoints(player.points);
+  const bigNumber = giantNumber(player.jerseyNumber);
 
   return (
-    <div
-      className="relative flex h-[72px] w-full items-center gap-3 overflow-hidden rounded-xl pl-3 pr-4"
-      style={{ background: gradient }}
-    >
-      {/* accent edge strip (team) */}
+    <div className="relative h-[72px] w-full" style={{ overflow: "visible" }}>
+      {/* thin finish frame + dark environment */}
       <span
         aria-hidden
-        className="absolute inset-y-0 left-0 w-1.5"
-        style={{ background: accent }}
-      />
-      {/* readability scrim (keeps right-side stats legible on lighter mids) */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
+        className="absolute inset-0 rounded-xl"
         style={{
-          background:
-            "linear-gradient(90deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.45))",
+          background: `linear-gradient(120deg, ${finish.background.top} 0%, ${finish.background.mid} 55%, ${finish.background.bottom} 100%)`,
+          boxShadow: `inset 0 0 0 1px ${withAlpha(finish.metalHighlight, 0.25)}, inset 0 1px 0 ${withAlpha(
+            finish.metalHighlight,
+            0.12,
+          )}, 0 4px 12px -6px rgba(0,0,0,0.6)`,
+        }}
+      />
+      {/* faint team tint on the right edge */}
+      <span
+        aria-hidden
+        className="absolute inset-0 rounded-xl"
+        style={{
+          background: `radial-gradient(60% 120% at 100% 50%, ${withAlpha(accent, 0.12)} 0%, transparent 60%)`,
         }}
       />
 
-      <div className="relative z-10 ml-1">
-        <AvatarCard player={player} team={team} />
-      </div>
+      <div className="relative flex h-full items-center gap-3 pl-2 pr-4">
+        {/* bust: cutout breaks the row's top edge over a small ghost number */}
+        <div className="relative h-full w-16 shrink-0">
+          {bigNumber && (
+            <span
+              aria-hidden
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 select-none font-black italic leading-none"
+              style={{
+                fontFamily: "var(--font-barlow)",
+                fontSize: 52,
+                color: "transparent",
+                WebkitTextStrokeWidth: 1,
+                WebkitTextStrokeColor: withAlpha(finish.metalHighlight, 0.25),
+              }}
+            >
+              {bigNumber}
+            </span>
+          )}
+          {cutout ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={cutout}
+              alt=""
+              className="absolute bottom-0 left-1/2 h-[86px] w-auto max-w-none -translate-x-1/2 object-contain object-bottom"
+              style={{
+                filter: `drop-shadow(0 0 8px ${withAlpha(finish.lightHue, 0.35 * finish.lightIntensity)})`,
+              }}
+            />
+          ) : (
+            <span className="absolute inset-y-0 left-1/2 flex -translate-x-1/2 items-center">
+              <AvatarCard player={player} team={team} />
+            </span>
+          )}
+        </div>
 
-      <div className="relative z-10 min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          {/* tiny tier color cue */}
-          <span
-            aria-hidden
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: tier.ring[Math.floor(tier.ring.length / 2)] }}
-            title={tier.label}
-          />
+        <div className="relative min-w-0 flex-1">
           <p
             className="truncate text-base font-black italic uppercase leading-none text-white"
             style={{ fontFamily: "var(--font-barlow)" }}
           >
             {player.name}
           </p>
-        </div>
-        <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
-          {player.jerseyNumber != null ? `#${player.jerseyNumber} · ` : ""}
-          {player.position ?? "Player"}
-        </p>
-      </div>
-
-      <div className="relative z-10 shrink-0 text-right">
-        {player.rank != null && (
-          <p
-            className="text-lg font-black leading-none tabular-nums text-white"
-            style={{ color: shade(accent, 0.3) }}
-          >
-            #{player.rank}
+          <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-white/65">
+            {player.jerseyNumber != null ? `#${player.jerseyNumber} · ` : ""}
+            {player.position ?? "Player"}
           </p>
-        )}
-        <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/70 tabular-nums">
-          {player.points} pts
-        </p>
-      </div>
+        </div>
 
-      <span aria-hidden className="hidden">
-        {initials}
-      </span>
+        <div className="relative shrink-0 text-right">
+          {player.rank != null && (
+            <p
+              className="text-lg font-black leading-none tabular-nums"
+              style={{ color: finish.metalHighlight }}
+            >
+              #{player.rank}
+            </p>
+          )}
+          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/65 tabular-nums">
+            {total} pts
+          </p>
+          <span className="mt-1 flex justify-end">
+            <CardStars count={stars} finish={finish} sizePx={8} gapPx={2} />
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
 
 // --------------------------------------------------------------- AVATAR -----
 
+// AVATAR (§44): circular finish ring + cutout HEAD CROP (face-box anchored
+// when meta exists). Players only — staff circles are the STAFF treatment.
 function AvatarCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
-  const gradient = cardGradient(team.primaryColor);
-  const accent = accentColor(team.primaryColor, team.secondaryColor);
+  const { finish, meta, cutout } = useCardContext(player);
   const initials = player.initials || makeInitials(player.name);
-  const base =
-    team.primaryColor && team.primaryColor.startsWith("#")
-      ? team.primaryColor
-      : accent;
+  const DISC = 36; // inner disc px (ring adds 2px per side)
+  void team;
 
   return (
     <div
       className="relative inline-flex h-10 w-10 items-center justify-center rounded-full"
-      style={{ background: `linear-gradient(140deg, ${accent}, ${shade(base, -0.4)})`, padding: 2 }}
+      style={{
+        background: `conic-gradient(from 130deg, ${finish.metal.join(", ")}, ${finish.metal[0]})`,
+        padding: 2,
+        boxShadow: "0 2px 6px rgba(0,0,0,0.45)",
+      }}
     >
       <div
-        className="flex h-full w-full items-center justify-center overflow-hidden rounded-full"
-        style={{ background: gradient }}
+        className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full"
+        style={{
+          background: `radial-gradient(120% 120% at 50% 20%, ${finish.background.mid} 0%, ${finish.background.bottom} 100%)`,
+        }}
       >
-        {player.photoUrl ? (
+        {cutout && meta ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={cutout} alt={player.name} style={headCropStyle(meta, DISC)} />
+        ) : cutout ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={cutout}
+            alt={player.name}
+            className="h-full w-full object-cover object-top"
+          />
+        ) : player.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={player.photoUrl}
@@ -980,76 +1048,6 @@ function AvatarCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
           </span>
         )}
       </div>
-    </div>
-  );
-}
-
-// --------------------------------------------------------------- SHARED -----
-
-function LogoChip({ team, size }: { team: CardTeam; size: number }) {
-  if (team.logoUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={team.logoUrl}
-        alt={`${team.name} logo`}
-        style={{ width: size, height: size }}
-        className="shrink-0 object-contain drop-shadow-[0_2px_5px_rgba(0,0,0,0.5)]"
-      />
-    );
-  }
-  // No logo → a small team-initial chip.
-  return (
-    <span
-      className="flex shrink-0 items-center justify-center rounded-lg bg-black/40 font-black uppercase text-white ring-1 ring-white/15"
-      style={{ width: size, height: size, fontSize: size * 0.34 }}
-    >
-      {makeInitials(team.name)}
-    </span>
-  );
-}
-
-function PhotoDisc({
-  initials,
-  photoUrl,
-  accent,
-  size,
-}: {
-  initials: string;
-  photoUrl?: string | null;
-  accent: string;
-  size: number;
-}) {
-  return (
-    <div
-      className="relative flex items-center justify-center rounded-full"
-      style={{
-        width: size,
-        height: size,
-        boxShadow: `inset 0 0 0 2px ${withAlpha(accent, 0.85)}, inset 0 0 0 7px rgba(0,0,0,0.22), inset 0 8px 26px rgba(0,0,0,0.4)`,
-        background:
-          "radial-gradient(120% 120% at 50% 22%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.5) 100%)",
-      }}
-    >
-      {photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={photoUrl}
-          alt=""
-          className="h-full w-full rounded-full object-cover"
-        />
-      ) : (
-        <span
-          className="font-black uppercase italic text-white"
-          style={{
-            fontFamily: "var(--font-barlow)",
-            fontSize: size * 0.36,
-            textShadow: "0 2px 10px rgba(0,0,0,0.5)",
-          }}
-        >
-          {initials}
-        </span>
-      )}
     </div>
   );
 }

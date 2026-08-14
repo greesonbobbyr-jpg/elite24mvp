@@ -130,8 +130,50 @@ export function Gallery({
         </div>
       </section>
 
+      {/* Stage 7 — the recomposed sizes in their real contexts */}
+      <section className="flex flex-col gap-4">
+        <h2 className="e24-eyebrow">Recomposed sizes — in context</h2>
+        <div className="flex max-w-xl flex-col gap-6">
+          <div data-shot="context-wide">
+            <PlayerCard size="wide" player={SAMPLE_PLAYER} team={SAMPLE_TEAM} />
+          </div>
+          <div
+            data-shot="context-compact"
+            className="flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3"
+          >
+            <FadedRow rank={2} />
+            <PlayerCard size="compact" player={SAMPLE_PLAYER} team={SAMPLE_TEAM} />
+            <FadedRow rank={3} />
+          </div>
+          <div
+            data-shot="context-avatar"
+            className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-2.5"
+          >
+            <span
+              className="text-sm font-black italic tracking-tight text-white"
+              style={{ fontFamily: "var(--font-barlow)" }}
+            >
+              Elite<span style={{ color: "#e1102a" }}>24</span>MVP
+            </span>
+            <PlayerCard size="avatar" player={SAMPLE_PLAYER} team={SAMPLE_TEAM} />
+          </div>
+        </div>
+      </section>
+
       <PortraitDebug />
     </main>
+  );
+}
+
+// A dim placeholder leaderboard row so the compact card reads in context.
+function FadedRow({ rank }: { rank: number }) {
+  return (
+    <div className="flex h-[72px] items-center gap-3 rounded-xl bg-zinc-900/40 px-4 opacity-40">
+      <span className="text-sm font-black tabular-nums text-zinc-500">#{rank}</span>
+      <span className="h-9 w-9 rounded-full bg-zinc-800" />
+      <span className="h-3 w-28 rounded bg-zinc-800" />
+      <span className="ml-auto h-3 w-10 rounded bg-zinc-800" />
+    </div>
   );
 }
 
@@ -170,6 +212,7 @@ function CardEnvironment({
       <div className="relative" data-shot={shot}>
         {children}
         {refFile && opacity > 0 && (
+          // eslint-disable-next-line @next/next/no-img-element -- dev-only overlay, raw bytes wanted
           <img
             src={`/api/dev/reference/${encodeURIComponent(refFile)}`}
             alt=""
