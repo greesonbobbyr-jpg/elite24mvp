@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { PlayerCard, type CardPlayer, type CardTeam } from "@/app/components/PlayerCard";
+import { StaffCard } from "@/app/components/StaffCard";
 import { FINISH_ORDER, FINISHES, type FinishKey } from "@/lib/cardTheme";
 import { PortraitDebug } from "./PortraitDebug";
 
@@ -119,12 +120,15 @@ export function Gallery({
               refDefault={defaultRef(refs, "staff")}
               initialOverlay={initialOverlay}
             >
-              {/* Placeholder until Stage 8 builds the StaffCard family. */}
-              <div className="flex h-[420px] w-[300px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-zinc-700 bg-zinc-950/60 p-6 text-center">
-                <p className="text-sm font-bold text-white">{s.name}</p>
-                <p className="text-xs uppercase tracking-widest text-zinc-500">{s.role}</p>
-                <p className="mt-4 text-[11px] text-zinc-600">StaffCard — Stage 8</p>
-              </div>
+              <StaffCard
+                size="full"
+                person={{
+                  name: s.name,
+                  role: s.role,
+                  teamName: s.shot === "staff-owner" ? null : SAMPLE_TEAM.name,
+                  orgName: "Mustang Athletics",
+                }}
+              />
             </CardEnvironment>
           ))}
         </div>

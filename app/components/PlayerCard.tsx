@@ -34,7 +34,12 @@ import { CardFrame, FaceBevel } from "@/app/components/card/CardFrame";
 import { CardStars } from "@/app/components/card/CardStars";
 import { DepthShadow, RimLight } from "@/app/components/card/CutoutLighting";
 import { TeamLogoBadge, TopRightSlot } from "@/app/components/card/TeamLogoBadge";
-import { CLIP_FACE, CLIP_OUTER, chamferClip } from "@/app/components/card/chrome";
+import {
+  CLIP_FACE,
+  CLIP_OUTER,
+  chamferClip,
+  headCropStyle,
+} from "@/app/components/card/chrome";
 
 // THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, four
 // sizes — full (the locked master), wide, compact, avatar — each RECOMPOSED
@@ -710,26 +715,6 @@ function useCardContext(player: CardPlayer) {
   const meta = isPortraitMetaV2(player.photoMeta) ? player.photoMeta : null;
   const cutout = player.cutoutUrl ?? null;
   return { total, stars, finish, meta, cutout };
-}
-
-/**
- * Head-crop placement for circular sizes: scales/positions the cutout so the
- * stored face box fills the disc naturally. Falls back to null without meta.
- */
-function headCropStyle(
-  meta: { faceBox: { x: number; y: number; w: number; h: number }; srcW: number },
-  disc: number,
-): CSSProperties {
-  const k = (disc * 0.62) / meta.faceBox.h;
-  const faceCx = meta.faceBox.x + meta.faceBox.w / 2;
-  const faceCy = meta.faceBox.y + meta.faceBox.h * 0.48;
-  return {
-    position: "absolute",
-    width: meta.srcW * k,
-    left: disc / 2 - faceCx * k,
-    top: disc * 0.5 - faceCy * k,
-    maxWidth: "none",
-  };
 }
 
 const WIDE_ASPECT = 16 / 10;
