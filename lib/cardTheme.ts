@@ -155,8 +155,10 @@ export type Tier = {
   sweepSec: number; // sweep duration in seconds (0 = no sweep, e.g. Prospect)
 };
 
-// Deliberately NOT easy — Platinum ≈ weeks of daily max effort. Single source of
-// truth; re-tune here only.
+// OWNER-LOCKED thresholds (card redesign): 0 / 1k / 5k / 20k / 50k career
+// points. Deliberately NOT easy — the top level ≈ seasons of daily max effort.
+// Single source of truth; re-tune here only. (Legacy ring/glow/glint fields
+// survive for the pre-redesign card until Stages 5–7 replace their consumers.)
 export const TIERS: Tier[] = [
   {
     key: "prospect",
@@ -171,7 +173,7 @@ export const TIERS: Tier[] = [
   {
     key: "bronze",
     label: "Bronze",
-    min: 100,
+    min: 1000,
     // deep bronze → bright copper → brown
     ring: ["#3f2410", "#7a4a20", "#d98f4e", "#f0b877", "#9a5f2c", "#3f2410"],
     glow: "rgba(200,120,60,0.35)",
@@ -181,7 +183,7 @@ export const TIERS: Tier[] = [
   {
     key: "silver",
     label: "Silver",
-    min: 300,
+    min: 5000,
     // charcoal → white-hot → grey
     ring: ["#2f3236", "#6b7178", "#c9ced6", "#ffffff", "#8b9199", "#2f3236"],
     glow: "rgba(210,220,230,0.30)",
@@ -191,7 +193,7 @@ export const TIERS: Tier[] = [
   {
     key: "gold",
     label: "Gold",
-    min: 700,
+    min: 20000,
     // dark gold/amber → pale-gold highlight → dark gold
     ring: ["#4d3608", "#997012", "#e6b73a", "#fff1b0", "#b98f1e", "#4d3608"],
     glow: "rgba(230,183,58,0.45)",
@@ -201,7 +203,7 @@ export const TIERS: Tier[] = [
   {
     key: "platinum",
     label: "Platinum",
-    min: 1500,
+    min: 50000,
     // iridescent cool blue / violet / silver shift
     ring: [
       "#2f5a72",
@@ -227,4 +229,148 @@ export function tierForPoints(points: number): Tier {
 
 export function tierByKey(key: TierKey): Tier {
   return TIERS.find((t) => t.key === key) ?? TIERS[0];
+}
+
+// ---- stars (card redesign) -------------------------------------------------
+
+/**
+ * Star count for the card's TIER panel: 1–5, one per tier level reached.
+ * EARNED STARS ONLY — the card renders exactly this many; never hollow, dim,
+ * or locked placeholder stars.
+ */
+export function starsForPoints(points: number): 1 | 2 | 3 | 4 | 5 {
+  const idx = TIERS.findIndex((t) => t.key === tierForPoints(points).key);
+  return (idx + 1) as 1 | 2 | 3 | 4 | 5;
+}
+
+// ---- finish tokens (card redesign, Δ2/Δ4) ----------------------------------
+//
+// The SECOND token system: material finishes. Geometry lives in
+// lib/cardGeometry.ts and never varies by level; a prospect-level change may
+// only ever select one of these finish token sets. The metal names below are
+// INTERNAL ONLY — they never print on the card (the card shows stars +
+// "PROSPECT"; tier display labels stay in TIERS above).
+
+export type FinishKey = "bronze" | "silver" | "gold" | "platinum" | "diamond";
+
+export type Finish = {
+  /** Internal token name — never rendered as text on the card. */
+  key: FinishKey;
+  /** Star count this finish corresponds to (1–5). */
+  stars: 1 | 2 | 3 | 4 | 5;
+  /** Conic metal colorway for the frame (dark → highlight → mid → dark). */
+  metal: string[];
+  /** Brightest metal tone — star fill, number stroke highlights. */
+  metalHighlight: string;
+  /** Darkest metal tone — bevel shadows. */
+  metalShadow: string;
+  /** Card-face environment: dark foundation gradient stops. */
+  background: { top: string; mid: string; bottom: string };
+  /** Lighting hue for backlight (layer 1) + rim (layer 2) + spill (layer 3). */
+  lightHue: string;
+  /** Overall lighting strength 0..1. */
+  lightIntensity: number;
+  /**
+   * Foil/spectral strength 0..1 — the progression is sacred (each level up
+   * must read as strictly more premium); exact numbers tunable in the loop.
+   */
+  foilIntensity: number;
+  /** Spectral gradient stops for the foil sweep (card surfaces only — Δ13). */
+  spectral: string[];
+  /** Star SVG fill gradient (the finish's metal). */
+  starMaterial: { from: string; to: string };
+};
+
+export const FINISH_ORDER: FinishKey[] = [
+  "bronze",
+  "silver",
+  "gold",
+  "platinum",
+  "diamond",
+];
+
+export const FINISHES: Record<FinishKey, Finish> = {
+  // 1★ — premium matte bronze. Still a card you're proud of (§31): warm dark
+  // metal, minimal foil, quiet confidence.
+  bronze: {
+    key: "bronze",
+    stars: 1,
+    metal: ["#2b1a0e", "#5c3a1c", "#a4713a", "#d9a05e", "#7a4f24", "#2b1a0e"],
+    metalHighlight: "#e8b877",
+    metalShadow: "#1c1108",
+    background: { top: "#1a120c", mid: "#0e0a07", bottom: "#070503" },
+    lightHue: "#c98a4b",
+    lightIntensity: 0.35,
+    foilIntensity: 0.03,
+    spectral: ["#d9a05e", "#f0c98e", "#d9a05e"],
+    starMaterial: { from: "#e8b877", to: "#8a5a28" },
+  },
+  // 2★ — silver, subtle foil begins.
+  silver: {
+    key: "silver",
+    stars: 2,
+    metal: ["#23262a", "#565c64", "#aeb6c0", "#eef2f6", "#7c848e", "#23262a"],
+    metalHighlight: "#f4f7fa",
+    metalShadow: "#15171a",
+    background: { top: "#14161a", mid: "#0b0d10", bottom: "#050607" },
+    lightHue: "#b9c4d0",
+    lightIntensity: 0.45,
+    foilIntensity: 0.18,
+    spectral: ["#aeb6c0", "#e8f1ff", "#c9d4e2", "#aeb6c0"],
+    starMaterial: { from: "#f4f7fa", to: "#848d98" },
+  },
+  // 3★ — gold, true holographic behavior arrives.
+  gold: {
+    key: "gold",
+    stars: 3,
+    metal: ["#3a2a06", "#8a660f", "#d9ab2e", "#ffe89a", "#a87f16", "#3a2a06"],
+    metalHighlight: "#ffee9d",
+    metalShadow: "#241a04",
+    background: { top: "#191307", mid: "#0e0b05", bottom: "#060502" },
+    lightHue: "#e6b73a",
+    lightIntensity: 0.55,
+    foilIntensity: 0.45,
+    spectral: ["#d9ab2e", "#fff3b8", "#e0742e", "#d9ab2e"],
+    starMaterial: { from: "#ffee9d", to: "#a87f16" },
+  },
+  // 4★ — platinum: cool, iridescent, the geometric MASTER finish.
+  platinum: {
+    key: "platinum",
+    stars: 4,
+    metal: ["#1f2f3a", "#4a7c94", "#9fd3e8", "#eefaff", "#6d9ab0", "#1f2f3a"],
+    metalHighlight: "#f2fbff",
+    metalShadow: "#13202a",
+    background: { top: "#101820", mid: "#0a0f14", bottom: "#04070a" },
+    lightHue: "#9fd3e8",
+    lightIntensity: 0.65,
+    foilIntensity: 0.75,
+    spectral: ["#9fd3e8", "#e9d6ff", "#8affd6", "#9fb2ff", "#9fd3e8"],
+    starMaterial: { from: "#f2fbff", to: "#5f93ab" },
+  },
+  // 5★ — diamond: maximum, sophisticated. Absolutely no gems/wings/crowns or
+  // rainbow clutter (§35) — restraint at full intensity.
+  diamond: {
+    key: "diamond",
+    stars: 5,
+    metal: ["#252a33", "#6b7f96", "#cfe4f4", "#ffffff", "#8fa6bd", "#252a33"],
+    metalHighlight: "#ffffff",
+    metalShadow: "#161a21",
+    background: { top: "#12161d", mid: "#0b0e13", bottom: "#050608" },
+    lightHue: "#dceafe",
+    lightIntensity: 0.75,
+    foilIntensity: 1.0,
+    spectral: ["#cfe4f4", "#ffd9ec", "#d9ffe9", "#d9e4ff", "#cfe4f4"],
+    starMaterial: { from: "#ffffff", to: "#8fa6bd" },
+  },
+};
+
+/** Finish tokens for a star count (1–5). */
+export function finishForStars(stars: number): Finish {
+  const key = FINISH_ORDER[Math.min(5, Math.max(1, Math.round(stars))) - 1];
+  return FINISHES[key];
+}
+
+/** Finish tokens for a career-points total. */
+export function finishForPoints(points: number): Finish {
+  return finishForStars(starsForPoints(points));
 }

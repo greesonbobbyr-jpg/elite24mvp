@@ -19,12 +19,14 @@ const roboto = Roboto({
   display: "swap",
 });
 
-// Wordmark type: Barlow Semi Condensed Black Italic — used only for the header
-// "Elite24MVP" wordmark (loads just the one 900-italic face, so it's light).
+// Display type: Barlow Semi Condensed — the header wordmark (900 italic) and
+// the PROVISIONAL card face (Δ1: working typography for the Player/Staff card
+// system, validated against the approved reference during the visual loop —
+// swapped out if it can't reproduce the reference; geometry never bends to it).
 const barlow = Barlow_Semi_Condensed({
   subsets: ["latin"],
-  weight: ["900"],
-  style: ["italic"],
+  weight: ["600", "700", "900"],
+  style: ["normal", "italic"],
   variable: "--font-barlow",
   display: "swap",
 });
