@@ -11,6 +11,7 @@ import {
   hexToRgb,
   BOTTOM_VIGNETTE,
   type Tier,
+  type FinishKey,
 } from "@/lib/cardTheme";
 
 // The flagship player identity card. ONE skeleton, three sizes, fully driven by
@@ -30,6 +31,10 @@ export type CardPlayer = {
   heightInches?: number | null;
   rank?: number | null;
   points: number;
+  /** Career total (drives stars/finish); falls back to `points` when absent. */
+  total?: number;
+  /** Roster size for the LEADERBOARD panel ("#1 of 7"). */
+  rosterSize?: number | null;
   photoUrl?: string | null;
   initials?: string | null;
 };
@@ -72,6 +77,12 @@ export function PlayerCard({
   size: CardSize;
   player: CardPlayer;
   team: CardTeam;
+  /**
+   * DEV PREVIEW ONLY (card-preview gallery): force a material finish
+   * regardless of points, so the five finish environments can share identical
+   * sample data. Ignored by the pre-redesign card; wired in Stage 5.
+   */
+  finishOverride?: FinishKey;
 }) {
   if (size === "avatar") return <AvatarCard player={player} team={team} />;
   if (size === "compact") return <CompactCard player={player} team={team} />;

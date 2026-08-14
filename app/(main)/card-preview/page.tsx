@@ -1,47 +1,37 @@
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
-import { getTeamRanking } from "@/lib/leaderboard";
-import { CardPreview } from "./cards";
-import type { CardPlayer, CardTeam } from "@/app/components/PlayerCard";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
+import { notFound } from "next/navigation";
+import { Gallery } from "./gallery";
 
-// Design sandbox for the PlayerCard — reachable only by typing /card-preview,
-// not linked from any nav. Pulls a REAL record (the viewer's team + a real player
-// + real rank) to prove the component consumes the live Team/PlayerProfile shape
-// and the no-color fallback; the client switcher adds fake palettes + a tier
-// switcher for live iteration. Wired into no real feature yet.
-export default async function CardPreviewPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
+// CARD SYSTEM PREVIEW (Stage 2) — the visual loop's workbench. Renders the 9
+// dev environments (5 player finishes + 4 staff roles) with reference-overlay
+// mode. DEV-ONLY: production builds 404 (closes the shipped-sandbox audit
+// finding — the old page was login-gated but reachable in prod).
+//
+// Query params (used by scripts/shoot-cards.ts):
+//   ?overlay=50   initial overlay opacity for every card (0/25/50/75/100)
+//   ?static=1     freeze dynamic finish motion for regression baselines (Δ11)
+export default async function CardPreviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ overlay?: string; static?: string }>;
+}) {
+  if (process.env.NODE_ENV === "production") notFound();
 
-  const ranking = await getTeamRanking(user.teamId);
-  const targetId = user.role === "PLAYER" ? user.id : ranking[0]?.id;
-  const target = targetId
-    ? await prisma.user.findUnique({
-        where: { id: targetId },
-        include: { profile: true },
-      })
-    : null;
-  const team = await prisma.team.findUnique({ where: { id: user.teamId } });
-  const rankEntry = ranking.find((r) => r.id === targetId);
+  const params = await searchParams;
+  const initialOverlay = Number.parseInt(params.overlay ?? "0", 10) || 0;
+  const isStatic = params.static === "1";
 
-  const realPlayer: CardPlayer = target
-    ? {
-        name: target.name,
-        jerseyNumber: target.profile?.jerseyNumber ?? null,
-        position: target.profile?.position ?? null,
-        heightInches: target.profile?.heightInches ?? null,
-        rank: rankEntry?.rank ?? null,
-        points: target.profile?.points ?? 0,
-      }
-    : { name: user.name, points: 0, rank: null };
+  // List the approved reference images (design/reference/, outside public/).
+  let refs: string[] = [];
+  try {
+    const entries = await readdir(join(process.cwd(), "design", "reference"));
+    refs = entries
+      .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
+      .sort((a, b) => a.localeCompare(b));
+  } catch {
+    // No reference folder yet — the gallery renders without overlay mode.
+  }
 
-  const realTeam: CardTeam = {
-    name: team?.name ?? "Your team",
-    logoUrl: team?.logoUrl ?? null,
-    primaryColor: team?.primaryColor ?? null,
-    secondaryColor: team?.secondaryColor ?? null,
-  };
-
-  return <CardPreview realPlayer={realPlayer} realTeam={realTeam} />;
+  return <Gallery refs={refs} initialOverlay={initialOverlay} isStatic={isStatic} />;
 }
