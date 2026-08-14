@@ -49,3 +49,6 @@ next-env.d.ts
 # Self-hosted segmentation model assets (copied on postinstall from
 # @imgly/background-removal-data; see scripts/copy-bg-removal-assets.mjs)
 /public/bg-removal/
+
+# MediaPipe vision wasm runtime (postinstall copy; model .tflite IS committed)
+/public/face/wasm/

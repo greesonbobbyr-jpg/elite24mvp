@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@imgly/background-removal": "^1.4.5",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "next": "16.2.7",

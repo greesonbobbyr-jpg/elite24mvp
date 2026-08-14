@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { PlayerCard, type CardPlayer, type CardTeam } from "@/app/components/PlayerCard";
 import { FINISH_ORDER, FINISHES, type FinishKey } from "@/lib/cardTheme";
+import { PortraitDebug } from "./PortraitDebug";
 
 // CARD-PREVIEW GALLERY (Stage 2) — the 9 dev environments of the card system
 // (§45): the five player finishes with IDENTICAL sample data, plus the four
@@ -128,6 +129,8 @@ export function Gallery({
           ))}
         </div>
       </section>
+
+      <PortraitDebug />
     </main>
   );
 }

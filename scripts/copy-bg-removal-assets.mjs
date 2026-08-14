@@ -9,7 +9,7 @@
 //   /onnxruntime-web/ort-wasm[-simd][-threaded].wasm   cpu runtimes
 // (gpu/jsep + training wasm + /models/small are deliberately excluded; the
 // upload pipeline pins device:"cpu", model:"medium".)
-import { mkdirSync, readFileSync, writeFileSync, copyFileSync, existsSync, statSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, copyFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -61,3 +61,24 @@ console.log(
   `copy-bg-removal-assets: ${Object.keys(pruned).length} resources, ` +
     `${(bytes / 1048576).toFixed(0)}MB total, ${copied} chunk(s) copied.`,
 );
+
+// ---- MediaPipe FaceDetector wasm (portrait normalization, Stage 4) ---------
+// Same self-hosting rule: the vision wasm runtime serves from /face/wasm/
+// (git-ignored); the tiny blaze_face_short_range.tflite model IS committed at
+// public/face/. Photos never leave the device.
+const mpSrc = join(root, "node_modules", "@mediapipe", "tasks-vision", "wasm");
+const mpOut = join(root, "public", "face", "wasm");
+if (existsSync(mpSrc)) {
+  mkdirSync(mpOut, { recursive: true });
+  let mpCopied = 0;
+  for (const name of readdirSync(mpSrc)) {
+    const dest = join(mpOut, name);
+    const src = join(mpSrc, name);
+    if (existsSync(dest) && statSync(dest).size === statSync(src).size) continue;
+    copyFileSync(src, dest);
+    mpCopied++;
+  }
+  console.log(`copy-vision-assets: mediapipe wasm staged (${mpCopied} file(s) copied).`);
+} else {
+  console.warn("copy-vision-assets: @mediapipe/tasks-vision not installed — skipping.");
+}

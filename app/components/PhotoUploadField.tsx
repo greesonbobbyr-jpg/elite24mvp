@@ -27,12 +27,14 @@ export function PhotoUploadField({
   const [cutout, setCutout] = useState<string | null>(defaultCutoutUrl);
   const [meta, setMeta] = useState<string | null>(defaultMeta);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [busy, setBusy] = useState<null | { phase: PortraitPhase; pct: number }>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function runPipeline(source: Blob) {
     setError(null);
+    setWarnings([]);
     setBusy({ phase: "reading", pct: 0 });
     try {
       const res = await processPortrait(source, (phase, fraction) =>
@@ -45,6 +47,7 @@ export function PhotoUploadField({
       setPhoto(res.originalUrl);
       setCutout(res.cutoutUrl);
       setMeta(JSON.stringify(res.meta));
+      setWarnings(res.warnings); // soft signals only (Δ12) — notes, not gates
     } finally {
       setBusy(null);
     }
@@ -70,9 +73,11 @@ export function PhotoUploadField({
   const phaseLabel =
     busy?.phase === "removing"
       ? `Removing background… ${busy.pct}%`
-      : busy?.phase === "finishing"
-        ? "Finishing…"
-        : "Reading photo…";
+      : busy?.phase === "analyzing"
+        ? "Placing your portrait…"
+        : busy?.phase === "finishing"
+          ? "Finishing…"
+          : "Reading photo…";
 
   const preview = cutout ?? photo;
 
@@ -140,6 +145,7 @@ export function PhotoUploadField({
                 setCutout(null);
                 setMeta(null);
                 setError(null);
+                setWarnings([]);
                 if (inputRef.current) inputRef.current.value = "";
               }}
               className="text-xs text-zinc-400 hover:text-red-400 hover:underline"
@@ -165,6 +171,11 @@ export function PhotoUploadField({
         </div>
       )}
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {warnings.map((warning) => (
+        <p key={warning} className="mt-1 text-xs text-amber-400">
+          {warning}
+        </p>
+      ))}
     </div>
   );
 }
