@@ -62,6 +62,12 @@ async function main() {
   const qs = params.size ? `?${params}` : "";
   await page.goto(`${BASE_URL}/card-preview${qs}`, { waitUntil: "networkidle" });
   await page.waitForSelector("[data-shot]", { timeout: 20000 });
+  // Fixed overlays (dev user switcher, install banner, bottom tab bar) float
+  // over cards near the viewport edges — hide them so shots capture only the
+  // card.
+  await page.addStyleTag({
+    content: "[class~='fixed'] { display: none !important; }",
+  });
   // Let fonts/images settle before shooting.
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(500);
