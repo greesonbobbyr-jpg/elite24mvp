@@ -145,6 +145,9 @@ export type PlayerCoachView = {
   position: string | null;
   jerseyNumber: number | null;
   photoUrl: string | null;
+  // Card portrait (card redesign): cutout + normalization meta for the hero.
+  photoCutoutUrl: string | null;
+  photoMeta: unknown;
   heightInches: number | null;
   pointsPerGame: number | null;
   reboundsPerGame: number | null;
@@ -233,6 +236,8 @@ export async function getPlayerCoachView(
     position: p.position,
     jerseyNumber: p.jerseyNumber,
     photoUrl: p.photoUrl,
+    photoCutoutUrl: p.photoCutoutUrl,
+    photoMeta: p.photoMeta,
     heightInches: p.heightInches,
     pointsPerGame: p.pointsPerGame,
     reboundsPerGame: p.reboundsPerGame,

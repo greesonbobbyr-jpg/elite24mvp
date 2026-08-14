@@ -5,7 +5,7 @@ import { getTeamRanking } from "@/lib/leaderboard";
 import { EditBrandForm } from "../EditBrandForm";
 import { Card } from "@/app/components/ui/Card";
 import { PlayerCard } from "@/app/components/PlayerCard";
-import { photoSrc } from "@/lib/photoUrl";
+import { photoSrc, cutoutSrc } from "@/lib/photoUrl";
 
 function formatHeight(inches: number | null): string | null {
   if (inches == null) return null;
@@ -65,7 +65,11 @@ export default async function BrandPage({
             heightInches: profile.heightInches,
             rank: rank > 0 ? rank : null,
             points: careerPoints,
+            total: careerPoints,
+            rosterSize: total,
             photoUrl: photoSrc(target.id, profile.photoUrl),
+            cutoutUrl: cutoutSrc(target.id, profile.photoCutoutUrl),
+            photoMeta: profile.photoMeta,
           }}
           team={target.team}
         />

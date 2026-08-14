@@ -5,7 +5,7 @@ import { getPlayerCoachView } from "@/lib/coach";
 import { formatTime } from "@/lib/format";
 import { AdjustPointsForm } from "./AdjustPointsForm";
 import { PlayerCard } from "@/app/components/PlayerCard";
-import { photoSrc } from "@/lib/photoUrl";
+import { photoSrc, cutoutSrc } from "@/lib/photoUrl";
 
 // Coach-only drill-in on one player. Guard: a COACH may view only a PLAYER on
 // their OWN team (getPlayerCoachView returns null otherwise → redirect), the same
@@ -48,7 +48,11 @@ export default async function CoachPlayerPage({
             heightInches: view.heightInches,
             rank: view.rank > 0 ? view.rank : null,
             points: view.points,
+            total: view.points,
+            rosterSize: view.total,
             photoUrl: photoSrc(view.id, view.photoUrl),
+            cutoutUrl: cutoutSrc(view.id, view.photoCutoutUrl),
+            photoMeta: view.photoMeta,
           }}
           team={user.team}
         />
