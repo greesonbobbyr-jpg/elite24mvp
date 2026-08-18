@@ -16,7 +16,28 @@
 // permissive thresholds, never gates. A normal phone photo must never be
 // rejected over an arbitrary score.
 
-import { CARD_ASPECT, PORTRAIT } from "@/lib/cardGeometry";
+import { CARD_ASPECT, PORTRAIT, fx, fy } from "@/lib/cardGeometry";
+
+// The card targets, as FRACTIONS of card height/width. photoMeta stores the
+// transform in card fractions (resolution-independent) so a stored portrait
+// re-renders identically at any size; the geometry file itself is in 1000×1500
+// units, hence the fx/fy conversion at this one boundary.
+export const PORTRAIT_TARGETS = {
+  eyeY: fy(PORTRAIT.eyeY),
+  zoneTop: fy(PORTRAIT.zone.y),
+  shoulderY: fy(PORTRAIT.shoulderY),
+  maxW: fx(PORTRAIT.maxW),
+  centerX: fx(PORTRAIT.centerX),
+  headTopY: fy(PORTRAIT.headTopY),
+  bottomY: fy(PORTRAIT.bottomY),
+  zone: {
+    x: fx(PORTRAIT.zone.x),
+    y: fy(PORTRAIT.zone.y),
+    w: fx(PORTRAIT.zone.w),
+    h: fy(PORTRAIT.zone.h),
+  },
+};
+const T = PORTRAIT_TARGETS;
 
 export type FaceBox = { x: number; y: number; w: number; h: number };
 
@@ -127,18 +148,18 @@ export function normalizePortrait(a: PortraitAnalysis): NormalizeResult {
   }
 
   // ---- TRANSFORM (eye→shoulder anchored) -----------------------------------
-  let scale = (PORTRAIT.shoulderY - PORTRAIT.eyeY) / (shoulderY - a.eyeY);
+  let scale = (T.shoulderY - T.eyeY) / (shoulderY - a.eyeY);
 
   // Clamp 1: the whole head (hair included) must stay inside the safe zone.
   const headRoom = a.eyeY - headTopY; // px above the eye line
   if (headRoom > 0) {
-    const maxScaleForHead = (PORTRAIT.eyeY - PORTRAIT.zone.y) / headRoom;
+    const maxScaleForHead = (T.eyeY - T.zoneTop) / headRoom;
     scale = Math.min(scale, maxScaleForHead);
   }
   // Clamp 2: shoulder span may not exceed the zone's max width.
   if (a.shoulderHalfW != null && a.shoulderHalfW > 0) {
     const maxScaleForWidth =
-      (PORTRAIT.maxW * CARD_ASPECT) / (a.shoulderHalfW * 2);
+      (T.maxW * CARD_ASPECT) / (a.shoulderHalfW * 2);
     scale = Math.min(scale, maxScaleForWidth);
   }
   if (!Number.isFinite(scale) || scale <= 0) {
@@ -147,8 +168,8 @@ export function normalizePortrait(a: PortraitAnalysis): NormalizeResult {
 
   // Eye line anchors vertically; the FACE center (never the torso centroid)
   // anchors horizontally, so off-center framing self-corrects.
-  const ty = PORTRAIT.eyeY - a.eyeY * scale;
-  const tx = PORTRAIT.centerX - (a.faceCenterX * scale) / CARD_ASPECT;
+  const ty = T.eyeY - a.eyeY * scale;
+  const tx = T.centerX - (a.faceCenterX * scale) / CARD_ASPECT;
 
   // ---- CONSISTENCY BAND (Δ8: perceived head size must hold) ---------------
   const mappedFaceH = face.h * scale;

@@ -374,3 +374,43 @@ export function finishForStars(stars: number): Finish {
 export function finishForPoints(points: number): Finish {
   return finishForStars(starsForPoints(points));
 }
+
+// ---- TEAM TOKENS = environmental identity (v4 clarification 4) -------------
+//
+// The SECOND identity system, deliberately separate from FINISHES:
+//   FINISH TOKENS = collectible MATERIAL (owned by prospect level — chassis
+//                   metal, bevels, edges, foil intensity, reflectivity, number
+//                   material family, star material, value progression).
+//   TEAM TOKENS   = environmental IDENTITY (owned by the team — subtle
+//                   background/environment illumination, atmospheric energy,
+//                   selected accent lighting, first-name accent, restrained
+//                   accent lines, player environmental backlight).
+// Team color NEVER recolors or overrides the physical prospect metal: a 3★
+// player on a red team gets a GOLD chassis with restrained RED environment.
+// These two are never merged into one theme object; the compositor takes
+// `finish` and `teamAccent` as separate props.
+
+export type TeamAccent = {
+  /** The one team hue used for environmental identity (hex). */
+  hue: string;
+  /** rgba() helpers pre-baked at the intensities the compositor uses. */
+  illumination: string; // background/environment glow
+  atmosphere: string; // particle/energy tint
+  backlight: string; // player environmental backlight tint
+  text: string; // first-name accent (readability-safe)
+};
+
+/** Derive the team's environmental tokens from its brand colors. */
+export function teamAccentFor(team: {
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+}): TeamAccent {
+  const hue = accentColor(team.primaryColor, team.secondaryColor);
+  return {
+    hue,
+    illumination: withAlpha(hue, 0.18),
+    atmosphere: withAlpha(hue, 0.22),
+    backlight: withAlpha(hue, 0.28),
+    text: numberColor(team.primaryColor, team.secondaryColor),
+  };
+}

@@ -2,10 +2,13 @@
 
 import { useId } from "react";
 import type { Finish } from "@/lib/cardTheme";
+import { u } from "@/lib/cardGeometry";
 
 // PROSPECT STARS (§26–28): EARNED STARS ONLY — exactly `count` stars render;
 // never hollow, dim, or locked placeholders. One shared SVG path, filled with
-// the finish's metal gradient, centered group growing outward.
+// the finish's metal gradient (FINISH material — never team color), centered
+// group growing outward. Sized in master units (Full Card compositor) or px
+// (compact/wide recompositions).
 
 /** Classic 5-point star, unit viewBox 0..24. */
 const STAR_PATH =
@@ -16,38 +19,44 @@ export function CardStars({
   finish,
   sizePx,
   gapPx,
+  sizeUnits,
+  gapUnits,
 }: {
   count: number;
   finish: Finish;
-  sizePx: number;
-  gapPx: number;
+  /** px sizing (compact/wide recompositions). */
+  sizePx?: number;
+  gapPx?: number;
+  /** master-unit sizing (the Full Card compositor). */
+  sizeUnits?: number;
+  gapUnits?: number;
 }) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const n = Math.max(1, Math.min(5, Math.round(count)));
+  const size = sizeUnits != null ? u(sizeUnits) : `${sizePx ?? 12}px`;
+  const gap = gapUnits != null ? u(gapUnits) : `${gapPx ?? 3}px`;
+  const glow =
+    sizeUnits != null ? u(sizeUnits * 0.35) : `${Math.round((sizePx ?? 12) * 0.35)}px`;
+  const shadow = `drop-shadow(0 1px 2px rgba(0,0,0,0.6))${
+    finish.foilIntensity > 0.4
+      ? ` drop-shadow(0 0 ${glow} ${withA(finish.metalHighlight, 0.35 * finish.foilIntensity)})`
+      : ""
+  }`;
   return (
     <span
       aria-label={`${n} star prospect`}
       role="img"
       className="flex items-center justify-center"
-      style={{ gap: gapPx }}
+      style={{ gap }}
     >
       {Array.from({ length: n }, (_, i) => (
         <svg
           key={i}
-          width={sizePx}
-          height={sizePx}
+          width="1em"
+          height="1em"
           viewBox="0 0 24 24"
           aria-hidden
-          style={{
-            filter: `drop-shadow(0 1px 2px rgba(0,0,0,0.6))${
-              finish.foilIntensity > 0.4
-                ? ` drop-shadow(0 0 ${Math.round(sizePx * 0.35)}px ${withA(
-                    finish.metalHighlight,
-                    0.35 * finish.foilIntensity,
-                  )})`
-                : ""
-            }`,
-          }}
+          style={{ fontSize: size, display: "block", filter: shadow }}
         >
           {i === 0 && (
             <defs>

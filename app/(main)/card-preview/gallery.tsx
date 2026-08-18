@@ -3,7 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { PlayerCard, type CardPlayer, type CardTeam } from "@/app/components/PlayerCard";
 import { StaffCard } from "@/app/components/StaffCard";
-import { FINISH_ORDER, FINISHES, type FinishKey } from "@/lib/cardTheme";
+import { FINISHES } from "@/lib/cardTheme";
+import { REFERENCE_CROP, MASTER_W, MASTER_H } from "@/lib/cardGeometry";
 import { PortraitDebug } from "./PortraitDebug";
 
 // CARD-PREVIEW GALLERY (Stage 2) — the 9 dev environments of the card system
@@ -47,7 +48,10 @@ const OPACITY_STOPS = [0, 25, 50, 75, 100];
 
 /** Best default reference file for a card kind, if present. */
 function defaultRef(refs: string[], kind: "player" | "staff"): string | null {
-  const want = kind === "player" ? ["master-4star", "finishes-strip"] : ["staff-row"];
+  const want =
+    kind === "player"
+      ? ["elite24mvp-approved-card-reference", "master-4star", "finishes-strip"]
+      : ["staff-row"];
   for (const stem of want) {
     const hit = refs.find((r) => r.toLowerCase().startsWith(stem));
     if (hit) return hit;
@@ -59,11 +63,26 @@ export function Gallery({
   refs,
   initialOverlay,
   isStatic,
+  isMaster,
+  missingAssets,
 }: {
   refs: string[];
   initialOverlay: number;
   isStatic: boolean;
+  isMaster: boolean;
+  /** Authored assets from the Platinum contract that are not on disk yet. */
+  missingAssets: string[];
 }) {
+  if (isMaster) {
+    return (
+      <MasterCheckpoint
+        refs={refs}
+        initialOverlay={initialOverlay}
+        isStatic={isStatic}
+        missingAssets={missingAssets}
+      />
+    );
+  }
   return (
     <main
       className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-6 py-10"
@@ -85,26 +104,34 @@ export function Gallery({
         </p>
       </div>
 
+      <MissingAssetsPanel missingAssets={missingAssets} />
+
       <section className="flex flex-col gap-4">
-        <h2 className="e24-eyebrow">Player — five finishes</h2>
+        <h2 className="e24-eyebrow">Player — Platinum master (compositor)</h2>
+        <p className="-mt-2 text-xs text-zinc-500">
+          Bronze / Silver / Gold / Diamond unlock only after ★ GEOMETRY LOCKED ★ (owner
+          approval of this Platinum master). Open{" "}
+          <a href="/card-preview?master=1&static=1" className="text-red-400 underline">
+            ?master=1
+          </a>{" "}
+          for the exact-dimension 1000×1500 checkpoint render.
+        </p>
         <div className="flex flex-wrap gap-8">
-          {FINISH_ORDER.map((key) => (
-            <CardEnvironment
-              key={key}
-              shot={`player-${FINISHES[key].stars}star`}
-              label={`${"★".repeat(FINISHES[key].stars)} (${key})`}
-              refs={refs}
-              refDefault={defaultRef(refs, "player")}
-              initialOverlay={initialOverlay}
-            >
-              <PlayerCard
-                size="full"
-                player={SAMPLE_PLAYER}
-                team={SAMPLE_TEAM}
-                finishOverride={key as FinishKey}
-              />
-            </CardEnvironment>
-          ))}
+          <CardEnvironment
+            shot="player-4star"
+            label={`${"★".repeat(FINISHES.platinum.stars)} (platinum)`}
+            refs={refs}
+            refDefault={defaultRef(refs, "player")}
+            initialOverlay={initialOverlay}
+          >
+            <PlayerCard
+              size="full"
+              player={SAMPLE_PLAYER}
+              team={SAMPLE_TEAM}
+              finishOverride="platinum"
+              staticRender={isStatic}
+            />
+          </CardEnvironment>
         </div>
       </section>
 
@@ -260,5 +287,157 @@ function CardEnvironment({
         </div>
       )}
     </div>
+  );
+}
+
+/** The list of authored assets the Platinum contract still needs (dev report). */
+function MissingAssetsPanel({ missingAssets }: { missingAssets: string[] }) {
+  if (missingAssets.length === 0) return null;
+  return (
+    <section className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4">
+      <p className="text-xs font-bold uppercase tracking-widest text-amber-300">
+        Asset contract — {missingAssets.length} authored file(s) missing (see public/card/README.md)
+      </p>
+      <ul className="mt-2 grid grid-cols-1 gap-1 font-mono text-[11px] text-amber-200/90 sm:grid-cols-2">
+        {missingAssets.map((f) => (
+          <li key={f}>public{f}</li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11px] text-zinc-500">
+        Missing artwork renders the ASSET MISSING state — never a CSS/SVG substitute.
+      </p>
+    </section>
+  );
+}
+
+/**
+ * ?master=1 — the PLATINUM CHECKPOINT: one card at exactly 1000×1500 CSS px
+ * (2000×3000 at 2× DPR) with the approved reference overlaid by its measured
+ * card crop (REFERENCE_CROP). Human review authority; pixel diffs are
+ * diagnostic only before GEOMETRY LOCKED.
+ */
+function MasterCheckpoint({
+  refs,
+  initialOverlay,
+  isStatic,
+  missingAssets,
+}: {
+  refs: string[];
+  initialOverlay: number;
+  isStatic: boolean;
+  missingAssets: string[];
+}) {
+  const [refFile, setRefFile] = useState<string | null>(defaultRef(refs, "player"));
+  const [opacity, setOpacity] = useState(
+    OPACITY_STOPS.includes(initialOverlay) ? initialOverlay : 50,
+  );
+  const [crop, setCrop] = useState({ ...REFERENCE_CROP });
+  const [fit, setFit] = useState<"stretch" | "aspect">("aspect");
+  const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+  const [showCard, setShowCard] = useState(true);
+
+  // Map the crop rectangle of the reference image onto the 1000×1500 stage.
+  // "stretch": crop fills the stage exactly (reveals proportion drift);
+  // "aspect": crop keeps its own aspect, centered (reveals the aspect gap).
+  let overlayStyle: React.CSSProperties = { display: "none" };
+  if (natural && refFile) {
+    const sx = MASTER_W / crop.w;
+    const syRaw = MASTER_H / crop.h;
+    const sy = fit === "stretch" ? syRaw : sx;
+    const w = natural.w * sx;
+    const h = natural.h * sy;
+    const left = -crop.x * sx + (fit === "stretch" ? 0 : (MASTER_W - crop.w * sx) / 2);
+    const top = -crop.y * sy + (fit === "stretch" ? 0 : (MASTER_H - crop.h * sy) / 2);
+    overlayStyle = { position: "absolute", left, top, width: w, height: h, maxWidth: "none" };
+  }
+
+  const num = (k: keyof typeof crop) => (
+    <label key={k} className="flex items-center gap-1 text-[11px] text-zinc-400">
+      {k}
+      <input
+        type="number"
+        value={crop[k]}
+        onChange={(e) => setCrop({ ...crop, [k]: Number(e.target.value) })}
+        className="w-16 rounded border border-white/10 bg-black/40 px-1 py-0.5 text-[11px] text-zinc-200"
+      />
+    </label>
+  );
+
+  return (
+    <main className="flex w-full flex-col gap-4 px-6 py-8">
+      <div className="flex flex-wrap items-center gap-4">
+        <p className="e24-eyebrow">Platinum checkpoint — 1000×1500 master</p>
+        <select
+          value={refFile ?? ""}
+          onChange={(e) => setRefFile(e.target.value || null)}
+          className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-zinc-300"
+        >
+          <option value="">no overlay</option>
+          {refs.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={opacity}
+          onChange={(e) => setOpacity(Number(e.target.value))}
+          className="w-32 accent-red-500"
+        />
+        <span className="w-9 text-[11px] tabular-nums text-zinc-400">{opacity}%</span>
+        <span className="flex items-center gap-2 text-[11px] text-zinc-400">
+          crop {(["x", "y", "w", "h"] as const).map(num)}
+        </span>
+        <select
+          value={fit}
+          onChange={(e) => setFit(e.target.value as "stretch" | "aspect")}
+          className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-zinc-300"
+        >
+          <option value="aspect">keep reference aspect</option>
+          <option value="stretch">stretch crop to stage</option>
+        </select>
+        <label className="flex items-center gap-1 text-[11px] text-zinc-400">
+          <input type="checkbox" checked={showCard} onChange={(e) => setShowCard(e.target.checked)} />
+          card
+        </label>
+        {natural && (
+          <span className="text-[11px] text-zinc-500">
+            ref {natural.w}×{natural.h} · crop aspect {(crop.w / crop.h).toFixed(3)} · master{" "}
+            {(MASTER_W / MASTER_H).toFixed(3)}
+          </span>
+        )}
+      </div>
+
+      <MissingAssetsPanel missingAssets={missingAssets} />
+
+      <div className="relative" style={{ width: MASTER_W, height: MASTER_H }} data-shot="master-platinum">
+        <div style={{ opacity: showCard ? 1 : 0 }}>
+          <PlayerCard
+            size="full"
+            player={SAMPLE_PLAYER}
+            team={SAMPLE_TEAM}
+            finishOverride="platinum"
+            staticRender={isStatic}
+            width={MASTER_W}
+          />
+        </div>
+        {refFile && opacity > 0 && (
+          <div className="pointer-events-none absolute inset-0 z-50 overflow-hidden" style={{ opacity: opacity / 100 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- dev-only overlay */}
+            <img
+              src={`/api/dev/reference/${encodeURIComponent(refFile)}`}
+              alt=""
+              aria-hidden
+              onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+              style={overlayStyle}
+            />
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

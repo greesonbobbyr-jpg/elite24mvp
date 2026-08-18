@@ -6,8 +6,8 @@ import {
   type PortraitDebug as DebugCapture,
   type PortraitPhase,
 } from "@/lib/portrait/process";
-import { cutoutCss } from "@/lib/portrait/normalize";
-import { CARD_ASPECT, PORTRAIT } from "@/lib/cardGeometry";
+import { cutoutCss, PORTRAIT_TARGETS as PORTRAIT } from "@/lib/portrait/normalize";
+import { CARD_ASPECT } from "@/lib/cardGeometry";
 
 // PORTRAIT DEBUG VIEW (Δ6, dev-only): runs the full pipeline on a locally
 // chosen file (nothing is saved) and shows every stage — ORIGINAL →

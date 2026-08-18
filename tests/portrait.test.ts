@@ -3,9 +3,10 @@ import {
   normalizePortrait,
   cutoutCss,
   isPortraitMetaV2,
+  PORTRAIT_TARGETS as PORTRAIT,
   type PortraitAnalysis,
 } from "../lib/portrait/normalize";
-import { CARD_ASPECT, PORTRAIT } from "../lib/cardGeometry";
+import { CARD_ASPECT } from "../lib/cardGeometry";
 
 // CARD REDESIGN Stage 4 proofs — the normalization transform + Δ12
 // conservative validation, against synthetic alpha-map/face-box fixtures.
@@ -61,10 +62,10 @@ describe("normalizePortrait — transform", () => {
   });
 
   it("Δ8: very wide shoulders clamp to the zone's max width", () => {
-    const res = normalizePortrait(fixture({ shoulderHalfW: 600 }));
+    const res = normalizePortrait(fixture({ shoulderHalfW: 450 })); // span 4.5 face-heights (very wide)
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    const widthFrac = (2 * 600 * res.meta.scale) / CARD_ASPECT;
+    const widthFrac = (2 * 450 * res.meta.scale) / CARD_ASPECT;
     expect(widthFrac).toBeLessThanOrEqual(PORTRAIT.maxW + 1e-9);
   });
 

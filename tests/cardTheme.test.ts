@@ -88,15 +88,15 @@ describe("geometry helpers", () => {
   });
 
   it("surname fitting: clamped, monotonic, never wraps outside bounds", () => {
-    expect(surnameSize("WALLACE")).toBe(SURNAME.maxSize); // 7 chars
-    expect(surnameSize("LI")).toBe(SURNAME.maxSize);
-    expect(surnameSize("A".repeat(20))).toBe(SURNAME.minSize);
+    expect(surnameSize("WALLACE")).toBe(SURNAME.maxFontSize); // 7 chars
+    expect(surnameSize("LI")).toBe(SURNAME.maxFontSize);
+    expect(surnameSize("A".repeat(20))).toBe(SURNAME.minFontSize);
     let prev = Infinity;
     for (let n = 2; n <= 20; n++) {
       const s = surnameSize("A".repeat(n));
       expect(s).toBeLessThanOrEqual(prev);
-      expect(s).toBeLessThanOrEqual(SURNAME.maxSize);
-      expect(s).toBeGreaterThanOrEqual(SURNAME.minSize);
+      expect(s).toBeLessThanOrEqual(SURNAME.maxFontSize);
+      expect(s).toBeGreaterThanOrEqual(SURNAME.minFontSize);
       prev = s;
     }
   });

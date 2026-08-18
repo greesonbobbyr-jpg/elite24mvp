@@ -1,7 +1,8 @@
-// Shared geometry-derived CSS for the card chrome (Stage 5). All numbers come
-// from lib/cardGeometry — no critical dimension lives here.
+// Helpers for the RECOMPOSED sizes (wide/compact/avatar) and the StaffCard —
+// separate compositions with their own local geometry. NOT used by the Full
+// Player Card compositor, whose physical chassis is authored art (Plan v4).
 
-import { CARD_ASPECT, FRAME } from "@/lib/cardGeometry";
+import { CARD_ASPECT } from "@/lib/cardGeometry";
 
 /**
  * Chamfered-corner clip path (percent-based) for a box of the given aspect
@@ -53,9 +54,3 @@ export function headCropStyle(
   };
 }
 
-/** Outer card silhouette. */
-export const CLIP_OUTER = chamferClip(0, FRAME.chamfer);
-/** Inner face (inside the metal ring). */
-export const CLIP_FACE = chamferClip(FRAME.thickness, FRAME.chamfer * 0.72);
-/** Slightly inside the face — used for bevel edge lines. */
-export const CLIP_BEVEL = chamferClip(FRAME.thickness + FRAME.bevel, FRAME.chamfer * 0.68);

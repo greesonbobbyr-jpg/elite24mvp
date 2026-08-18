@@ -10,6 +10,8 @@
  *                                  [--overlay]         shoot at 50% reference blend
  *                                  [--static]          freeze finish motion (?static=1)
  *                                  [--check]           compare against design/baselines/
+ *                                  [--master]          the Platinum checkpoint: ONE card at
+ *                                                      1000×1500 css px (2000×3000 @2x), overlay 0%
  *                                  [--login <email>]   default: gary@elite24.demo
  *
  * Requires a dev server running against the LOCAL card DB (e24cards) and the
@@ -58,7 +60,12 @@ async function main() {
 
   const params = new URLSearchParams();
   if (flag("overlay")) params.set("overlay", "50");
-  if (flag("static") || flag("check")) params.set("static", "1");
+  if (flag("static") || flag("check") || flag("master")) params.set("static", "1");
+  if (flag("master")) {
+    params.set("master", "1");
+    if (!flag("overlay")) params.set("overlay", "0");
+    await page.setViewportSize({ width: 1200, height: 1700 });
+  }
   const qs = params.size ? `?${params}` : "";
   await page.goto(`${BASE_URL}/card-preview${qs}`, { waitUntil: "networkidle" });
   await page.waitForSelector("[data-shot]", { timeout: 20000 });
