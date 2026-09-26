@@ -1,4 +1,6 @@
 "use client";
+import { PlatinumFoilField } from "@/app/components/card/PlatinumFoilField";
+
 
 import type { CSSProperties } from "react";
 import {
@@ -26,13 +28,11 @@ import {
 import {
   BackgroundIllumination,
   PlayerBacklight,
-  Atmosphere,
-  OcclusionMap,
-  FrameHighlights,
-  FoilLayer,
-  SpecularLayer,
+  ForegroundPlate,
+  FrameFinish,
 } from "@/app/components/card/LiveEffects";
 import { CardStars } from "@/app/components/card/CardStars";
+import { PortraitElectricity } from "@/app/components/card/PortraitElectricity";
 import { DepthShadow, RimLight } from "@/app/components/card/CutoutLighting";
 import { TeamLogoBadge, TopRightSlot } from "@/app/components/card/TeamLogoBadge";
 import { chamferClip, headCropStyle } from "@/app/components/card/chrome";
@@ -179,11 +179,12 @@ function FullCard({
 
   // The torso fades out just above the name block (bottomY), so text never
   // fights the cutout; this is a fade, not occlusion (occlusion is ordering).
-  const fadeStart = (PORTRAIT_TARGETS.bottomY - 0.045) * 100;
+  const fadeStart = 62;
   const fadeEnd = PORTRAIT_TARGETS.bottomY * 100;
   const torsoFade: CSSProperties = {
     WebkitMaskImage: `linear-gradient(180deg, #fff 0%, #fff ${fadeStart}%, transparent ${fadeEnd}%)`,
     maskImage: `linear-gradient(180deg, #fff 0%, #fff ${fadeStart}%, transparent ${fadeEnd}%)`,
+    clipPath: "inset(0 8% 0 8%)",
   };
 
   return (
@@ -194,16 +195,13 @@ function FullCard({
       style={{ filter: `drop-shadow(0 ${u(30)} ${u(40)} rgba(0,0,0,0.55))` }}
     >
       {/* 16 · physical chassis (authored) */}
-      <AssetLayer spec={art.chassis} />
-      {/* 15 · background / environment (authored) */}
-      <AssetLayer spec={art.background} />
+      <AssetLayer spec={art.plate} />
       {/* 14 · background illumination (live; team hue) */}
       <BackgroundIllumination finish={finish} team={teamAccent} />
       {/* 13 · giant jersey number (dynamic; finish material) */}
+      {finish.key === "platinum" && <PlatinumFoilField src={cutout} meta={meta} />}
       <GiantNumber text={bigNumber} finish={finish} />
       {/* 12 · atmosphere (authored texture, team-tinted) + occlusion map */}
-      <Atmosphere team={teamAccent} isStatic={staticRender} />
-      <OcclusionMap />
       {/* 11 · player environmental backlight (live) */}
       <PlayerBacklight finish={finish} team={teamAccent} />
       {/* 10 · normalized cutout — its opaque pixels ARE the number occlusion */}
@@ -219,6 +217,7 @@ function FullCard({
           {/* 9 · rim light (live; face-damped, shoulder-weighted) */}
           <span aria-hidden data-layer="rim-light" className="pointer-events-none absolute inset-0" style={torsoFade}>
             <RimLight src={cutout} meta={meta} finish={finish} style={cutoutPlacement} />
+            <PortraitElectricity src={cutout} meta={meta} style={cutoutPlacement} />
           </span>
         </>
       ) : cutout ? (
@@ -239,26 +238,24 @@ function FullCard({
       ) : (
         <PendingPortrait initials={initials} finish={finish} />
       )}
+      <span aria-hidden data-layer="name-scrim" className="pointer-events-none absolute" style={{ inset: "55% 8% 17%", background: "linear-gradient(transparent, rgba(0,4,8,.12) 12%, rgba(0,4,8,.66) 38%, rgba(0,3,6,.94) 72%, #000 100%)" }} />
+      {finish.key === "platinum" && <PlatinumFoilField src={cutout} meta={meta} fringe />}
       {/* 8 · name block + details (dynamic) */}
-      <NameBlock firstName={firstName} surname={surname} team={teamAccent} />
+      <NameBlock firstName={firstName} surname={surname} finish={finish} />
       <DetailsLine
         parts={[player.jerseyNumber != null ? `#${player.jerseyNumber}` : null, player.position, height]}
       />
       {/* 7 · stat-rail / lower-chassis foreground pieces (authored, above the player) */}
-      <AssetLayer spec={art.chassisFg} />
+      <ForegroundPlate finish={finish} />
       {/* 6 · stat typography + earned stars */}
-      <StatRailText points={total} rankText={rankText} stars={shownStars} finish={finish} />
+      <StatRailText points={player.points} rankText={rankText} stars={shownStars} finish={finish} />
       {/* 5 · footer wordmark */}
       <FooterMark />
       {/* 4 · team logo (top-left) + intentionally-empty top-right slot */}
       <TeamLogoBadge logoUrl={team.logoUrl} />
       <TopRightSlot />
       {/* 3 · frame highlights (masked, live) */}
-      <FrameHighlights finish={finish} />
-      {/* 2 · selective foil (masked, live) */}
-      <FoilLayer finish={finish} isStatic={staticRender} />
-      {/* 1 · specular reflection (masked, live) */}
-      <SpecularLayer finish={finish} isStatic={staticRender} />
+      <FrameFinish finish={finish} isStatic={staticRender} />
     </CardCompositor>
   );
 }
@@ -629,4 +626,7 @@ function AvatarCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
     </div>
   );
 }
+
+
+
 

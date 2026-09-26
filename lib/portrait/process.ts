@@ -27,7 +27,7 @@ export const PORTRAIT_REJECT_MESSAGE =
 /** Longest edge fed into segmentation (quality > the stored 512px original). */
 const SEGMENT_DIM = 1024;
 /** Longest edge of the stored cutout. */
-const CUTOUT_DIM = 768;
+const CUTOUT_DIM = 1024; // Preserve source detail; the existing byte cap still applies.
 /** Byte cap for the stored cutout data URL (alpha PNGs run larger). */
 export const MAX_CUTOUT_BYTES = 600 * 1024;
 
@@ -197,3 +197,4 @@ function rescaleAnalysis(a: PortraitAnalysis, k: number): PortraitAnalysis {
       : null,
   };
 }
+

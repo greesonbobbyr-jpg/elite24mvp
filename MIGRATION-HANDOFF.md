@@ -9,6 +9,67 @@
 > Read `CLAUDE.md` first (but see §5 — parts of it are stale), then `HIERARCHY_PLAN.md`,
 > then this. The owner is **Bobby Greeson** (greesonbobbyr@gmail.com). "Gary" is the
 > creator of the E24P coaching method (Bobby's uncle) and the seeded head-coach persona.
+>
+> **§0 below was added on the new laptop (2026-09-25) and overrides anything older.**
+
+---
+
+## 0. SINCE THE MOVE (2026-09-25) — read this first
+
+**Codex worked on the card, 2026-09-13 → 09-19.** ChatGPT Codex changed the Platinum
+card directly in this checkout without committing; it was committed as a snapshot in the
+same commit that added this section. It replaces §1A's five-file asset contract:
+
+- One authored image per level: `public/card/finishes/<level>/plate.png` (frame +
+  background + empty stat boxes, cut from the owner's card art).
+- An authored energy texture per level (`b3-foil-field.png` for Platinum, derived from
+  the approved B3 reference `design/reference/platinum-b3-outward-approved.png`), bent per
+  player to meet the shoulders (`PlatinumFoilField.tsx`, `lib/portrait/foil.ts`).
+- Live number / name / stats (`DynamicLayers.tsx`) plus alpha-traced electricity and rim
+  light (`PortraitElectricity.tsx`, `CutoutLighting.tsx`).
+- Codex's own notes: `CARD-REDESIGN-HANDOFF.md`, `CARD-VISUAL-PLAN.md`, `public/card/README.md`.
+- Platinum is **not yet owner-approved**; geometry is **not locked**.
+
+**Owner decisions, 2026-09-25:**
+
+- Review Platinum together with the owner before locking the geometry.
+- Bronze / Silver / Gold / Diamond art: **recolor the approved Platinum art with a script**.
+  Any file can later be swapped for designer art under the same filename.
+- Work order: quick fixes from the owner's notes → cards → org tree → bigger note features.
+- The project moves out of OneDrive to `C:\dev\elite24mvp` (the OneDrive copy is a backup).
+- **Org view:** rebuild it to the owner's sketch, `design/reference/org-tree-sketch.jpg`.
+  It's a top-down branching tree: search bar → Org Owner card → age-group divisions (12U…17U)
+  → Head Coach cards (one per team) → player cards. Tap a node to branch out its children;
+  search opens the right branch. The 2026-08-13 `/org/view` on `grouping-layers` did not
+  match: staff shown as player cards, no connecting lines, phone bugs.
+- **E24 Commissioner:** the owner wants platform-wide visibility down to each player, except
+  journals. ⚠ This conflicts with CLAUDE.md §3 Non-Negotiable 2 (team-private). Do not
+  build it until the owner amends §3.2 with safeguards: read-only, no journals or reviews,
+  no contact details by default, every view logged, role granted by operator script only,
+  disclosed to orgs and parents.
+
+**Owner's handwritten notes (September) — status after a code audit:**
+
+| Note | Status |
+|---|---|
+| Username login "only email works" | Real: staff have no username; typing "@name" hits the email lookup; iOS autocorrect is on. Quick fix. |
+| App auto-zooms on phones | iOS zooms into inputs under 16 px; nearly all inputs are 14 px. Quick fix. |
+| Height in ft + in | Single "inches" box today. Quick fix. |
+| Coach sets reminder time | Per-team hour exists, dropdown limited to 3–8 PM. Widen now; minutes + timezone later. |
+| Emergency contact / org info | `ProfileContact` + permissions exist, no UI. Later. |
+| GM spot + add assistant coaches | Roles exist; no invite UI (seed-only). Later. |
+| Coach pictures in Alerts / Timeouts / Team Circle | Not started; needs private storage. Later. |
+| Links in Team Circle (coach only) | Not started. Later. |
+| Commissioner broadcasts to every level | Not started; see ⚠ above. |
+| Timeouts + assignments | Timeouts done; "assignments" needs defining. Later. |
+
+Also found by the audit (quick fixes): old Timeouts are shown to newly joined players;
+the unread badge sticks past 50 alerts; a two-team athlete can get stuck behind a
+Timeout; removed players still get reminders; Team Circle shows Delete to assistant
+coaches and GMs, whose deletes the server refuses.
+
+Full plan (local to the new laptop; the essentials are above):
+`C:\Users\grees\.claude\plans\c-users-grees-claude-uploads-a1d7a349-e-harmonic-sparkle.md`
 
 ---
 
@@ -246,11 +307,10 @@ Pushed to GitHub as part of this handoff (they existed only on the wiped laptop)
   AUTH_SECRET, VAPID keys, CRON_SECRET. All values are recoverable from the
   **Vercel project's environment variables** (owner has access). `.env.example`
   documents the shape. Nothing else secret existed locally.
-- **`CLAUDE.md` §6 is stale**: it says "SQLite via Prisma" and "in-app
-  notifications only." Reality: Supabase Postgres in prod, embedded local
-  Postgres for tests, Auth.js v5 credentials+JWT, and real Web Push (VAPID) is
-  live. Trust `HIERARCHY_PLAN.md`, the schema, and this file over CLAUDE.md §6;
-  the Non-Negotiables (§3) and scope rules in CLAUDE.md remain in force.
+- **`CLAUDE.md` §6 was stale** (it said "SQLite via Prisma"). Corrected
+  2026-09-25 to the real stack: Supabase Postgres in prod, embedded local
+  Postgres for tests, Auth.js v5 credentials+JWT, real Web Push (VAPID), Vercel.
+  The Non-Negotiables (§3) and scope rules in CLAUDE.md remain in force.
 - **`AGENTS.md` (untracked)** is the owner's own copy of CLAUDE.md (retitled)
   that he feeds to ChatGPT. Deliberately left untracked; don't delete, don't
   commit without asking.

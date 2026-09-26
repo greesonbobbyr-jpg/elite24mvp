@@ -1,272 +1,101 @@
 "use client";
+import { useId } from "react";
+import type { Finish } from "@/lib/cardTheme";
+import { APP_RED } from "@/lib/cardTheme";
 
-import type { Finish, TeamAccent } from "@/lib/cardTheme";
-import { APP_RED, withAlpha } from "@/lib/cardTheme";
-import {
-  NUMBER_ZONE,
-  NUMBER_FONT_SIZE,
-  FIRST_NAME,
-  SURNAME,
-  DETAILS,
-  STAT_RAIL,
-  STAT_PANELS,
-  STARS,
-  FOOTER,
-  FOOTER_FONT_SIZE,
-  u,
-  zoneStyle,
-  surnameSize,
-} from "@/lib/cardGeometry";
+import { NUMBER_ZONE, NUMBER_FONT_SIZE, FIRST_NAME, SURNAME, DETAILS, STAT_RAIL, STAT_COLUMNS, STAT_PANELS, STARS, FOOTER, FOOTER_FONT_SIZE, u, zoneStyle } from "@/lib/cardGeometry";
 import { CardStars } from "./CardStars";
+const FONT = "var(--font-barlow), sans-serif";
 
-// DYNAMIC PLAYER/DATA LAYERS of the compositor (Plan v4 §4.5). Every position
-// and size comes from lib/cardGeometry in master units via `--u`; the finish
-// supplies MATERIAL (number/star material family), the team supplies the
-// environmental first-name accent — never merged.
-
-const DISPLAY_FONT = "var(--font-barlow)";
-
-/** Layer 13 — the GIANT NUMBER: solid metallic material text, behind the player. */
-export function GiantNumber({ text, finish }: { text: string; finish: Finish }) {
+/** Text stays live; a reusable plasma material supplies its foil surface.
+ * Separate dark extrusion, fine edge and broad bloom give actual visual depth. */
+export function GiantNumber({ text }: { text: string; finish: Finish }) {
+  const id = useId().replace(/:/g, "");
   if (!text) return null;
-  const hi = finish.metalHighlight;
-  return (
-    <div
-      aria-hidden
-      data-layer="giant-number"
-      className="pointer-events-none absolute flex select-none items-start justify-center"
-      style={zoneStyle(NUMBER_ZONE)}
-    >
-      <span
-        className="font-black italic leading-none"
-        style={{
-          fontFamily: DISPLAY_FONT,
-          fontSize: u(NUMBER_FONT_SIZE),
-          letterSpacing: "-0.05em",
-          lineHeight: 0.8,
-          color: "transparent",
-          // The number's MATERIAL: the finish's metal family, dark body →
-          // bright cap. Solid, not an alpha ghost.
-          backgroundImage: `linear-gradient(180deg, ${withAlpha(hi, 0.85)} 0%, ${withAlpha(hi, 0.55)} 30%, ${withAlpha(
-            finish.metalShadow,
-            0.9,
-          )} 62%, ${withAlpha(hi, 0.4)} 100%)`,
-          WebkitBackgroundClip: "text",
-          backgroundClip: "text",
-          WebkitTextStrokeWidth: u(3),
-          WebkitTextStrokeColor: withAlpha(hi, 0.7),
-          filter: `drop-shadow(0 0 ${u(18)} ${withAlpha(finish.lightHue, 0.35 * finish.lightIntensity)})`,
-        }}
-      >
-        {text}
-      </span>
-    </div>
-  );
+  const glyph = <text x="349" y="540" textAnchor="middle" fontFamily="var(--font-roboto), sans-serif" fontWeight="900" fontSize={NUMBER_FONT_SIZE} textLength="670" lengthAdjust="spacingAndGlyphs">{text}</text>;
+  return <svg aria-hidden data-layer="giant-number" className="pointer-events-none absolute overflow-visible" style={zoneStyle(NUMBER_ZONE)} viewBox="0 0 698 550" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id={`num-${id}`} x1="0" y1="0" x2=".8" y2="1">
+        <stop stopColor="#051834" /><stop offset=".25" stopColor="#101b40" /><stop offset=".44" stopColor="#063951" /><stop offset=".57" stopColor="#07172b" /><stop offset=".73" stopColor="#211936" /><stop offset=".88" stopColor="#0a263e" /><stop offset="1" stopColor="#1a3b59" />
+      </linearGradient>
+      <linearGradient id={`edge-${id}`} x1="0" y1="0" x2=".2" y2="1"><stop stopColor="#fff" /><stop offset=".42" stopColor="#8ae5ff" /><stop offset=".7" stopColor="#e6b2ff" /><stop offset="1" stopColor="#d5faff" /></linearGradient>
+      <clipPath id={`numclip-${id}`}>{glyph}</clipPath>
+      <filter id={`num-flare-${id}`} x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".045 .08" numOctaves="2" seed="17" result="rough" /><feDisplacementMap in="SourceGraphic" in2="rough" scale="13" xChannelSelector="R" yChannelSelector="G" /><feGaussianBlur stdDeviation=".65" /></filter>
+      <filter id={`aura-${id}`} x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="17" /></filter>
+      <filter id={`bloom-${id}`} x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="6" /></filter>
+    </defs>
+    <g transform="translate(3 8)" fill="#030b17" stroke="#031026" strokeWidth="10">{glyph}</g>
+    <g fill="none" stroke="#168cff" strokeWidth="24" opacity=".65" filter={`url(#aura-${id})`}>{glyph}</g>
+    <g fill="none" stroke="#38aaff" strokeWidth="17" opacity=".9" filter={`url(#bloom-${id})`}>{glyph}</g>
+    <g fill={`url(#num-${id})`}>{glyph}</g>
+    <image href="/card/finishes/platinum/b3-foil-field.png" x="-100" y="-110" width="900" height="1350" preserveAspectRatio="none" style={{ filter: "brightness(1.5) saturate(1.15)" }} clipPath={`url(#numclip-${id})`} />
+    <g fill="none" stroke="#b4f4ff" strokeWidth="2.3" opacity=".8" filter={`url(#num-flare-${id})`}>{glyph}</g>
+    <g fill="none" stroke={`url(#edge-${id})`} strokeWidth="8">{glyph}</g>
+    <g fill="none" stroke="#f0fdff" strokeWidth="2.6">{glyph}</g>
+    <foreignObject x="-10" y="-10" width="720" height="580" clipPath={`url(#numclip-${id})`} style={{ mixBlendMode: "screen", opacity: .12 }}>
+      <div style={{ width: "100%", height: "100%", background: "linear-gradient(120deg, transparent 28%, #b4c9ff55 43%, #fff9 47%, #f5b3ff66 52%, transparent 68%)", backgroundSize: "240% 200%", backgroundPosition: "var(--sx, 40%) var(--sy, 32%)" }} />
+    </foreignObject>
+  </svg>;
 }
 
-/** Layer 8 — first name (team accent) + dominant metallic surname (Δ13). */
-export function NameBlock({
-  firstName,
-  surname,
-  team,
-}: {
-  firstName: string | null;
-  surname: string;
-  team: TeamAccent;
-}) {
-  return (
-    <>
-      {firstName && (
-        <p
-          data-layer="first-name"
-          className="pointer-events-none absolute flex items-end justify-center font-bold uppercase leading-none"
-          style={{
-            ...zoneStyle(FIRST_NAME.zone),
-            fontFamily: DISPLAY_FONT,
-            fontStyle: "italic",
-            fontSize: u(FIRST_NAME.fontSize),
-            letterSpacing: FIRST_NAME.tracking,
-            color: team.text,
-            textShadow: `0 ${u(2)} ${u(10)} rgba(0,0,0,0.75)`,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {firstName}
-        </p>
-      )}
-      <div
-        data-layer="surname"
-        className="pointer-events-none absolute flex items-start justify-center"
-        style={{
-          ...zoneStyle(SURNAME.zone),
-          fontFamily: DISPLAY_FONT,
-          fontSize: u(surnameSize(surname)),
-          lineHeight: 0.92,
-          whiteSpace: "nowrap",
-        }}
-      >
-        <span className="relative font-black uppercase italic">
-          {/* depth copy */}
-          <span
-            aria-hidden
-            className="absolute inset-0"
-            style={{ transform: `translateY(${u(5)})`, color: "rgba(0,0,0,0.65)" }}
-          >
-            {surname}
-          </span>
-          {/* metallic material — restrained, tilt-responsive highlight; no rainbow */}
-          <span
-            className="relative"
-            style={{
-              color: "transparent",
-              backgroundImage:
-                "linear-gradient(180deg, #ffffff 0%, #eef2f6 40%, #a9b4c1 54%, #e6ecf2 72%, #cbd3dc 100%)",
-              backgroundSize: "100% 200%",
-              backgroundPositionY: "calc(var(--sy, 32%) * 0.25)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              filter: `drop-shadow(0 ${u(1)} ${u(2)} rgba(0,0,0,0.6))`,
-            }}
-          >
-            {surname}
-          </span>
-        </span>
-      </div>
-    </>
-  );
+/** A shared baseline and explicit text widths keep the reference composition
+ * stable across names, viewport sizes and font loading. */
+export function NameBlock({ firstName, surname, finish }: { firstName: string | null; surname: string; finish: Finish }) {
+  const id = useId().replace(/:/g, "");
+  const nameLength = surname.length <= 4 ? 430 : 592;
+  return <>
+    {firstName && <svg data-layer="first-name" aria-label={firstName} className="pointer-events-none absolute overflow-visible" style={zoneStyle(FIRST_NAME.zone)} viewBox="0 0 660 70">
+      <defs><linearGradient id={`first-${id}`} x1="0" y1="0" x2="0" y2="1">
+        <stop stopColor="#effcff" /><stop offset=".35" stopColor="#77d4f1" /><stop offset=".65" stopColor="#147dad" /><stop offset="1" stopColor="#69c5eb" />
+      </linearGradient></defs>
+      <text x="0" y="59" fontFamily="var(--font-card-display), sans-serif" fontSize={FIRST_NAME.fontSize} transform="translate(10 0) skewX(-12)" fontWeight="700" fontStyle="normal" letterSpacing="6" textLength={Math.min(580, firstName.length * 47)} lengthAdjust="spacingAndGlyphs" fill={`url(#first-${id})`} stroke={finish.metalHighlight} strokeWidth=".8" paintOrder="stroke" style={{ filter: "drop-shadow(1px 2px 1px #001122)" }}>{firstName.toUpperCase()}</text>
+    </svg>}
+    <svg data-layer="surname" aria-label={surname} className="pointer-events-none absolute overflow-visible" style={zoneStyle(SURNAME.zone)} viewBox="0 0 685 120">
+      <defs><linearGradient id={`name-${id}`} x1="0" y1="0" x2=".08" y2="1">
+        <stop stopColor="#fcfdff" /><stop offset=".25" stopColor="#f5f6f8" /><stop offset=".45" stopColor="#b8bec5" /><stop offset=".66" stopColor="#383e47" /><stop offset=".88" stopColor="#161d26" /><stop offset="1" stopColor="#626e7c" />
+      </linearGradient></defs>
+      <text x="23" y="115" fontFamily="var(--font-card-display), sans-serif" fontSize="157" letterSpacing="4" transform="skewX(-12)" fontWeight="700" fontStyle="normal" textLength={nameLength} lengthAdjust="spacingAndGlyphs" fill="#020609" stroke="#010305" strokeWidth="3">{surname.toUpperCase()}</text>
+      <text x="21" y="112" fontFamily="var(--font-card-display), sans-serif" fontSize="157" letterSpacing="4" transform="skewX(-12)" fontWeight="700" fontStyle="normal" textLength={nameLength} lengthAdjust="spacingAndGlyphs" fill={`url(#name-${id})`} stroke="#edf6ff" strokeWidth="1.3" paintOrder="stroke">{surname.toUpperCase()}</text>
+    </svg>
+  </>;
 }
 
-/** Layer 8b — details line, `#7 · COMBO GUARD · 6'4"` (never zero-padded). */
 export function DetailsLine({ parts }: { parts: (string | null | undefined)[] }) {
-  const text = parts.filter(Boolean).join(" · ");
-  if (!text) return null;
-  return (
-    <p
-      data-layer="details"
-      className="pointer-events-none absolute flex items-center justify-center font-bold uppercase"
-      style={{
-        ...zoneStyle(DETAILS.zone),
-        fontFamily: DISPLAY_FONT,
-        fontStyle: "italic",
-        fontSize: u(DETAILS.fontSize),
-        letterSpacing: DETAILS.tracking,
-        color: "rgba(255,255,255,0.86)",
-        textShadow: `0 ${u(1)} ${u(6)} rgba(0,0,0,0.7)`,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {text}
-    </p>
-  );
+  const items = parts.filter((part): part is string => Boolean(part));
+  return <svg data-layer="details" aria-label={items.join(" · ")} className="pointer-events-none absolute" style={zoneStyle(DETAILS.zone)} viewBox="0 0 600 62">
+    <text x="300" y="42" textAnchor="middle" fontFamily={FONT} fontSize="42" fontWeight="600" fontStyle="normal" letterSpacing="3" textLength="570" lengthAdjust="spacingAndGlyphs" transform="translate(5 0) skewX(-7)" fill="#d2dce5">
+      {items.map((part, i) => <tspan key={i}>{i > 0 && <tspan fill="#75dfff"> · </tspan>}<tspan fill={i === 0 ? "#60d8ff" : undefined}>{part.toUpperCase()}</tspan></tspan>)}
+    </text>
+  </svg>;
 }
 
-/**
- * Layer 6 — stat-rail TYPOGRAPHY + earned stars only. The panel CHASSIS is
- * authored art (chassis.webp / chassis-fg.webp); nothing here draws a box.
- */
-export function StatRailText({
-  points,
-  rankText,
-  stars,
-  finish,
-}: {
-  points: number;
-  rankText: string;
-  stars: number;
-  finish: Finish;
-}) {
-  const panelW = (STAT_RAIL.w - STAT_PANELS.gap * 2) / 3;
-  const panelX = (i: number) => STAT_RAIL.x + i * (panelW + STAT_PANELS.gap);
-  const header = (label: string) => (
-    <span
-      className="absolute left-0 right-0 text-center font-bold uppercase"
-      style={{
-        top: u(STAT_PANELS.headerY),
-        transform: "translateY(-100%)",
-        fontSize: u(STAT_PANELS.headerFontSize),
-        letterSpacing: STAT_PANELS.headerTracking,
-        color: withAlpha(finish.metalHighlight, 0.7),
-      }}
-    >
-      {label}
-    </span>
-  );
-  const value = (text: string) => (
-    <span
-      className="absolute left-0 right-0 text-center font-black tabular-nums leading-none text-white"
-      style={{
-        top: u(STAT_PANELS.valueY),
-        transform: "translateY(-100%)",
-        fontFamily: DISPLAY_FONT,
-        fontStyle: "italic",
-        fontSize: u(STAT_PANELS.valueFontSize),
-        textShadow: `0 ${u(2)} ${u(6)} rgba(0,0,0,0.7)`,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {text}
-    </span>
-  );
-  const panelStyle = (i: number) => ({
-    left: u(panelX(i)),
-    top: u(STAT_RAIL.y),
-    width: u(panelW),
-    height: u(STAT_RAIL.h),
-  });
-
-  return (
-    <>
-      <div data-layer="stat-points" className="pointer-events-none absolute" style={panelStyle(0)}>
-        {header("Points")}
-        {value(String(points))}
-      </div>
-      <div data-layer="stat-rank" className="pointer-events-none absolute" style={panelStyle(1)}>
-        {header("Leaderboard")}
-        {value(rankText)}
-      </div>
-      <div data-layer="stat-tier" className="pointer-events-none absolute" style={panelStyle(2)}>
-        {header("Tier")}
-        <span
-          className="absolute left-0 right-0 flex justify-center"
-          style={{ top: u(STARS.rowY), transform: "translateY(-50%)" }}
-        >
-          <CardStars count={stars} finish={finish} sizeUnits={STARS.size} gapUnits={STARS.gap} />
-        </span>
-        <span
-          className="absolute left-0 right-0 text-center font-bold uppercase text-white/85"
-          style={{
-            top: u(STARS.captionY),
-            transform: "translateY(-100%)",
-            fontSize: u(STARS.captionFontSize),
-            letterSpacing: STARS.captionTracking,
-          }}
-        >
-          Prospect
-        </span>
-      </div>
-    </>
-  );
+export function StatRailText({ points, rankText, stars, finish }: { points: number; rankText: string; stars: number; finish: Finish }) {
+  const id = useId().replace(/:/g, "");
+  return <>{STAT_COLUMNS.map((col, i) => <svg key={i} data-layer={['stat-points', 'stat-rank', 'stat-tier'][i]} className="pointer-events-none absolute overflow-visible" style={{ left: u(col.x), top: u(STAT_RAIL.y), width: u(col.w), height: u(STAT_RAIL.h) }} viewBox={`0 0 ${col.w} ${STAT_RAIL.h}`}>
+    <defs><linearGradient id={`stat-${id}-${i}`} x1="0" y1="0" x2="0" y2="1"><stop stopColor={i === 0 ? "#c9f9ff" : "#ffffff"} /><stop offset=".5" stopColor={i === 0 ? "#65cfff" : "#c9d1d9"} /><stop offset="1" stopColor={i === 0 ? "#2477ba" : "#f1f4f8"} /></linearGradient></defs>
+    <text x={col.w / 2} y="45" textAnchor="middle" fontFamily={FONT} fontWeight="600" fontSize={STAT_PANELS.headerFontSize} letterSpacing="2" fill="#9eeaff">{['POINTS', 'LEADERBOARD', 'TIER'][i]}</text>
+    {i < 2 ? <text x={col.w / 2} y="129" textAnchor="middle" fontFamily={FONT} fontWeight="900" fontSize={i === 0 ? Math.min(82, 370 / String(points).length) : Math.min(61, 630 / rankText.length)} fill={`url(#stat-${id}-${i})`}>{i === 0 ? points : rankText}</text> : <>
+      <foreignObject x="0" y="68" width={col.w} height="43"><div style={{ display: "flex", justifyContent: "center" }}><CardStars count={stars} finish={finish} sizePx={40} gapPx={9} /></div></foreignObject>
+      <text x={col.w / 2} y="141" textAnchor="middle" fontFamily={FONT} fontWeight="600" fontSize={STARS.captionFontSize} letterSpacing="2" fill="#f1f4f7">PROSPECT</text>
+    </>}
+  </svg>)}</>;
 }
 
-/** Layer 5 — ELITE24MVP maker's-mark typography over the authored footer chassis. */
 export function FooterMark() {
-  return (
-    <div
-      data-layer="footer-mark"
-      className="pointer-events-none absolute flex items-center justify-center"
-      style={zoneStyle(FOOTER)}
-    >
-      <span
-        className="font-black italic uppercase leading-none text-white"
-        style={{
-          fontFamily: DISPLAY_FONT,
-          fontSize: u(FOOTER_FONT_SIZE),
-          letterSpacing: "0.02em",
-          textShadow: `0 ${u(1)} ${u(4)} rgba(0,0,0,0.7)`,
-        }}
-      >
-        Elite<span style={{ color: APP_RED }}>24</span>MVP
-      </span>
-    </div>
-  );
+  return <svg data-layer="footer-mark" aria-label="Elite24MVP" className="pointer-events-none absolute" style={zoneStyle(FOOTER)} viewBox="0 0 560 80">
+    <text x="280" y="61" textAnchor="middle" fontFamily={FONT} fontSize={FOOTER_FONT_SIZE} fontWeight="900" fontStyle="italic" fill="#e5edf5">ELITE<tspan fill={APP_RED}>24</tspan>MVP</text>
+  </svg>;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -213,12 +213,14 @@ export function cutoutCss(meta: PortraitTransform & { srcW: number }): {
   left: string;
   top: string;
   width: string;
+  maxWidth: string;
 } {
   const widthFrac = (meta.srcW * meta.scale) / CARD_ASPECT;
   return {
     left: `${(meta.tx * 100).toFixed(3)}%`,
     top: `${(meta.ty * 100).toFixed(3)}%`,
     width: `${(widthFrac * 100).toFixed(3)}%`,
+    maxWidth: "none", // Tailwind image defaults otherwise squash wide source canvases.
   };
 }
 
@@ -234,3 +236,4 @@ export function isPortraitMetaV2(v: unknown): v is PortraitMetaV2 {
     typeof m.srcW === "number"
   );
 }
+

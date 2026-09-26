@@ -76,14 +76,14 @@ export function MissingAsset({ spec }: { spec: AssetSpec }) {
           lineHeight: 1.35,
           padding: "calc(var(--u) * 10) calc(var(--u) * 16)",
           // Stack labels down the card so several missing layers stay readable.
-          marginTop: `calc(var(--u) * ${(16 - spec.layer) * 62 + (spec.kind === "mask" ? 0 : 31)})`,
+          marginTop: `calc(var(--u) * ${(16 - spec.layer) * 62 + 31})`,
         }}
       >
         <span className="font-bold">ASSET MISSING</span>
         <br />
         {spec.file.replace(/^\/card\//, "")}
         <br />
-        <span className="opacity-70">layer {spec.layer} · 2000×3000</span>
+        <span className="opacity-70">layer {spec.layer} · authored artwork required</span>
       </div>
     </div>
   );

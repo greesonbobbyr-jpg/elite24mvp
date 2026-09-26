@@ -67,8 +67,10 @@ Everything else in the app is secondary to this loop working smoothly across mul
 
 - **Framework:** Next.js (App Router) + **TypeScript**.
 - **Styling:** Tailwind CSS. Keep components simple and readable; mobile-first layouts (this will mostly be used on phones).
-- **Database:** **SQLite via Prisma** — runs locally with no cloud account, persists to a file, and is trivial to seed. (This is an MVP/testing choice; the data layer should stay swappable for a hosted DB later.)
-- **Auth:** Use a vetted, well-known auth approach — do **not** hand-roll password hashing or session crypto. For local testing, a seeded email/password login plus the dev user switcher is fine. Keep auth logic isolated so it can be hardened before any real launch.
+- **Database:** **Postgres via Prisma** — Supabase Postgres in production; an embedded local Postgres for development and tests (`scripts/localpg.ts`, port 5433, one database per branch). Keep the data layer swappable.
+- **Auth:** Auth.js v5 (credentials + JWT) with bcrypt — a vetted library; do **not** hand-roll password hashing or session crypto. Login is by email or username; the dev user switcher works in development only. Keep auth logic isolated so it can be hardened before any real launch.
+- **Notifications:** in-app alerts, plus Web Push (VAPID) daily check-in reminders sent by an hourly GitHub Actions cron.
+- **Hosting:** Vercel. **Every push to `main` deploys production** — never push `main` without the owner's explicit go.
 - **State/data:** Server components + server actions / route handlers where natural. Avoid unnecessary client-side complexity.
 - **Conventions:** Clear file and variable names over cleverness. Small, focused components. Comment the *why* when something isn't obvious. No dead code, no unused deferred-feature stubs left lying around.
 - **One repo, one command to run:** `npm run dev` should start everything. Document any other command in the README.

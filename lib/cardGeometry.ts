@@ -46,7 +46,9 @@ export type Zone = { x: number; y: number; w: number; h: number };
  * wide:tall, narrower than the 1000×1500 master (0.667) — a checkpoint
  * question for human review, not something the renderer resolves.
  */
-export const REFERENCE_CROP = { x: 202, y: 80, w: 343, h: 571 };
+export const REFERENCE_CROP = { x: 0, y: 0, w: 1024, h: 1536 };
+/** Selects the face window in the supplied artwork; never draws metal. */
+export const FRAME_WINDOW = "M115 82H885L918 115V1160L884 1211H120L82 1170V116L115 82Z";
 
 // ---- safe areas -----------------------------------------------------------
 
@@ -57,7 +59,7 @@ export const REFERENCE_CROP = { x: 202, y: 80, w: 343, h: 571 };
 export const SAFE: Zone = { x: 72, y: 82, w: 856, h: 1336 };
 
 /** TEAM LOGO safe zone — top-LEFT (owner ruling). Contain-fit, alpha-trim (Δ9). */
-export const LOGO_ZONE: Zone = { x: 100, y: 150, w: 180, h: 180 };
+export const LOGO_ZONE: Zone = { x: 125, y: 110, w: 180, h: 180 };
 
 /**
  * TOP-RIGHT slot — intentionally EMPTY (Δ10). Mirrors the logo zone's visual
@@ -72,10 +74,10 @@ export const TOP_RIGHT_SLOT: Zone = { x: 720, y: 150, w: 180, h: 180 };
  * cutout. Single digits render with a leading zero ("07") here only; the
  * details line stays un-padded ("#7").
  */
-export const NUMBER_ZONE: Zone = { x: 80, y: 265, w: 685, h: 835 };
+export const NUMBER_ZONE: Zone = { x: 122, y: 172, w: 756, h: 500 };
 
 /** Giant-number font size in units (condensed athletic face; calibrated in the loop). */
-export const NUMBER_FONT_SIZE = 1000;
+export const NUMBER_FONT_SIZE = 755;
 
 // ---- portrait target zone -------------------------------------------------
 
@@ -86,15 +88,15 @@ export const NUMBER_FONT_SIZE = 1000;
  */
 export const PORTRAIT = {
   /** Bounding zone for any visible cutout pixel. */
-  zone: { x: 155, y: 235, w: 690, h: 1005 } as Zone,
+  zone: { x: 80, y: 260, w: 840, h: 970 } as Zone,
   /** Target eye-line Y (handoff/map: ≈545). */
   eyeY: 545,
   /** Target top-of-head Y (hair included). */
   headTopY: 300,
   /** Target shoulder-line Y. */
-  shoulderY: 850,
+  shoulderY: 820,
   /** Max athlete width (shoulder span may not exceed this). */
-  maxW: 690,
+  maxW: 840,
   /** Hard bottom limit — torso ends above/behind the name block. */
   bottomY: 1240,
   /** Horizontal center of the athlete. */
@@ -105,9 +107,9 @@ export const PORTRAIT = {
 
 /** First name — smaller, team-accent, above the surname. */
 export const FIRST_NAME = {
-  zone: { x: 110, y: 935, w: 680, h: 70 } as Zone,
-  fontSize: 52,
-  tracking: "0.14em",
+  zone: { x: 192, y: 914, w: 660, h: 70 } as Zone,
+  fontSize: 62,
+  tracking: "0.09em",
 };
 
 /**
@@ -115,8 +117,8 @@ export const FIRST_NAME = {
  * shrinks with length between max and min; never wraps, never touches the frame.
  */
 export const SURNAME = {
-  zone: { x: 110, y: 1005, w: 680, h: 110 } as Zone,
-  maxFontSize: 118,
+  zone: { x: 177, y: 976, w: 685, h: 120 } as Zone,
+  maxFontSize: 145,
   minFontSize: 76,
   /** Character count at/below which maxFontSize applies. */
   fitStart: 7,
@@ -126,9 +128,9 @@ export const SURNAME = {
 
 /** Details line: `#22 · COMBO GUARD · 6'4"`. */
 export const DETAILS = {
-  zone: { x: 110, y: 1120, w: 680, h: 65 } as Zone,
-  fontSize: 40,
-  tracking: "0.12em",
+  zone: { x: 200, y: 1110, w: 600, h: 62 } as Zone,
+  fontSize: 38,
+  tracking: "0.06em",
 };
 
 // ---- stat rail --------------------------------------------------------------
@@ -138,16 +140,17 @@ export const DETAILS = {
  * authored art; only typography + stars render here, positioned into the
  * three equal panel openings.
  */
-export const STAT_RAIL: Zone = { x: 90, y: 1200, w: 820, h: 180 };
+export const STAT_RAIL: Zone = { x: 100, y: 1212, w: 786, h: 166 };
+export const STAT_COLUMNS = [{ x: 102, w: 223 }, { x: 334, w: 292 }, { x: 636, w: 248 }] as const;
 
 export const STAT_PANELS = {
   /** Gap between the three equal panels, in units. */
   gap: 20,
-  headerFontSize: 26,
+  headerFontSize: 30,
   headerTracking: "0.18em",
-  valueFontSize: 62,
+  valueFontSize: 64,
   /** Vertical offset of the header baseline inside a panel. */
-  headerY: 38,
+  headerY: 41,
   /** Vertical offset of the value baseline inside a panel. */
   valueY: 128,
 };
@@ -166,8 +169,8 @@ export const STARS = {
 // ---- footer ----------------------------------------------------------------
 
 /** ELITE24MVP maker's-mark typography over the authored footer chassis. */
-export const FOOTER: Zone = { x: 90, y: 1395, w: 820, h: 75 };
-export const FOOTER_FONT_SIZE = 44;
+export const FOOTER: Zone = { x: 220, y: 1383, w: 560, h: 80 };
+export const FOOTER_FONT_SIZE = 63;
 
 // ---- helpers ---------------------------------------------------------------
 
@@ -220,3 +223,13 @@ export function giantNumber(jersey: number | string | null | undefined): string 
   if (!s) return "";
   return s.length === 1 ? `0${s}` : s;
 }
+
+
+
+
+
+
+
+
+
+

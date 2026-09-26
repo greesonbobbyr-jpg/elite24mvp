@@ -99,7 +99,7 @@ export function CardCompositor({
         aspectRatio: `${CARD_ASPECT}`,
         containerType: typeof width === "number" ? undefined : "inline-size",
         isolation: "isolate",
-        touchAction: "none",
+        touchAction: "pan-y",
         transformStyle: "preserve-3d",
         willChange: staticRender ? undefined : "transform",
         transition: staticRender ? undefined : "transform 220ms cubic-bezier(.2,.7,.2,1)",
@@ -108,7 +108,7 @@ export function CardCompositor({
           : "perspective(1200px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(var(--sc,1))",
         ...({
           "--u": unit,
-          ...(staticRender ? { "--sx": "50%", "--sy": "32%", "--so": "0" } : {}),
+          ...(staticRender ? { "--so": "0" } : {}),
         } as CSSProperties),
         ...style,
       }}
@@ -126,3 +126,4 @@ const STAGE_STYLE = `
 @media (prefers-reduced-motion: reduce) { .pc-stage * { animation: none !important; } }
 .pc-static, .pc-static * { animation-play-state: paused !important; }
 `;
+
