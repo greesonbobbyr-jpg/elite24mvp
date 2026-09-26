@@ -49,7 +49,9 @@ export function RimLight({ src, meta, finish, style }: { src: string; meta: Port
         <feComposite in="white" in2="tight" operator="in" result="core" />
         <feMerge><feMergeNode in="glow" /><feMergeNode in="foil" /><feMergeNode in="core" /></feMerge>
       </filter>
-      <linearGradient id={`vertical-${id}`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="white" stopOpacity=".35" /><stop offset={meta.eyeY/h} stopColor="white" stopOpacity=".38" /><stop offset={Math.min(.9,meta.shoulderY/h)} stopColor="white" /><stop offset="1" stopColor="white" stopOpacity=".5" /></linearGradient>
+      {/* Faint on the head and hair, full on the shoulders: lit all the way
+          around, the rim read as an outline (owner review, 2026-09-26). */}
+      <linearGradient id={`vertical-${id}`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="white" stopOpacity=".08" /><stop offset={meta.eyeY/h} stopColor="white" stopOpacity=".1" /><stop offset={Math.max(meta.eyeY/h, Math.min(.9,(meta.shoulderY-face.h*.3)/h))} stopColor="white" stopOpacity=".25" /><stop offset={Math.min(.9,meta.shoulderY/h)} stopColor="white" /><stop offset="1" stopColor="white" stopOpacity=".5" /></linearGradient>
       <radialGradient id={`face-${id}`}><stop stopColor="black" /><stop offset=".65" stopColor="black" stopOpacity=".85" /><stop offset="1" stopColor="black" stopOpacity="0" /></radialGradient>
       <mask id={`light-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width={w} height={h}>
         <rect width={w} height={h} fill={`url(#vertical-${id})`} />

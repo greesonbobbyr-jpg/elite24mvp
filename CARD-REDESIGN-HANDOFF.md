@@ -47,3 +47,15 @@ The owner rejected the earlier two-flame approach. It is replaced by `b3-foil-fi
 
 35 targeted tests pass, including narrower, wider, asymmetric and translated silhouette-root fixtures. TypeScript and targeted lint pass. This verifies attachment math, not every possible real uploaded photo. The B3 visual review loop remains the design authority; do not mark the card owner-approved without their review.
 A softly masked screen-blended fringe pass carries the same adaptive currents down the outer sides beside the name, preserving the center text area. This light spill is separate from the silhouette rim.
+
+## Owner review — September 26
+
+Round 1 (commit 3072a9c): centered frame notches and a sharper 2x plate (`scripts/card-art.ts`), brighter number glow, player ~11% smaller (shoulder target 790), and the two energy seams fixed.
+
+Round 2, owner: the energy "is starting too far away from the player like it is outlining him instead of coming from him."
+
+- Cause: the roots were sampled at the chin row, which on long hair is the hair, and anchored the field's inner filaments instead of its two hot nodes (where the currents converge: 223,796 and 762,805). Both nodes floated ~50 units above the shoulders, beside the hair. Separately, the traced electricity rim ran around the whole silhouette: a literal outline.
+- `lib/portrait/foil.ts` `shoulderRoots` now finds the top of each shoulder: scanning down from the chin, the edge holds at the neck (or the hair over it), then turns outward; the root is 0.3 face widths past that. Each field half is scaled so its hot node lands on the root.
+- `PlatinumEnergyEmission` (under the cutout): the field's currents nearest the body run hotter, the shoulder edge runs white-hot around each root (fading away from it, never on the head), and a glow marks each root.
+- The electricity is shoulder sparks only (no traced rim); the rim light is faint above the shoulders. The fringe pass no longer draws over the player's arms.
+- Checked on Cason plus four reshaped builds (broad, narrow, long neck, sloped) and in WebKit.

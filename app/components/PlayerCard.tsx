@@ -1,5 +1,5 @@
 "use client";
-import { PlatinumFoilField } from "@/app/components/card/PlatinumFoilField";
+import { PlatinumEnergyEmission, PlatinumFoilField } from "@/app/components/card/PlatinumFoilField";
 
 
 import type { CSSProperties } from "react";
@@ -13,7 +13,7 @@ import {
   type Finish,
   type FinishKey,
 } from "@/lib/cardTheme";
-import { PORTRAIT, u, zoneStyle, giantNumber } from "@/lib/cardGeometry";
+import { PORTRAIT, fy, u, zoneStyle, giantNumber } from "@/lib/cardGeometry";
 import { finishAssets } from "@/lib/cardAssets";
 import { cutoutCss, isPortraitMetaV2, PORTRAIT_TARGETS } from "@/lib/portrait/normalize";
 import { CardCompositor } from "@/app/components/card/CardCompositor";
@@ -179,7 +179,7 @@ function FullCard({
 
   // The torso fades out just above the name block (bottomY), so text never
   // fights the cutout; this is a fade, not occlusion (occlusion is ordering).
-  const fadeStart = 62;
+  const fadeStart = fy(PORTRAIT.fadeStartY) * 100;
   const fadeEnd = PORTRAIT_TARGETS.bottomY * 100;
   const torsoFade: CSSProperties = {
     WebkitMaskImage: `linear-gradient(180deg, #fff 0%, #fff ${fadeStart}%, transparent ${fadeEnd}%)`,
@@ -210,6 +210,7 @@ function FullCard({
           <span aria-hidden data-layer="depth-shadow" className="pointer-events-none absolute inset-0" style={torsoFade}>
             <DepthShadow src={cutout} meta={meta} style={cutoutPlacement} />
           </span>
+          {finish.key === "platinum" && <PlatinumEnergyEmission src={cutout} meta={meta} />}
           <span data-layer="cutout" className="pointer-events-none absolute inset-0" style={torsoFade}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={cutout} alt={player.name} className="absolute" style={cutoutPlacement} />

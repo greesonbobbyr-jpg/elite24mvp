@@ -99,6 +99,8 @@ export const PORTRAIT = {
   shoulderY: 790,
   /** Max athlete width (shoulder span may not exceed this). */
   maxW: 840,
+  /** The torso starts fading out here, fully gone by bottomY. */
+  fadeStartY: 930,
   /** Hard bottom limit — torso ends above/behind the name block. */
   bottomY: 1240,
   /** Horizontal center of the athlete. */
