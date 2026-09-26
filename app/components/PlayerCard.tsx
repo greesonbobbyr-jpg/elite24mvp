@@ -199,7 +199,7 @@ function FullCard({
       {/* 14 · background illumination (live; team hue) */}
       <BackgroundIllumination finish={finish} team={teamAccent} />
       {/* 13 · giant jersey number (dynamic; finish material) */}
-      {finish.key === "platinum" && <FoilField finish={finish} src={cutout} meta={meta} />}
+      <FoilField finish={finish} src={cutout} meta={meta} />
       <GiantNumber text={bigNumber} finish={finish} />
       {/* 12 · atmosphere (authored texture, team-tinted) + occlusion map */}
       {/* 11 · player environmental backlight (live) */}
@@ -210,7 +210,7 @@ function FullCard({
           <span aria-hidden data-layer="depth-shadow" className="pointer-events-none absolute inset-0" style={torsoFade}>
             <DepthShadow src={cutout} meta={meta} finish={finish} style={cutoutPlacement} />
           </span>
-          {finish.key === "platinum" && <EnergyEmission finish={finish} src={cutout} meta={meta} />}
+          <EnergyEmission finish={finish} src={cutout} meta={meta} />
           <span data-layer="cutout" className="pointer-events-none absolute inset-0" style={torsoFade}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={cutout} alt={player.name} className="absolute" style={cutoutPlacement} />
@@ -240,7 +240,7 @@ function FullCard({
         <PendingPortrait initials={initials} finish={finish} />
       )}
       <span aria-hidden data-layer="name-scrim" className="pointer-events-none absolute" style={{ inset: "55% 8% 17%", background: "linear-gradient(transparent, rgba(0,4,8,.12) 12%, rgba(0,4,8,.66) 38%, rgba(0,3,6,.94) 72%, #000 100%)" }} />
-      {finish.key === "platinum" && <FoilField finish={finish} src={cutout} meta={meta} fringe />}
+      <FoilField finish={finish} src={cutout} meta={meta} fringe />
       {/* 8 · name block + details (dynamic) */}
       <NameBlock firstName={firstName} surname={surname} finish={finish} />
       <DetailsLine

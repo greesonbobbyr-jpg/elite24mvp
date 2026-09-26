@@ -13,7 +13,7 @@ export type AssetSpec = { file: string; kind: "art"; layer: number; required: bo
 export function finishAssets(finish: FinishKey) {
   return {
     plate: { file: `/card/finishes/${finish}/plate.webp`, kind: "art", layer: 16, required: true } satisfies AssetSpec,
-    field: { file: `/card/finishes/${finish}/field.png`, kind: "art", layer: 13, required: true } satisfies AssetSpec,
+    field: { file: `/card/finishes/${finish}/field.webp`, kind: "art", layer: 13, required: true } satisfies AssetSpec,
   };
 }
 

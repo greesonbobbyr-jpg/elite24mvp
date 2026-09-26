@@ -1,6 +1,7 @@
 /**
  * CARD ART PIPELINE — builds the served card artwork from the authored source
- * art, deterministically. Re-run whenever a source image changes:
+ * art, deterministically. Re-run whenever a source image or a level look
+ * (lib/finishArt.ts) changes:
  *
  *   npx tsx scripts/card-art.ts
  *
@@ -15,15 +16,22 @@
  *      (FRAME_WINDOW) or the stat boxes. Seams are feathered, and the original
  *      texture runs through the middle so there's no mirror point.
  *   4. Sharpen, then WebP (q92, ~0.9 MB).
+ * Platinum field: design/reference/platinum-field-source.png (the energy
+ * derived from the approved B3 reference) → finishes/platinum/field.webp (q90).
+ * Bronze / Silver / Gold / Diamond: the finished Platinum plate and field,
+ * recolored through each level's look (lib/finishArt.ts); the plate's frame and
+ * window take separate ramps.
  * This edits supplied, authored pixels; it never draws metal (Plan v4).
  */
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 import { FRAME_WINDOW, MASTER_W } from "../lib/cardGeometry";
+import { LEVEL_LOOKS, brightness, rampTable, recolorChannel, type Recolor } from "../lib/finishArt";
 
-const SOURCE = join("design", "reference", "platinum-plate-source.png");
-const TARGET = join("public", "card", "finishes", "platinum", "plate.webp");
+const PLATE_SOURCE = join("design", "reference", "platinum-plate-source.png");
+const FIELD_SOURCE = join("design", "reference", "platinum-field-source.png");
+const finishDir = (level: string) => join("public", "card", "finishes", level);
 
 const SCALE = 2;
 const W = 1024 * SCALE;
@@ -53,8 +61,24 @@ function columnWeight(x: number): number {
   return 1;
 }
 
-async function platinumPlate() {
-  const upscaled = await sharp(SOURCE)
+/** Inside the frame window = 255. */
+async function windowMask(): Promise<Buffer> {
+  const unit = W / MASTER_W;
+  return sharp(
+    Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">` +
+        `<rect width="100%" height="100%" fill="black"/>` +
+        `<path d="${FRAME_WINDOW}" transform="scale(${unit})" fill="white"/></svg>`,
+    ),
+  )
+    .greyscale()
+    .raw()
+    .toBuffer();
+}
+
+/** Builds and writes the Platinum plate; returns its finished pixels (RGB). */
+async function platinumPlate(mask: Buffer): Promise<Buffer> {
+  const upscaled = await sharp(PLATE_SOURCE)
     .removeAlpha()
     .resize(W, H, { kernel: "lanczos3" })
     .raw()
@@ -66,26 +90,13 @@ async function platinumPlate() {
     upscaled.copy(centered, (y * W + SHIFT) * 3, y * W * 3, (y * W + W - SHIFT) * 3);
   }
 
-  // The window (inside = white) is never touched.
-  const unit = W / MASTER_W;
-  const windowMask = await sharp(
-    Buffer.from(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">` +
-        `<rect width="100%" height="100%" fill="black"/>` +
-        `<path d="${FRAME_WINDOW}" transform="scale(${unit})" fill="white"/></svg>`,
-    ),
-  )
-    .greyscale()
-    .raw()
-    .toBuffer();
-
-  // 3. Mirror left → right on the top and bottom borders.
+  // 3. Mirror left → right on the top and bottom borders; the window is never touched.
   const out = Buffer.from(centered);
   for (let y = 0; y < H; y++) {
     const wy = rowWeight(y / SCALE);
     if (wy === 0) continue;
     for (let x = W / 2; x < W; x++) {
-      if (windowMask[y * W + x] > 127) continue;
+      if (mask[y * W + x] > 127) continue;
       const w = wy * columnWeight(x);
       if (w === 0) continue;
       const o = (y * W + x) * 3;
@@ -95,15 +106,51 @@ async function platinumPlate() {
   }
 
   // 4. Sharpen the bevels, then save.
-  mkdirSync(join("public", "card", "finishes", "platinum"), { recursive: true });
-  await sharp(out, { raw: { width: W, height: H, channels: 3 } })
+  const finished = await sharp(out, { raw: { width: W, height: H, channels: 3 } })
     .sharpen({ sigma: 1.3, m1: 0.8, m2: 3.0 })
-    .webp({ quality: 92, effort: 6 })
-    .toFile(TARGET);
-  console.log(`wrote ${TARGET} (${W}×${H})`);
+    .raw()
+    .toBuffer();
+  await writeWebp(finished, W, H, 3, join(finishDir("platinum"), "plate.webp"), 92);
+  return finished;
 }
 
-platinumPlate().catch((e) => {
+/** Recolor RGB(A) pixels; `mask` (0..255) blends from `outside` to `inside`. */
+function recolor(pixels: Buffer, channels: number, outside: Recolor, inside?: Recolor, mask?: Buffer): Buffer {
+  const outsideTable = rampTable(outside.ramp);
+  const insideTable = inside ? rampTable(inside.ramp) : outsideTable;
+  const out = Buffer.from(pixels);
+  for (let i = 0, p = 0; i < pixels.length; i += channels, p++) {
+    const level = brightness(pixels[i], pixels[i + 1], pixels[i + 2]);
+    const w = inside && mask ? mask[p] / 255 : 0;
+    for (let c = 0; c < 3; c++) {
+      const a = recolorChannel(outsideTable, level, c, pixels[i + c], outside);
+      const b = w > 0 && inside ? recolorChannel(insideTable, level, c, pixels[i + c], inside) : a;
+      out[i + c] = Math.round(a * (1 - w) + b * w);
+    }
+  }
+  return out;
+}
+
+async function writeWebp(pixels: Buffer, width: number, height: number, channels: 3 | 4, file: string, quality: number) {
+  mkdirSync(join(file, ".."), { recursive: true });
+  await sharp(pixels, { raw: { width, height, channels } }).webp({ quality, effort: 6 }).toFile(file);
+  console.log(`wrote ${file}`);
+}
+
+async function main() {
+  const mask = await windowMask();
+  const plate = await platinumPlate(mask);
+  const field = await sharp(FIELD_SOURCE).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: fw, height: fh } = field.info;
+  await writeWebp(field.data, fw, fh, 3, join(finishDir("platinum"), "field.webp"), 90);
+
+  for (const [level, look] of Object.entries(LEVEL_LOOKS)) {
+    await writeWebp(recolor(plate, 3, look.frame, look.window, mask), W, H, 3, join(finishDir(level), "plate.webp"), 92);
+    await writeWebp(recolor(field.data, 3, look.field), fw, fh, 3, join(finishDir(level), "field.webp"), 90);
+  }
+}
+
+main().catch((e) => {
   console.error(e);
   process.exit(1);
 });

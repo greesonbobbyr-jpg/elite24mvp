@@ -5,6 +5,8 @@
 // so these helpers only ever produce DARK card bases + return a scrim to layer
 // behind text.
 
+import { derivePalette, LEVEL_LOOKS } from "./finishArt";
+
 export const APP_RED = "#e1102a";
 const APP_RED_DEEP = "#7a0a18";
 
@@ -382,7 +384,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 0.03,
     spectral: ["#d9a05e", "#f0c98e", "#d9a05e"],
     starMaterial: { from: "#e8b877", to: "#8a5a28" },
-    palette: PLATINUM_PALETTE,
+    palette: derivePalette(PLATINUM_PALETTE, LEVEL_LOOKS.bronze),
   },
   // 2★ — silver, subtle foil begins.
   silver: {
@@ -397,7 +399,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 0.18,
     spectral: ["#aeb6c0", "#e8f1ff", "#c9d4e2", "#aeb6c0"],
     starMaterial: { from: "#f4f7fa", to: "#848d98" },
-    palette: PLATINUM_PALETTE,
+    palette: derivePalette(PLATINUM_PALETTE, LEVEL_LOOKS.silver),
   },
   // 3★ — gold, true holographic behavior arrives.
   gold: {
@@ -412,7 +414,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 0.45,
     spectral: ["#d9ab2e", "#fff3b8", "#e0742e", "#d9ab2e"],
     starMaterial: { from: "#ffee9d", to: "#a87f16" },
-    palette: PLATINUM_PALETTE,
+    palette: derivePalette(PLATINUM_PALETTE, LEVEL_LOOKS.gold),
   },
   // 4★ — platinum: cool, iridescent, the geometric MASTER finish.
   platinum: {
@@ -443,7 +445,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 1.0,
     spectral: ["#cfe4f4", "#ffd9ec", "#d9ffe9", "#d9e4ff", "#cfe4f4"],
     starMaterial: { from: "#ffffff", to: "#8fa6bd" },
-    palette: PLATINUM_PALETTE,
+    palette: derivePalette(PLATINUM_PALETTE, LEVEL_LOOKS.diamond),
   },
 };
 

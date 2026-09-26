@@ -10,8 +10,8 @@
  *                                  [--overlay]         shoot at 50% reference blend
  *                                  [--static]          freeze finish motion (?static=1)
  *                                  [--check]           compare against design/baselines/
- *                                  [--master]          the Platinum master: the studio card
- *                                                      after "Process Cason original", overlay 0%
+ *                                  [--master]          the studio card at every level, after
+ *                                                      "Process Cason original", overlay 0%
  *                                  [--login <email>]   default: gary@elite24.demo
  *
  * Requires a dev server running against the LOCAL card DB (e24cards) and the
@@ -91,22 +91,34 @@ async function main() {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(500);
 
-  const shots = page.locator("[data-shot]");
-  const count = await shots.count();
-  if (count === 0) throw new Error("no [data-shot] elements found");
-
   const names: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const el = shots.nth(i);
-    const name = (await el.getAttribute("data-shot")) ?? `shot-${i}`;
-    await el.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(120);
-    await el.screenshot({ path: join(OUT_DIR, `${name}.png`) });
-    names.push(name);
-    console.log(`  shot ${name}.png`);
+  const shoot = async () => {
+    const shots = page.locator("[data-shot]");
+    const count = await shots.count();
+    if (count === 0) throw new Error("no [data-shot] elements found");
+    for (let i = 0; i < count; i++) {
+      const el = shots.nth(i);
+      const name = (await el.getAttribute("data-shot")) ?? `shot-${i}`;
+      await el.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(120);
+      await el.screenshot({ path: join(OUT_DIR, `${name}.png`) });
+      names.push(name);
+      console.log(`  shot ${name}.png`);
+    }
+  };
+  if (flag("master")) {
+    // The master card at every level (master-bronze … master-diamond).
+    const levels = page.getByLabel("Card level");
+    for (const level of await levels.locator("option").evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value))) {
+      await levels.selectOption(level);
+      await page.waitForTimeout(2500); // level art loads; roots re-measure
+      await shoot();
+    }
+  } else {
+    await shoot();
   }
   await browser.close();
-  console.log(`\n${count} shots -> ${OUT_DIR}`);
+  console.log(`\n${names.length} shots -> ${OUT_DIR}`);
 
   if (flag("check")) await check(names);
 }

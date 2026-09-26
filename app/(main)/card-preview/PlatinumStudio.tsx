@@ -4,6 +4,7 @@ import { PlayerCard, type CardPlayer } from "@/app/components/PlayerCard";
 import { processPortrait, type PortraitResult } from "@/lib/portrait/process";
 import { analyzePortrait } from "@/lib/portrait/analyze";
 import { normalizePortrait } from "@/lib/portrait/normalize";
+import { FINISH_ORDER, type FinishKey } from "@/lib/cardTheme";
 const TEAM = { name: "Mustang Broncos", logoUrl: "/mustang-logo.png", primaryColor: "#c9223a", secondaryColor: "#f2a900" };
 const SAMPLE: CardPlayer = { name: "Cason Wallace", jerseyNumber: 22, position: "COMBO GUARD", heightInches: 76, points: 525, total: 20000, rank: 1, rosterSize: 7 };
 const REF = "/api/dev/reference/platinum-b3-outward-approved.png";
@@ -19,6 +20,7 @@ export function PlatinumStudio({ isStatic }: { isStatic: boolean }) {
   const [freeze, setFreeze] = useState(isStatic);
   const [compare, setCompare] = useState(false);
   const [size, setSize] = useState(520);
+  const [level, setLevel] = useState<FinishKey>("platinum");
   const [light, setLight] = useState(38);
   const [ready, setReady] = useState<ReadyPortrait | null>(null);
   const [error, setError] = useState("");
@@ -67,6 +69,7 @@ export function PlatinumStudio({ isStatic }: { isStatic: boolean }) {
       <div className="flex flex-wrap gap-2">
         <button className={control} onClick={() => setCompare(!compare)}>{compare ? "Hide reference" : "Compare reference"}</button>
         <button className={control} onClick={() => setFreeze(!freeze)}>{freeze ? "Enable motion" : "Freeze motion"}</button>
+        <select aria-label="Card level" className={control} value={level} onChange={e => setLevel(e.target.value as FinishKey)}>{FINISH_ORDER.map((key, i) => <option key={key} value={key}>{`${"★".repeat(i + 1)} ${key}`}</option>)}</select>
         <select aria-label="Card size" className={control} value={size} onChange={e => setSize(Number(e.target.value))}><option value={340}>Phone · 340</option><option value={520}>Review · 520</option><option value={1000}>Master · 1000</option></select>
       </div>
     </div>
@@ -79,8 +82,8 @@ export function PlatinumStudio({ isStatic }: { isStatic: boolean }) {
     {error && <p role="alert" className="mb-4 text-sm text-red-300">{error}</p>}
     <div className="flex flex-wrap items-start justify-center gap-7">
       <section style={{ width: size, maxWidth: "100%" }}>
-        <div data-shot="master-platinum" style={{ width: "100%", position: "relative", '--sx': `${light}%`, '--sy': `${22 + light * .4}%` } as React.CSSProperties}>
-          <PlayerCard size="full" player={player} team={TEAM} finishOverride="platinum" staticRender={freeze} width="100%" />
+        <div data-shot={`master-${level}`} style={{ width: "100%", position: "relative", '--sx': `${light}%`, '--sy': `${22 + light * .4}%` } as React.CSSProperties}>
+          <PlayerCard size="full" player={player} team={TEAM} finishOverride={level} staticRender={freeze} width="100%" />
         </div>
         <p className="mt-3 text-center text-xs text-zinc-500">Live card · drag across the frame to explore the light</p>
       </section>

@@ -104,12 +104,11 @@ export function Gallery({
       <section className="flex flex-col gap-4">
         <h2 className="e24-eyebrow">Player — Platinum master (compositor)</h2>
         <p className="-mt-2 text-xs text-zinc-500">
-          Bronze / Silver / Gold / Diamond unlock only after ★ GEOMETRY LOCKED ★ (owner
-          approval of this Platinum master). Open{" "}
+          ★ GEOMETRY LOCKED ★ (the owner approved Platinum, 2026-09-26). Open{" "}
           <a href="/card-preview?master=1&static=1" className="text-red-400 underline">
             ?master=1
           </a>{" "}
-          for the exact-dimension 1000×1500 checkpoint render.
+          to review every level with a real processed photo.
         </p>
         <div className="flex flex-wrap gap-8">
           <CardEnvironment
