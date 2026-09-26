@@ -59,7 +59,7 @@ export const FRAME_WINDOW = "M115 82H885L918 115V1160L884 1211H120L82 1170V116L1
 export const SAFE: Zone = { x: 72, y: 82, w: 856, h: 1336 };
 
 /** TEAM LOGO safe zone — top-LEFT (owner ruling). Contain-fit, alpha-trim (Δ9). */
-export const LOGO_ZONE: Zone = { x: 125, y: 110, w: 180, h: 180 };
+export const LOGO_ZONE: Zone = { x: 133, y: 110, w: 180, h: 180 };
 
 /**
  * TOP-RIGHT slot — intentionally EMPTY (Δ10). Mirrors the logo zone's visual
@@ -93,8 +93,10 @@ export const PORTRAIT = {
   eyeY: 545,
   /** Target top-of-head Y (hair included). */
   headTopY: 300,
-  /** Target shoulder-line Y. */
-  shoulderY: 820,
+  /** Target shoulder-line Y. 820 → 790 (owner review 2026-09-26: "player a
+   * bit smaller", like B3): the eye→shoulder span sets the scale, so the
+   * athlete is ~11% smaller with the eyes where they were. */
+  shoulderY: 790,
   /** Max athlete width (shoulder span may not exceed this). */
   maxW: 840,
   /** Hard bottom limit — torso ends above/behind the name block. */
@@ -140,8 +142,10 @@ export const DETAILS = {
  * authored art; only typography + stars render here, positioned into the
  * three equal panel openings.
  */
-export const STAT_RAIL: Zone = { x: 100, y: 1212, w: 786, h: 166 };
-export const STAT_COLUMNS = [{ x: 102, w: 223 }, { x: 334, w: 292 }, { x: 636, w: 248 }] as const;
+// (x values follow the plate's boxes, which moved +8 when the frame was
+// centered in the canvas — see scripts/card-art.ts.)
+export const STAT_RAIL: Zone = { x: 108, y: 1212, w: 786, h: 166 };
+export const STAT_COLUMNS = [{ x: 110, w: 223 }, { x: 342, w: 292 }, { x: 644, w: 248 }] as const;
 
 export const STAT_PANELS = {
   /** Gap between the three equal panels, in units. */

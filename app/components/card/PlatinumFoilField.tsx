@@ -37,21 +37,32 @@ export function PlatinumFoilField({ src, meta, fringe = false }: { src: string |
   return <svg aria-hidden data-layer="platinum-foil-field" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1500" style={fringe ? { mixBlendMode: "screen" } : undefined}>
     <defs>
       <linearGradient id={`fringe-fade-${id}`}><stop stopColor="white"/><stop offset=".09" stopColor="white"/><stop offset=".18" stopColor="black"/><stop offset=".82" stopColor="black"/><stop offset=".91" stopColor="white"/><stop offset="1" stopColor="white"/></linearGradient>
-      <mask id={`fringe-${id}`}><rect y="850" width="1000" height="330" fill={`url(#fringe-fade-${id})`} /></mask>
+      {/* The fringe fades in and out vertically too — a hard-edged band left
+          a visible seam across the card at shoulder height. */}
+      <linearGradient id={`fringe-vfade-${id}`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="black"/><stop offset=".3" stopColor="white"/><stop offset=".8" stopColor="white"/><stop offset="1" stopColor="black"/></linearGradient>
+      <mask id={`fringe-${id}`}><rect y="760" width="1000" height="440" fill={`url(#fringe-fade-${id})`} /></mask>
+      <mask id={`fringe-v-${id}`}><rect y="760" width="1000" height="440" fill={`url(#fringe-vfade-${id})`} /></mask>
       <clipPath id={`field-${id}`}><path d={FRAME_WINDOW} /></clipPath>
-      <clipPath id={`left-${id}`}><rect width="500" height="1500" /></clipPath>
-      <clipPath id={`right-${id}`}><rect x="500" width="500" height="1500" /></clipPath>
+      {/* Each side is stretched to its own shoulder, so the halves don't line
+          up at the center: cross-fade them over a band instead of a hard cut
+          (the cut showed as a thin vertical line above the head). */}
+      <linearGradient id={`half-l-${id}`} gradientUnits="userSpaceOnUse" x1="440" y1="0" x2="560" y2="0"><stop stopColor="white" /><stop offset="1" stopColor="black" /></linearGradient>
+      <linearGradient id={`half-r-${id}`} gradientUnits="userSpaceOnUse" x1="440" y1="0" x2="560" y2="0"><stop stopColor="black" /><stop offset="1" stopColor="white" /></linearGradient>
+      <mask id={`left-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="1500"><rect width="1000" height="1500" fill={`url(#half-l-${id})`} /></mask>
+      <mask id={`right-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="1500"><rect width="1000" height="1500" fill={`url(#half-r-${id})`} /></mask>
     </defs>
     <g clipPath={`url(#field-${id})`} mask={fringe ? `url(#fringe-${id})` : undefined} style={fringe ? { mixBlendMode: "screen", opacity: .8 } : undefined}>
+     <g mask={fringe ? `url(#fringe-v-${id})` : undefined}>
       {([-1, 1] as const).map(side => {
         const rail = side < 0 ? 70 : 930;
         const sourceRoot = side < 0 ? 280 : 720;
         const targetRoot = side < 0 ? current?.left ?? 280 : current?.right ?? 720;
         const sx = Math.max(.65, Math.min(1.6, (targetRoot - rail) / (sourceRoot - rail)));
-        return <g key={side} clipPath={`url(#${side < 0 ? "left" : "right"}-${id})`}>
+        return <g key={side} mask={`url(#${side < 0 ? "left" : "right"}-${id})`}>
           <image href="/card/finishes/platinum/b3-foil-field.png" width="1000" height="1500" preserveAspectRatio="none" transform={`matrix(${sx} 0 0 ${sy} ${rail * (1-sx)} ${70 * (1-sy)})`} />
         </g>;
       })}
+     </g>
     </g>
   </svg>;
 }

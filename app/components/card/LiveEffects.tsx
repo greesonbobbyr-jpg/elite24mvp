@@ -33,9 +33,9 @@ export function FrameFinish({ finish, isStatic }: { finish: Finish; isStatic: bo
     <defs><mask id={`metal-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="1500" style={{ maskType: "luminance" }}>
       <image href={finishAssets(finish.key).plate.file} width="1000" height="1500" />
       <path d={FRAME_WINDOW} fill="black" />
-      <rect x="115" y="1230" width="195" height="132" fill="black" />
-      <rect x="347" y="1230" width="269" height="132" fill="black" />
-      <rect x="642" y="1230" width="232" height="132" fill="black" />
+      <rect x="123" y="1230" width="195" height="132" fill="black" />
+      <rect x="355" y="1230" width="269" height="132" fill="black" />
+      <rect x="650" y="1230" width="232" height="132" fill="black" />
       <rect x="250" y="1375" width="500" height="95" fill="black" />
     </mask></defs>
     <foreignObject width="1000" height="1500" mask={`url(#metal-${id})`}>

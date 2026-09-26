@@ -24,14 +24,17 @@ export function GiantNumber({ text }: { text: string; finish: Finish }) {
       <filter id={`aura-${id}`} x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="17" /></filter>
       <filter id={`bloom-${id}`} x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="6" /></filter>
     </defs>
+    {/* Glow weights raised at the owner's review (2026-09-26: "brighter
+        number glow", like B3): wider/stronger aura + bloom, thicker bright
+        edge and white core. */}
     <g transform="translate(3 8)" fill="#030b17" stroke="#031026" strokeWidth="10">{glyph}</g>
-    <g fill="none" stroke="#168cff" strokeWidth="24" opacity=".65" filter={`url(#aura-${id})`}>{glyph}</g>
-    <g fill="none" stroke="#38aaff" strokeWidth="17" opacity=".9" filter={`url(#bloom-${id})`}>{glyph}</g>
+    <g fill="none" stroke="#168cff" strokeWidth="34" opacity=".95" filter={`url(#aura-${id})`}>{glyph}</g>
+    <g fill="none" stroke="#38aaff" strokeWidth="22" opacity="1" filter={`url(#bloom-${id})`}>{glyph}</g>
     <g fill={`url(#num-${id})`}>{glyph}</g>
-    <image href="/card/finishes/platinum/b3-foil-field.png" x="-100" y="-110" width="900" height="1350" preserveAspectRatio="none" style={{ filter: "brightness(1.5) saturate(1.15)" }} clipPath={`url(#numclip-${id})`} />
-    <g fill="none" stroke="#b4f4ff" strokeWidth="2.3" opacity=".8" filter={`url(#num-flare-${id})`}>{glyph}</g>
-    <g fill="none" stroke={`url(#edge-${id})`} strokeWidth="8">{glyph}</g>
-    <g fill="none" stroke="#f0fdff" strokeWidth="2.6">{glyph}</g>
+    <image href="/card/finishes/platinum/b3-foil-field.png" x="-100" y="-110" width="900" height="1350" preserveAspectRatio="none" style={{ filter: "brightness(1.7) saturate(1.15)" }} clipPath={`url(#numclip-${id})`} />
+    <g fill="none" stroke="#b4f4ff" strokeWidth="3" opacity=".95" filter={`url(#num-flare-${id})`}>{glyph}</g>
+    <g fill="none" stroke={`url(#edge-${id})`} strokeWidth="11">{glyph}</g>
+    <g fill="none" stroke="#ffffff" strokeWidth="3.8">{glyph}</g>
     <foreignObject x="-10" y="-10" width="720" height="580" clipPath={`url(#numclip-${id})`} style={{ mixBlendMode: "screen", opacity: .12 }}>
       <div style={{ width: "100%", height: "100%", background: "linear-gradient(120deg, transparent 28%, #b4c9ff55 43%, #fff9 47%, #f5b3ff66 52%, transparent 68%)", backgroundSize: "240% 200%", backgroundPosition: "var(--sx, 40%) var(--sy, 32%)" }} />
     </foreignObject>
