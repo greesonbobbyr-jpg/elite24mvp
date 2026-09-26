@@ -29,6 +29,7 @@ export function PlayerBacklight({ finish }: { finish: Finish; team: TeamAccent }
  * Black exclusion zones keep moving foil completely off faces and text. */
 export function FrameFinish({ finish, isStatic }: { finish: Finish; isStatic: boolean }) {
   const id = useId().replace(/:/g, "");
+  const { spot: [spotHot, spotEdge], band: [band1, band2, band3, band4] } = finish.palette.frameSheen;
   return <svg aria-hidden data-layer="frame-finish" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1500" style={{ mixBlendMode: "screen" }}>
     <defs><mask id={`metal-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="1500" style={{ maskType: "luminance" }}>
       <image href={finishAssets(finish.key).plate.file} width="1000" height="1500" />
@@ -40,7 +41,7 @@ export function FrameFinish({ finish, isStatic }: { finish: Finish; isStatic: bo
     </mask></defs>
     <foreignObject width="1000" height="1500" mask={`url(#metal-${id})`}>
       <div style={{ width: "100%", height: "100%", opacity: isStatic ? .25 : "calc(.18 + var(--so, 0) * .42)",
-        background: "radial-gradient(ellipse 30% 21% at var(--sx, 38%) var(--sy, 24%), #fff 0%, #b8efff60 30%, transparent 75%), linear-gradient(118deg, transparent 25%, #88e8ff25 38%, #f7caff80 44%, #ffffffa0 47%, #85e9ff40 51%, transparent 58%)",
+        background: `radial-gradient(ellipse 30% 21% at var(--sx, 38%) var(--sy, 24%), ${spotHot} 0%, ${spotEdge} 30%, transparent 75%), linear-gradient(118deg, transparent 25%, ${band1} 38%, ${band2} 44%, ${band3} 47%, ${band4} 51%, transparent 58%)`,
         backgroundSize: "100% 100%, 220% 220%", backgroundPosition: "center, var(--sx, 38%) var(--sy, 24%)", transition: "opacity 300ms ease",
       }} />
     </foreignObject>

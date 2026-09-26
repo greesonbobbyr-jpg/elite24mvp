@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useId, useState } from "react";
+import type { Finish } from "@/lib/cardTheme";
+import { finishAssets } from "@/lib/cardAssets";
 import type { PortraitMetaV2 } from "@/lib/portrait/normalize";
 import { shoulderRoots, type CardPoint } from "@/lib/portrait/foil";
 import { FRAME_WINDOW, PORTRAIT } from "@/lib/cardGeometry";
 
-const FIELD = "/card/finishes/platinum/b3-foil-field.png";
 /** The field's two hot nodes, where its currents converge (card units,
- * measured from the artwork). In B3 they sat on the player's shoulders. */
+ * measured from the artwork). In B3 they sat on the player's shoulders; every
+ * level's field is recolored from Platinum's, so all share them. */
 const NODES = { left: { x: 223, y: 796 }, right: { x: 762, y: 805 } };
 
 type Roots = { left: CardPoint; right: CardPoint };
@@ -42,7 +44,7 @@ function useShoulderRoots(src: string | null, meta: PortraitMetaV2 | null) {
  * of the window so its hot node lands on the matching shoulder root, then the
  * halves cross-fade at the center (a hard cut showed as a thin vertical line
  * above the head). Without roots: the authored B3 layout. */
-function FieldHalves({ id, roots, filter }: { id: string; roots: Roots | null; filter?: string }) {
+function FieldHalves({ id, file, roots, filter }: { id: string; file: string; roots: Roots | null; filter?: string }) {
   return <>
     <defs>
       <linearGradient id={`half-l-${id}`} gradientUnits="userSpaceOnUse" x1="440" y1="0" x2="560" y2="0"><stop stopColor="white" /><stop offset="1" stopColor="black" /></linearGradient>
@@ -58,7 +60,7 @@ function FieldHalves({ id, roots, filter }: { id: string; roots: Roots | null; f
       const sy = root ? Math.max(0.8, Math.min(1.25, (root.y - 70) / (node.y - 70))) : 1;
       return (
         <g key={side} mask={`url(#${side < 0 ? "left" : "right"}-${id})`}>
-          <image href={FIELD} width="1000" height="1500" preserveAspectRatio="none" filter={filter}
+          <image href={file} width="1000" height="1500" preserveAspectRatio="none" filter={filter}
             transform={`matrix(${sx} 0 0 ${sy} ${rail * (1 - sx)} ${70 * (1 - sy)})`} />
         </g>
       );
@@ -71,15 +73,21 @@ function cutoutBox(meta: PortraitMetaV2) {
   return { x: meta.tx * 1000, y: meta.ty * 1500, width: meta.srcW * meta.scale * 1500, height: meta.srcH * meta.scale * 1500 };
 }
 
-/** The authored energy field, attached to the player's shoulders: behind the
- * jersey number, and again (fringe) for the outer currents above the name scrim. */
-export function PlatinumFoilField({ src, meta, fringe = false }: { src: string | null; meta: PortraitMetaV2 | null; fringe?: boolean }) {
+/** The level's authored energy field, attached to the player's shoulders:
+ * behind the jersey number, and again (fringe) for the outer currents above
+ * the name scrim. */
+export function FoilField({ finish, src, meta, fringe = false }: {
+  finish: Finish;
+  src: string | null;
+  meta: PortraitMetaV2 | null;
+  fringe?: boolean;
+}) {
   const id = useId().replace(/:/g, "");
   const roots = useShoulderRoots(src, meta);
   // The fringe sits above the cutout; keep it off the visible body (a broad
   // player's arms reach the card edge), so energy never crosses the player.
   const body = fringe && src && meta ? { src, box: cutoutBox(meta) } : null;
-  return <svg aria-hidden data-layer="platinum-foil-field" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1500" style={fringe ? { mixBlendMode: "screen" } : undefined}>
+  return <svg aria-hidden data-layer="foil-field" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1500" style={fringe ? { mixBlendMode: "screen" } : undefined}>
     <defs>
       <clipPath id={`field-${id}`}><path d={FRAME_WINDOW} /></clipPath>
       <linearGradient id={`fringe-fade-${id}`}><stop stopColor="white" /><stop offset=".09" stopColor="white" /><stop offset=".18" stopColor="black" /><stop offset=".82" stopColor="black" /><stop offset=".91" stopColor="white" /><stop offset="1" stopColor="white" /></linearGradient>
@@ -102,7 +110,7 @@ export function PlatinumFoilField({ src, meta, fringe = false }: { src: string |
     <g clipPath={`url(#field-${id})`} mask={fringe ? `url(#fringe-${id})` : undefined} style={fringe ? { mixBlendMode: "screen", opacity: .8 } : undefined}>
       <g mask={fringe ? `url(#fringe-v-${id})` : undefined}>
         <g mask={body ? `url(#off-body-${id})` : undefined}>
-          <FieldHalves id={id} roots={roots} />
+          <FieldHalves id={id} file={finishAssets(finish.key).field.file} roots={roots} />
         </g>
       </g>
     </g>
@@ -117,14 +125,18 @@ export function PlatinumFoilField({ src, meta, fringe = false }: { src: string |
  * - where the energy meets each shoulder, the edge runs white-hot, fading away
  *   from the root, so the head is never outlined;
  * - a white-hot glow at each root.
+ * Scaled by the level's energy strength (quieter on the lower levels).
  */
-export function PlatinumEnergyEmission({ src, meta }: { src: string; meta: PortraitMetaV2 }) {
+export function EnergyEmission({ finish, src, meta }: { finish: Finish; src: string; meta: PortraitMetaV2 }) {
   const id = useId().replace(/:/g, "");
   const roots = useShoulderRoots(src, meta);
-  if (!roots) return null;
+  const energy = finish.palette.energy;
+  if (!roots || energy.strength <= 0) return null;
   const box = cutoutBox(meta);
   const rootY = (roots.left.y + roots.right.y) / 2;
-  return <svg aria-hidden data-layer="platinum-energy-emission" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1500" style={{ mixBlendMode: "screen" }}>
+  const [hot, glowMid, glowEdge] = energy.glow;
+  return <svg aria-hidden data-layer="energy-emission" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1500"
+    style={{ mixBlendMode: "screen", ...(energy.strength < 1 ? { opacity: energy.strength } : {}) }}>
     <defs>
       <clipPath id={`field-${id}`}><path d={FRAME_WINDOW} /></clipPath>
       {/* Nearness to the body, from the cutout's own alpha: bright at the
@@ -164,19 +176,19 @@ export function PlatinumEnergyEmission({ src, meta }: { src: string; meta: Portr
         <feComposite in="grown" in2="SourceAlpha" operator="out" result="ring" />
         <feGaussianBlur in="ring" stdDeviation="1.2" result="core" />
         <feGaussianBlur in="ring" stdDeviation="8" result="bloom" />
-        <feFlood floodColor="#5cc8ff" /><feComposite in2="bloom" operator="in" result="cyan" />
-        <feFlood floodColor="#ffffff" /><feComposite in2="core" operator="in" result="white" />
+        <feFlood floodColor={energy.contact} /><feComposite in2="bloom" operator="in" result="cyan" />
+        <feFlood floodColor={hot} /><feComposite in2="core" operator="in" result="white" />
         <feMerge><feMergeNode in="cyan" /><feMergeNode in="cyan" /><feMergeNode in="white" /></feMerge>
       </filter>
       <radialGradient id={`reach-${id}`}><stop stopColor="white" /><stop offset=".35" stopColor="white" stopOpacity=".7" /><stop offset="1" stopColor="white" stopOpacity="0" /></radialGradient>
       <mask id={`contact-mask-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="1500">
         {[roots.left, roots.right].map((root, i) => <circle key={i} cx={root.x} cy={root.y} r="190" fill={`url(#reach-${id})`} />)}
       </mask>
-      <radialGradient id={`root-glow-${id}`}><stop stopColor="#ffffff" stopOpacity=".95" /><stop offset=".3" stopColor="#9fe2ff" stopOpacity=".6" /><stop offset="1" stopColor="#1a8cff" stopOpacity="0" /></radialGradient>
+      <radialGradient id={`root-glow-${id}`}><stop stopColor={hot} stopOpacity=".95" /><stop offset=".3" stopColor={glowMid} stopOpacity=".6" /><stop offset="1" stopColor={glowEdge} stopOpacity="0" /></radialGradient>
     </defs>
     <g clipPath={`url(#field-${id})`}>
       <g mask={`url(#band-mask-${id})`}>
-        <g mask={`url(#near-mask-${id})`}><FieldHalves id={id} roots={roots} filter={`url(#hot-${id})`} /></g>
+        <g mask={`url(#near-mask-${id})`}><FieldHalves id={id} file={finishAssets(finish.key).field.file} roots={roots} filter={`url(#hot-${id})`} /></g>
       </g>
       <image href={src} {...box} preserveAspectRatio="none" filter={`url(#contact-${id})`} mask={`url(#contact-mask-${id})`} />
       {[roots.left, roots.right].map((root, i) => <circle key={i} cx={root.x} cy={root.y} r="44" fill={`url(#root-glow-${id})`} />)}

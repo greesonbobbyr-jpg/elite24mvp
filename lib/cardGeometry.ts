@@ -39,17 +39,8 @@ export const DEFAULT_WIDTH_PX = 340;
 /** A rectangular zone in master units. */
 export type Zone = { x: number; y: number; w: number; h: number };
 
-// ---- reference overlay -----------------------------------------------------
+// ---- frame window ------------------------------------------------------------
 
-/**
- * Where the card sits inside the approved reference screenshot
- * (design-reference/elite24mvp-player-card/elite24mvp-approved-card-reference.png,
- * 726×742 px) — MEASURED from the bright frame silhouette so the overlay can
- * align that region to the master stage. NOTE: the measured region is ~0.60
- * wide:tall, narrower than the 1000×1500 master (0.667) — a checkpoint
- * question for human review, not something the renderer resolves.
- */
-export const REFERENCE_CROP = { x: 0, y: 0, w: 1024, h: 1536 };
 /** Selects the face window in the supplied artwork; never draws metal. */
 export const FRAME_WINDOW = "M115 82H885L918 115V1160L884 1211H120L82 1170V116L115 82Z";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import type { Finish } from "@/lib/cardTheme";
 import type { PortraitMetaV2 } from "@/lib/portrait/normalize";
 
 /** Sparks leaving the shoulders, traced from the uploaded alpha rather than an
@@ -8,9 +9,10 @@ import type { PortraitMetaV2 } from "@/lib/portrait/normalize";
  * silhouette read as an outline, not energy coming from the player (owner
  * review, 2026-09-26). The paths are deterministic, so a frozen card and every
  * render size share one effect. */
-export function PortraitElectricity({ src, meta, style }: {
+export function PortraitElectricity({ src, meta, finish, style }: {
   src: string;
   meta: PortraitMetaV2;
+  finish: Finish;
   style: React.CSSProperties;
 }) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -59,9 +61,11 @@ export function PortraitElectricity({ src, meta, style }: {
     return () => { active = false; };
   }, [src, meta.shoulderY, meta.faceBox.h]);
 
-  if (!traces || traces.src !== src) return null;
+  const { strength, sparks } = finish.palette.energy;
+  if (!traces || traces.src !== src || strength <= 0) return null;
   const w = meta.srcW, h = meta.srcH;
-  return <svg aria-hidden data-electric-arcs className="pointer-events-none absolute" style={{ ...style, aspectRatio: `${w}/${h}`, height: "auto", mixBlendMode: "screen", opacity: .45 }} viewBox={`0 0 ${w} ${h}`} overflow="visible">
+  const [glow, shard, shardGlow, arc] = sparks;
+  return <svg aria-hidden data-electric-arcs className="pointer-events-none absolute" style={{ ...style, aspectRatio: `${w}/${h}`, height: "auto", mixBlendMode: "screen", opacity: .45 * strength }} viewBox={`0 0 ${w} ${h}`} overflow="visible">
     <defs>
       <filter id={`energy-${id}`} x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
         <feGaussianBlur stdDeviation={w * .004} result="wide" />
@@ -76,10 +80,10 @@ export function PortraitElectricity({ src, meta, style }: {
       </mask>
     </defs>
     <g mask={`url(#energy-mask-${id})`} fill="none" strokeLinejoin="round" strokeLinecap="round">
-      <path d={traces.arcs} stroke="#009cff" strokeWidth={w * .008} filter={`url(#energy-${id})`} />
-      <path d={traces.shards} fill="#d1f6ff" opacity=".8" />
-      <path d={traces.shards} fill="#149dff" opacity=".85" filter={`url(#energy-${id})`} />
-      <path d={traces.arcs} stroke="#b6f1ff" strokeWidth={w * .0008} />
+      <path d={traces.arcs} stroke={glow} strokeWidth={w * .008} filter={`url(#energy-${id})`} />
+      <path d={traces.shards} fill={shard} opacity=".8" />
+      <path d={traces.shards} fill={shardGlow} opacity=".85" filter={`url(#energy-${id})`} />
+      <path d={traces.arcs} stroke={arc} strokeWidth={w * .0008} />
     </g>
   </svg>;
 }

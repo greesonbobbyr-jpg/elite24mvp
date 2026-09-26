@@ -1,5 +1,5 @@
 "use client";
-import { PlatinumEnergyEmission, PlatinumFoilField } from "@/app/components/card/PlatinumFoilField";
+import { EnergyEmission, FoilField } from "@/app/components/card/FoilField";
 
 
 import type { CSSProperties } from "react";
@@ -199,7 +199,7 @@ function FullCard({
       {/* 14 · background illumination (live; team hue) */}
       <BackgroundIllumination finish={finish} team={teamAccent} />
       {/* 13 · giant jersey number (dynamic; finish material) */}
-      {finish.key === "platinum" && <PlatinumFoilField src={cutout} meta={meta} />}
+      {finish.key === "platinum" && <FoilField finish={finish} src={cutout} meta={meta} />}
       <GiantNumber text={bigNumber} finish={finish} />
       {/* 12 · atmosphere (authored texture, team-tinted) + occlusion map */}
       {/* 11 · player environmental backlight (live) */}
@@ -208,9 +208,9 @@ function FullCard({
       {cutout && cutoutPlacement && meta ? (
         <>
           <span aria-hidden data-layer="depth-shadow" className="pointer-events-none absolute inset-0" style={torsoFade}>
-            <DepthShadow src={cutout} meta={meta} style={cutoutPlacement} />
+            <DepthShadow src={cutout} meta={meta} finish={finish} style={cutoutPlacement} />
           </span>
-          {finish.key === "platinum" && <PlatinumEnergyEmission src={cutout} meta={meta} />}
+          {finish.key === "platinum" && <EnergyEmission finish={finish} src={cutout} meta={meta} />}
           <span data-layer="cutout" className="pointer-events-none absolute inset-0" style={torsoFade}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={cutout} alt={player.name} className="absolute" style={cutoutPlacement} />
@@ -218,7 +218,7 @@ function FullCard({
           {/* 9 · rim light (live; face-damped, shoulder-weighted) */}
           <span aria-hidden data-layer="rim-light" className="pointer-events-none absolute inset-0" style={torsoFade}>
             <RimLight src={cutout} meta={meta} finish={finish} style={cutoutPlacement} />
-            <PortraitElectricity src={cutout} meta={meta} style={cutoutPlacement} />
+            <PortraitElectricity src={cutout} meta={meta} finish={finish} style={cutoutPlacement} />
           </span>
         </>
       ) : cutout ? (
@@ -240,11 +240,12 @@ function FullCard({
         <PendingPortrait initials={initials} finish={finish} />
       )}
       <span aria-hidden data-layer="name-scrim" className="pointer-events-none absolute" style={{ inset: "55% 8% 17%", background: "linear-gradient(transparent, rgba(0,4,8,.12) 12%, rgba(0,4,8,.66) 38%, rgba(0,3,6,.94) 72%, #000 100%)" }} />
-      {finish.key === "platinum" && <PlatinumFoilField src={cutout} meta={meta} fringe />}
+      {finish.key === "platinum" && <FoilField finish={finish} src={cutout} meta={meta} fringe />}
       {/* 8 · name block + details (dynamic) */}
       <NameBlock firstName={firstName} surname={surname} finish={finish} />
       <DetailsLine
         parts={[player.jerseyNumber != null ? `#${player.jerseyNumber}` : null, player.position, height]}
+        finish={finish}
       />
       {/* 7 · stat-rail / lower-chassis foreground pieces (authored, above the player) */}
       <ForegroundPlate finish={finish} />

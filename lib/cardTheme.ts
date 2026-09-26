@@ -279,6 +279,84 @@ export type Finish = {
   spectral: string[];
   /** Star SVG fill gradient (the finish's metal). */
   starMaterial: { from: string; to: string };
+  /** Colors of the live layers, matched to this level's authored art. */
+  palette: FinishPalette;
+};
+
+/** The live layers' colors (number, text accents, energy, frame sheen). */
+export type FinishPalette = {
+  number: {
+    /** Dark body under the foil, top-left → bottom-right. */
+    body: string[];
+    /** Offset extrusion: fill and stroke. */
+    extrude: string;
+    extrudeEdge: string;
+    /** Wide aura and tight bloom behind the glyphs. */
+    aura: string;
+    bloom: string;
+    /** Broken spark line, bevel gradient and hairline core. */
+    flare: string;
+    edge: string[];
+    core: string;
+    /** Moving sheen band inside the glyphs. */
+    sheen: string[];
+  };
+  /** First-name gradient (top → bottom) and its shadow. */
+  firstName: string[];
+  firstNameShadow: string;
+  /** Details line: the jersey number and the separators. */
+  accent: string;
+  separator: string;
+  /** Stat panel headers and the points value gradient. */
+  statHeader: string;
+  statValue: string[];
+  energy: {
+    /** How strongly the energy leaves the player (0 none … 1 Platinum). */
+    strength: number;
+    /** Bloom where the energy meets the shoulders; root glow, center → edge. */
+    contact: string;
+    glow: string[];
+    /** Shoulder sparks: glow stroke, shard fill, shard glow, arc line. */
+    sparks: string[];
+    /** Rim light flecks and hairline. */
+    rimFoil: string;
+    rimCore: string;
+  };
+  /** Frame sheen: the light spot and the diagonal band. */
+  frameSheen: { spot: string[]; band: string[] };
+  /** Depth shadow behind the player. */
+  shadow: string;
+};
+
+/** Platinum's live-layer colors, exactly as approved (2026-09-26). */
+export const PLATINUM_PALETTE: FinishPalette = {
+  number: {
+    body: ["#051834", "#101b40", "#063951", "#07172b", "#211936", "#0a263e", "#1a3b59"],
+    extrude: "#030b17",
+    extrudeEdge: "#031026",
+    aura: "#168cff",
+    bloom: "#38aaff",
+    flare: "#b4f4ff",
+    edge: ["#fff", "#8ae5ff", "#e6b2ff", "#d5faff"],
+    core: "#ffffff",
+    sheen: ["#b4c9ff55", "#fff9", "#f5b3ff66"],
+  },
+  firstName: ["#effcff", "#77d4f1", "#147dad", "#69c5eb"],
+  firstNameShadow: "#001122",
+  accent: "#60d8ff",
+  separator: "#75dfff",
+  statHeader: "#9eeaff",
+  statValue: ["#c9f9ff", "#65cfff", "#2477ba"],
+  energy: {
+    strength: 1,
+    contact: "#5cc8ff",
+    glow: ["#ffffff", "#9fe2ff", "#1a8cff"],
+    sparks: ["#009cff", "#d1f6ff", "#149dff", "#b6f1ff"],
+    rimFoil: "#bcefff",
+    rimCore: "#d7f7ff",
+  },
+  frameSheen: { spot: ["#fff", "#b8efff60"], band: ["#88e8ff25", "#f7caff80", "#ffffffa0", "#85e9ff40"] },
+  shadow: "#000815",
 };
 
 export const FINISH_ORDER: FinishKey[] = [
@@ -304,6 +382,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 0.03,
     spectral: ["#d9a05e", "#f0c98e", "#d9a05e"],
     starMaterial: { from: "#e8b877", to: "#8a5a28" },
+    palette: PLATINUM_PALETTE,
   },
   // 2★ — silver, subtle foil begins.
   silver: {
@@ -318,6 +397,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 0.18,
     spectral: ["#aeb6c0", "#e8f1ff", "#c9d4e2", "#aeb6c0"],
     starMaterial: { from: "#f4f7fa", to: "#848d98" },
+    palette: PLATINUM_PALETTE,
   },
   // 3★ — gold, true holographic behavior arrives.
   gold: {
@@ -332,6 +412,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 0.45,
     spectral: ["#d9ab2e", "#fff3b8", "#e0742e", "#d9ab2e"],
     starMaterial: { from: "#ffee9d", to: "#a87f16" },
+    palette: PLATINUM_PALETTE,
   },
   // 4★ — platinum: cool, iridescent, the geometric MASTER finish.
   platinum: {
@@ -346,6 +427,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 0.75,
     spectral: ["#9fd3e8", "#e9d6ff", "#8affd6", "#9fb2ff", "#9fd3e8"],
     starMaterial: { from: "#f2fbff", to: "#5f93ab" },
+    palette: PLATINUM_PALETTE,
   },
   // 5★ — diamond: maximum, sophisticated. Absolutely no gems/wings/crowns or
   // rainbow clutter (§35) — restraint at full intensity.
@@ -361,6 +443,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 1.0,
     spectral: ["#cfe4f4", "#ffd9ec", "#d9ffe9", "#d9e4ff", "#cfe4f4"],
     starMaterial: { from: "#ffffff", to: "#8fa6bd" },
+    palette: PLATINUM_PALETTE,
   },
 };
 

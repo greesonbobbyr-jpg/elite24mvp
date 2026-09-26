@@ -20,15 +20,18 @@
 card directly in this checkout without committing; it was committed as a snapshot in the
 same commit that added this section. It replaces §1A's five-file asset contract:
 
-- One authored image per level: `public/card/finishes/<level>/plate.png` (frame +
-  background + empty stat boxes, cut from the owner's card art).
-- An authored energy texture per level (`b3-foil-field.png` for Platinum, derived from
-  the approved B3 reference `design/reference/platinum-b3-outward-approved.png`), bent per
-  player to meet the shoulders (`PlatinumFoilField.tsx`, `lib/portrait/foil.ts`).
+- One authored image per level: `public/card/finishes/<level>/plate.webp` (frame +
+  background + empty stat boxes, cut from the owner's card art; built by
+  `scripts/card-art.ts`).
+- An authored energy texture per level (`field.png`; Platinum's is derived from the
+  approved B3 reference `design/reference/platinum-b3-outward-approved.png`), attached per
+  player to the tops of the shoulders (`FoilField.tsx`, `lib/portrait/foil.ts`).
 - Live number / name / stats (`DynamicLayers.tsx`) plus alpha-traced electricity and rim
-  light (`PortraitElectricity.tsx`, `CutoutLighting.tsx`).
+  light (`PortraitElectricity.tsx`, `CutoutLighting.tsx`), colored by the level's palette
+  (`lib/cardTheme.ts`).
 - Codex's own notes: `CARD-REDESIGN-HANDOFF.md`, `CARD-VISUAL-PLAN.md`, `public/card/README.md`.
-- Platinum is **not yet owner-approved**; geometry is **not locked**.
+- **Platinum is owner-approved and the geometry is locked (2026-09-26).** The approved
+  render is the baseline in `design/baselines/`.
 
 **Owner decisions, 2026-09-25:**
 

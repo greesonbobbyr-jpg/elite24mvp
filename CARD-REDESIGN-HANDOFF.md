@@ -56,6 +56,10 @@ Round 2, owner: the energy "is starting too far away from the player like it is 
 
 - Cause: the roots were sampled at the chin row, which on long hair is the hair, and anchored the field's inner filaments instead of its two hot nodes (where the currents converge: 223,796 and 762,805). Both nodes floated ~50 units above the shoulders, beside the hair. Separately, the traced electricity rim ran around the whole silhouette: a literal outline.
 - `lib/portrait/foil.ts` `shoulderRoots` now finds the top of each shoulder: scanning down from the chin, the edge holds at the neck (or the hair over it), then turns outward; the root is 0.3 face widths past that. Each field half is scaled so its hot node lands on the root.
-- `PlatinumEnergyEmission` (under the cutout): the field's currents nearest the body run hotter, the shoulder edge runs white-hot around each root (fading away from it, never on the head), and a glow marks each root.
+- `EnergyEmission` (in `FoilField.tsx`, under the cutout): the field's currents nearest the body run hotter, the shoulder edge runs white-hot around each root (fading away from it, never on the head), and a glow marks each root.
 - The electricity is shoulder sparks only (no traced rim); the rim light is faint above the shoulders. The fringe pass no longer draws over the player's arms.
 - Checked on Cason plus four reshaped builds (broad, narrow, long neck, sloped) and in WebKit.
+
+**Locked.** The owner approved Platinum after round 2: `GEOMETRY_LOCKED = true`, baseline `design/baselines/master-platinum.png`.
+
+**Level-aware (plan C2).** Every color the live layers had hardcoded as Platinum blue is now in the level's palette (`FinishPalette`, `lib/cardTheme.ts`); each level's art is `finishes/<level>/{plate.webp, field.png}`; `PlatinumFoilField` became the generic `FoilField`. Platinum renders pixel-identical to the baseline (0 px differ).
