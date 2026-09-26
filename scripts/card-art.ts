@@ -20,14 +20,15 @@
  * derived from the approved B3 reference) → finishes/platinum/field.webp (q90).
  * Bronze / Silver / Gold / Diamond: the finished Platinum plate and field,
  * recolored through each level's look (lib/finishArt.ts); the plate's frame and
- * window take separate ramps.
+ * window take separate ramps, and each level's field gets its own swirls so no
+ * two levels' currents are identical.
  * This edits supplied, authored pixels; it never draws metal (Plan v4).
  */
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 import { FRAME_WINDOW, MASTER_W } from "../lib/cardGeometry";
-import { LEVEL_LOOKS, pixelRecolor, type Recolor } from "../lib/finishArt";
+import { LEVEL_LOOKS, pixelRecolor, swirlSource, type Recolor, type Swirl } from "../lib/finishArt";
 
 const PLATE_SOURCE = join("design", "reference", "platinum-plate-source.png");
 const FIELD_SOURCE = join("design", "reference", "platinum-field-source.png");
@@ -132,6 +133,33 @@ function recolor(pixels: Buffer, width: number, height: number, channels: number
   return out;
 }
 
+/** Twist an image by a level's swirls (bilinear resample). */
+function twist(pixels: Buffer, width: number, height: number, channels: number, swirls: Swirl[]): Buffer {
+  const unit = width / MASTER_W;
+  const out = Buffer.from(pixels);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const [sx, sy] = swirlSource(x, y, swirls, unit);
+      if (sx === x && sy === y) continue;
+      const x0 = Math.max(0, Math.min(width - 2, Math.floor(sx)));
+      const y0 = Math.max(0, Math.min(height - 2, Math.floor(sy)));
+      const fx = Math.max(0, Math.min(1, sx - x0));
+      const fy = Math.max(0, Math.min(1, sy - y0));
+      const a = (y0 * width + x0) * channels;
+      const b = a + channels;
+      const c = a + width * channels;
+      const d = c + channels;
+      const o = (y * width + x) * channels;
+      for (let k = 0; k < channels; k++) {
+        out[o + k] = Math.round(
+          pixels[a + k] * (1 - fx) * (1 - fy) + pixels[b + k] * fx * (1 - fy) + pixels[c + k] * (1 - fx) * fy + pixels[d + k] * fx * fy,
+        );
+      }
+    }
+  }
+  return out;
+}
+
 async function writeWebp(pixels: Buffer, width: number, height: number, channels: 3 | 4, file: string, quality: number) {
   mkdirSync(join(file, ".."), { recursive: true });
   await sharp(pixels, { raw: { width, height, channels } }).webp({ quality, effort: 6 }).toFile(file);
@@ -147,7 +175,8 @@ async function main() {
 
   for (const [level, look] of Object.entries(LEVEL_LOOKS)) {
     await writeWebp(recolor(plate, W, H, 3, look.frame, look.window, mask), W, H, 3, join(finishDir(level), "plate.webp"), 92);
-    await writeWebp(recolor(field.data, fw, fh, 3, look.field), fw, fh, 3, join(finishDir(level), "field.webp"), 90);
+    const own = twist(field.data, fw, fh, 3, look.swirls);
+    await writeWebp(recolor(own, fw, fh, 3, look.field), fw, fh, 3, join(finishDir(level), "field.webp"), 90);
   }
 }
 

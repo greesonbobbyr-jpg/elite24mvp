@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DIAMOND_PALETTE, FINISHES, FINISH_ORDER, PLATINUM_PALETTE } from "../lib/cardTheme";
-import { LEVEL_LOOKS, brightness, derivePalette, pixelRecolor, rampTable, recolorHex } from "../lib/finishArt";
+import { LEVEL_LOOKS, brightness, derivePalette, pixelRecolor, rampTable, recolorHex, swirlSource } from "../lib/finishArt";
 
 // Level looks: Bronze, Silver and Gold derive their live colors from
 // Platinum's through the same ramps that recolor their art; Diamond's are
@@ -17,13 +17,15 @@ function colors(value: unknown): string[] {
 }
 
 describe("recolorHex", () => {
+  const top = gold.ramp[gold.ramp.length - 1][1];
+
   it("maps brightness through the ramp's ends", () => {
-    expect(recolorHex("#000000", gold)).toBe("#000000");
-    expect(recolorHex("#ffffff", gold)).toBe("#fff5e0");
+    expect(recolorHex("#000000", gold)).toBe(gold.ramp[0][1]);
+    expect(recolorHex("#ffffff", gold)).toBe(top);
   });
 
   it("keeps alpha and accepts short forms", () => {
-    expect(recolorHex("#fff9", gold)).toBe("#fff5e099");
+    expect(recolorHex("#fff9", gold)).toBe(`${top}99`);
     expect(recolorHex("#b8efff60", gold).slice(7)).toBe("60");
     expect(recolorHex("#fff", gold)).toBe(recolorHex("#ffffff", gold));
   });
@@ -55,6 +57,23 @@ describe("holographic foil", () => {
   it("keeps darks dark and highlights white", () => {
     expect(Math.max(...at(400, 400, 0, 0, 0))).toBe(0);
     expect(Math.min(...at(400, 400, 255, 255, 255))).toBeGreaterThan(245);
+  });
+});
+
+describe("swirls", () => {
+  const NODES = [[223, 796], [762, 805]];
+
+  it("never move the field's hot nodes, so energy still leaves the shoulders", () => {
+    for (const look of Object.values(LEVEL_LOOKS)) {
+      for (const [x, y] of NODES) expect(swirlSource(x, y, look.swirls, 1)).toEqual([x, y]);
+      for (const s of look.swirls) for (const [x, y] of NODES) expect(Math.hypot(x - s.x, y - s.y)).toBeGreaterThan(s.radius);
+    }
+  });
+
+  it("give every level its own currents", () => {
+    const moved = (swirls: typeof LEVEL_LOOKS.gold.swirls) => swirlSource(170, 300, swirls, 1).map(Math.round).join();
+    const all = Object.values(LEVEL_LOOKS).map((look) => moved(look.swirls));
+    expect(new Set(all).size).toBe(all.length);
   });
 });
 

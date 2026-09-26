@@ -392,9 +392,9 @@ export const DIAMOND_PALETTE: FinishPalette = {
     rimFoil: "#ffd9fb",
     rimCore: "#eafcff",
   },
-  frameSheen: { spot: ["#fff", "#ffd6fa90"], band: ["#7df9ff55", "#ff8af0a0", "#ffffffc0", "#9d7dff70"], strength: 1.6 },
+  frameSheen: { spot: ["#fff", "#ffd6fa90"], band: ["#7df9ff55", "#ff8af0a0", "#ffffffc0", "#9d7dff70"], strength: 2.4 },
   shadow: "#07000f",
-  holo: { colors: HOLO_SPECTRUM, strength: 0.7 },
+  holo: { colors: HOLO_SPECTRUM, strength: 1 },
 };
 
 export const FINISH_ORDER: FinishKey[] = [

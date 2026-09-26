@@ -57,7 +57,8 @@ export function HoloShimmer({ finish, isStatic }: { finish: Finish; isStatic: bo
   const id = useId().replace(/:/g, "");
   const holo = finish.palette.holo;
   if (!holo) return null;
-  const loop = [...holo.colors, holo.colors[0]];
+  // The spectrum twice across the band: tighter color changes shimmer more.
+  const loop = [...holo.colors, ...holo.colors, holo.colors[0]];
   const bands = loop.map((color, i) => `${color} ${((i / (loop.length - 1)) * 100).toFixed(1)}%`).join(", ");
   return <svg aria-hidden data-layer="holo-shimmer" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1500" style={{ mixBlendMode: "soft-light" }}>
     <defs><clipPath id={`face-${id}`}><path d={FRAME_WINDOW} /></clipPath></defs>

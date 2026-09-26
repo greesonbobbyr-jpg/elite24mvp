@@ -48,7 +48,17 @@ export type LevelLook = {
   live?: Recolor;
   /** How strongly the energy leaves the player (Platinum is 1). */
   energy: number;
+  /** Twists in this level's copy of the energy, so no two levels' currents
+   * are identical (owner review, 2026-09-26: "same effect but not all the
+   * exact same"). */
+  swirls: Swirl[];
 };
+
+/** Texture within `radius` card units of (x, y) turns by up to `turn`
+ * radians at the center, easing to none at the edge. Keep every swirl more
+ * than its radius from the field's hot nodes (223,796 and 762,805), so the
+ * energy still leaves the shoulders. */
+export type Swirl = { x: number; y: number; radius: number; turn: number };
 
 /** Diamond's foil spectrum: cyan, blue, violet, magenta, gold, mint. */
 export const HOLO_SPECTRUM = ["#35f0ff", "#5b7cff", "#b150ff", "#ff4fd8", "#ffd166", "#47ffb5"];
@@ -64,6 +74,7 @@ export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
     field: { ramp: [[0, "#000000"], [0.35, "#0e0703"], [0.65, "#4a2a12"], [0.88, "#b27442"], [1, "#f1cfa4"]], gain: 0.35 },
     live: { ramp: [[0, "#000000"], [0.2, "#1a0e05"], [0.45, "#5e3517"], [0.65, "#a8622c"], [0.8, "#d99159"], [0.92, "#f2c393"], [1, "#fff1e0"]] },
     energy: 0.3,
+    swirls: [{ x: 170, y: 280, radius: 230, turn: 0.9 }, { x: 840, y: 330, radius: 230, turn: -0.8 }],
   },
   // Cool steel, faint energy. Owner-approved 2026-09-26.
   silver: {
@@ -72,23 +83,27 @@ export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
     field: { ramp: [[0, "#000000"], [0.3, "#0b0d10"], [0.6, "#434b56"], [0.85, "#aeb9c6"], [1, "#ffffff"]], gain: 0.6 },
     live: { ramp: [[0, "#000000"], [0.2, "#121417"], [0.45, "#3f464f"], [0.65, "#7d8793"], [0.8, "#b9c3ce"], [0.92, "#e6ecf2"], [1, "#ffffff"]] },
     energy: 0.55,
+    swirls: [{ x: 210, y: 420, radius: 240, turn: -0.9 }, { x: 800, y: 240, radius: 250, turn: 0.8 }, { x: 110, y: 1030, radius: 150, turn: 0.7 }],
   },
-  // Warm gold with visible energy, kept a step under Platinum: a darker frame,
-  // dimmer energy and number glow.
+  // True yellow gold (orange amber read too close to Bronze's copper), with
+  // visible energy kept a step under Platinum: darker frame, dimmer energy
+  // and number glow.
   gold: {
-    frame: { ramp: [[0, "#0f0a02"], [0.25, "#3f2a06"], [0.5, "#876014"], [0.7, "#c19434"], [0.85, "#e6c97a"], [1, "#fbf1d2"]] },
-    window: { ramp: [[0, "#040301"], [0.3, "#171004"], [0.6, "#4a320e"], [0.85, "#b07f27"], [1, "#f5e2ad"]] },
-    field: { ramp: [[0, "#000000"], [0.2, "#100801"], [0.45, "#573206"], [0.7, "#d4841b"], [0.88, "#ffcd6a"], [1, "#fffaee"]], gain: 0.7 },
-    live: { ramp: [[0, "#000000"], [0.15, "#170d02"], [0.35, "#4f3005"], [0.55, "#9f650d"], [0.72, "#d18f24"], [0.86, "#efc46a"], [1, "#fff5e0"]] },
+    frame: { ramp: [[0, "#110c02"], [0.25, "#463507"], [0.5, "#947214"], [0.7, "#cfaa38"], [0.85, "#eed683"], [1, "#fdf6dc"]] },
+    window: { ramp: [[0, "#040301"], [0.3, "#181205"], [0.6, "#52400f"], [0.85, "#bf9a30"], [1, "#fbeebd"]] },
+    field: { ramp: [[0, "#000000"], [0.2, "#100b01"], [0.45, "#5a4608"], [0.7, "#d3a722"], [0.88, "#ffe07a"], [1, "#fffcee"]], gain: 0.7 },
+    live: { ramp: [[0, "#000000"], [0.15, "#181202"], [0.35, "#554005"], [0.55, "#ad840e"], [0.72, "#dfb42a"], [0.86, "#f6dc80"], [1, "#fffbea"]] },
     energy: 0.65,
+    swirls: [{ x: 150, y: 200, radius: 240, turn: 1.1 }, { x: 860, y: 430, radius: 240, turn: -1 }, { x: 880, y: 1040, radius: 150, turn: -0.8 }],
   },
   // The top: a crystal frame and white-hot energy in holographic foil. Its
   // live palette (DIAMOND_PALETTE in lib/cardTheme.ts) is authored.
   diamond: {
-    frame: { ramp: [[0, "#0d1015"], [0.25, "#555f6e"], [0.5, "#b0bfcd"], [0.7, "#eaf2f9"], [0.85, "#ffffff"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 2.2, strength: 0.55 } },
-    window: { ramp: [[0, "#030306"], [0.3, "#0c0a14"], [0.6, "#3a3450"], [0.85, "#d6d0ee"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 1.3, strength: 0.6 } },
-    field: { ramp: [[0, "#000000"], [0.25, "#0c0d12"], [0.5, "#6c7280"], [0.75, "#e6e9ef"], [0.9, "#ffffff"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 1.3, strength: 0.9 }, gain: 1.2 },
+    frame: { ramp: [[0, "#0d1015"], [0.25, "#555f6e"], [0.5, "#b0bfcd"], [0.7, "#eaf2f9"], [0.85, "#ffffff"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 3, strength: 0.6 } },
+    window: { ramp: [[0, "#030306"], [0.3, "#0c0a14"], [0.6, "#3a3450"], [0.85, "#d6d0ee"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 2, strength: 0.6 } },
+    field: { ramp: [[0, "#000000"], [0.25, "#0c0d12"], [0.5, "#6c7280"], [0.75, "#e6e9ef"], [0.9, "#ffffff"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 1.8, strength: 0.9 }, gain: 1.2 },
     energy: 1,
+    swirls: [{ x: 230, y: 250, radius: 260, turn: -1.3 }, { x: 770, y: 320, radius: 260, turn: 1.3 }, { x: 100, y: 560, radius: 170, turn: 0.9 }, { x: 900, y: 1020, radius: 150, turn: 0.9 }],
   },
 };
 
@@ -156,6 +171,26 @@ export function pixelRecolor(spec: Recolor, width: number, height: number) {
     const original = [r, g, b];
     for (let c = 0; c < 3; c++) out[c] = Math.min(255, (mapped[c] * (1 - keep) + original[c] * keep) * gain);
   };
+}
+
+/** Where output pixel (x, y) samples from, undoing each swirl. `unit` is
+ * image pixels per card unit. */
+export function swirlSource(x: number, y: number, swirls: Swirl[], unit: number): [number, number] {
+  let sx = x;
+  let sy = y;
+  for (const s of swirls) {
+    const cx = s.x * unit;
+    const cy = s.y * unit;
+    const r = s.radius * unit;
+    const dx = sx - cx;
+    const dy = sy - cy;
+    const d = Math.hypot(dx, dy);
+    if (d >= r) continue;
+    const a = -s.turn * (1 - d / r) ** 2;
+    sx = cx + dx * Math.cos(a) - dy * Math.sin(a);
+    sy = cy + dx * Math.sin(a) + dy * Math.cos(a);
+  }
+  return [sx, sy];
 }
 
 /** Recolor a CSS hex color (#rgb, #rgba, #rrggbb or #rrggbbaa) through a
