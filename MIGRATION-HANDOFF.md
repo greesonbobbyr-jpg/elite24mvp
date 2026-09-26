@@ -42,25 +42,26 @@ same commit that added this section. It replaces §1A's five-file asset contract
   → Head Coach cards (one per team) → player cards. Tap a node to branch out its children;
   search opens the right branch. The 2026-08-13 `/org/view` on `grouping-layers` did not
   match: staff shown as player cards, no connecting lines, phone bugs.
-- **E24 Commissioner:** the owner wants platform-wide visibility down to each player, except
-  journals. ⚠ This conflicts with CLAUDE.md §3 Non-Negotiable 2 (team-private). Do not
-  build it until the owner amends §3.2 with safeguards: read-only, no journals or reviews,
-  no contact details by default, every view logged, role granted by operator script only,
-  disclosed to orgs and parents.
+- **E24 Commissioner = announcements, not a data view** (owner clarified 2026-09-25). The
+  app owner (Bobby or Gary) needs a way to send ads, updates and app news to all players,
+  orgs, leagues, etc.; orgs should be able to send certain things to their own org too.
+  No cross-org viewing of player data, so there's no conflict with CLAUDE.md §3.2.
+  ⚠ "Ads" reaching player accounts (kids as young as 10) needs an owner ruling under §3.1;
+  the recommendation is promotional messages to adults only, clearly labeled, no tracking.
 
 **Owner's handwritten notes (September) — status after a code audit:**
 
 | Note | Status |
 |---|---|
 | Username login "only email works" | Real: staff have no username; typing "@name" hits the email lookup; iOS autocorrect is on. Quick fix. |
-| App auto-zooms on phones | iOS zooms into inputs under 16 px; nearly all inputs are 14 px. Quick fix. |
+| Pages open slightly zoomed in; you have to zoom out | Two causes: content wider than the phone on some pages (e.g. the fixed 320 px card on `main`), and iOS zooming into 14 px inputs (login, check-in) with the zoom persisting across in-app navigation. Quick fix: overflow check of every page + 16 px inputs on phones. |
 | Height in ft + in | Single "inches" box today. Quick fix. |
 | Coach sets reminder time | Per-team hour exists, dropdown limited to 3–8 PM. Widen now; minutes + timezone later. |
 | Emergency contact / org info | `ProfileContact` + permissions exist, no UI. Later. |
 | GM spot + add assistant coaches | Roles exist; no invite UI (seed-only). Later. |
 | Coach pictures in Alerts / Timeouts / Team Circle | Not started; needs private storage. Later. |
 | Links in Team Circle (coach only) | Not started. Later. |
-| Commissioner broadcasts to every level | Not started; see ⚠ above. |
+| Owner announcements to everyone; orgs to their own org | Not started. Alerts are per-team only today. Later. |
 | Timeouts + assignments | Timeouts done; "assignments" needs defining. Later. |
 
 Also found by the audit (quick fixes): old Timeouts are shown to newly joined players;
