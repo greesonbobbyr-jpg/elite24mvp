@@ -2,9 +2,7 @@
 
 Owner-approved card renders. `scripts/shoot-cards.ts --check` pixel-compares fresh shots against these to catch accidental drift. The owner's visual approval is the design authority; these files only record it.
 
-- `master-platinum.png`: the Platinum master, approved 2026-09-26 (geometry locked).
-- `master-bronze.png`, `master-silver.png`: approved 2026-09-26 (level review round 1). Their energy has since been given its own swirls at the owner's request; re-shoot them once the owner has seen that (Silver's check reports the change until then).
-- Gold and Diamond: in review.
+- `master-bronze.png`, `master-silver.png`, `master-gold.png`, `master-platinum.png`, `master-diamond.png`: the master card at every level, approved together on 2026-09-26 ("This looks really good. Let's go with this for now"). Platinum's geometry was locked earlier the same day; it has changed by 0.01% since (its energy texture moved to WebP), and this set records the lineup as approved.
 
 Check (needs the card dev server against the local `e24cards` database):
 

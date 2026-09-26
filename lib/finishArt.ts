@@ -67,7 +67,7 @@ export const HOLO_SPECTRUM = ["#35f0ff", "#5b7cff", "#b150ff", "#ff4fd8", "#ffd1
  * premium than the one below, Gold stays under Platinum, and Diamond is the
  * wild, holographic top. Metal names never print on the card. */
 export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
-  // Warm matte bronze, little energy. Owner-approved 2026-09-26.
+  // Warm matte bronze, little energy. Owner-approved 2026-09-26 (swirls too).
   bronze: {
     frame: { ramp: [[0, "#0d0703"], [0.3, "#35200f"], [0.55, "#6e4322"], [0.75, "#a4703f"], [0.9, "#cf9c66"], [1, "#ecc99a"]] },
     window: { ramp: [[0, "#030201"], [0.3, "#140b05"], [0.6, "#3a2311"], [0.85, "#94613a"], [1, "#e0bb90"]] },
@@ -76,7 +76,7 @@ export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
     energy: 0.3,
     swirls: [{ x: 170, y: 280, radius: 230, turn: 0.9 }, { x: 840, y: 330, radius: 230, turn: -0.8 }],
   },
-  // Cool steel, faint energy. Owner-approved 2026-09-26.
+  // Cool steel, faint energy. Owner-approved 2026-09-26 (swirls too).
   silver: {
     frame: { ramp: [[0, "#0b0c0e"], [0.3, "#383c42"], [0.55, "#80878f"], [0.75, "#c1c7cf"], [0.9, "#eceff3"], [1, "#ffffff"]] },
     window: { ramp: [[0, "#030304"], [0.3, "#101316"], [0.6, "#373e47"], [0.85, "#96a1ad"], [1, "#eef2f6"]] },
@@ -87,7 +87,7 @@ export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
   },
   // True yellow gold (orange amber read too close to Bronze's copper), with
   // visible energy kept a step under Platinum: darker frame, dimmer energy
-  // and number glow.
+  // and number glow. Owner-approved 2026-09-26.
   gold: {
     frame: { ramp: [[0, "#110c02"], [0.25, "#463507"], [0.5, "#947214"], [0.7, "#cfaa38"], [0.85, "#eed683"], [1, "#fdf6dc"]] },
     window: { ramp: [[0, "#040301"], [0.3, "#181205"], [0.6, "#52400f"], [0.85, "#bf9a30"], [1, "#fbeebd"]] },
@@ -98,6 +98,7 @@ export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
   },
   // The top: a crystal frame and white-hot energy in holographic foil. Its
   // live palette (DIAMOND_PALETTE in lib/cardTheme.ts) is authored.
+  // Owner-approved 2026-09-26.
   diamond: {
     frame: { ramp: [[0, "#0d1015"], [0.25, "#555f6e"], [0.5, "#b0bfcd"], [0.7, "#eaf2f9"], [0.85, "#ffffff"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 3, strength: 0.6 } },
     window: { ramp: [[0, "#030306"], [0.3, "#0c0a14"], [0.6, "#3a3450"], [0.85, "#d6d0ee"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 2, strength: 0.6 } },
