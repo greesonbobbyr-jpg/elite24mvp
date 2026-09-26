@@ -10,8 +10,8 @@
  *                                  [--overlay]         shoot at 50% reference blend
  *                                  [--static]          freeze finish motion (?static=1)
  *                                  [--check]           compare against design/baselines/
- *                                  [--master]          the Platinum checkpoint: ONE card at
- *                                                      1000×1500 css px (2000×3000 @2x), overlay 0%
+ *                                  [--master]          the Platinum master: the studio card
+ *                                                      after "Process Cason original", overlay 0%
  *                                  [--login <email>]   default: gary@elite24.demo
  *
  * Requires a dev server running against the LOCAL card DB (e24cards) and the
@@ -75,6 +75,18 @@ async function main() {
   await page.addStyleTag({
     content: "[class~='fixed'] { display: none !important; }",
   });
+  if (flag("master")) {
+    // The approved master is the app pipeline's own cutout of the sample
+    // photo (on-device background removal + fitting), not the saved cutout.
+    await page.getByRole("button", { name: "Process Cason original" }).click();
+    await page.waitForFunction(
+      () => /Background removed/.test(document.querySelector('[role="status"]')?.textContent ?? ""),
+      null,
+      { timeout: 240000, polling: 1000 },
+    );
+    // Shoulder roots and traced effects measure the new cutout after it loads.
+    await page.waitForTimeout(2500);
+  }
   // Let fonts/images settle before shooting.
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(500);

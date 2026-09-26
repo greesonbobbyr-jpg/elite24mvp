@@ -19,9 +19,12 @@
 //      finish assets — it must NEVER read different geometry.
 //   2. Team identity never touches geometry either (it is environmental).
 //
-// STATUS: PROVISIONAL — geometry not yet locked.
+// STATUS: ★ GEOMETRY LOCKED ★ — the owner approved the Platinum master on
+// 2026-09-26 (review round 2). Its render is the baseline in
+// design/baselines/master-platinum.png (`scripts/shoot-cards.ts --master
+// --check`); every other level reuses this geometry unchanged.
 
-export const GEOMETRY_LOCKED = false;
+export const GEOMETRY_LOCKED = true;
 
 /** Master design-unit canvas. */
 export const MASTER_W = 1000;
