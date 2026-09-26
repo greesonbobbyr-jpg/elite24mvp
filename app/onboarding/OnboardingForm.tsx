@@ -9,8 +9,8 @@ const initialState: OnboardingState = {};
 // Same dark field treatment as login/signup — this is a kid's first screen and
 // should read as the same product.
 const inputClass =
-  "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
-const labelClass = "mb-1 block text-xs font-medium text-zinc-400";
+  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-red-500";
+const labelClass = "mb-1 block text-xs font-medium text-muted";
 
 export function OnboardingForm() {
   const [state, formAction, pending] = useActionState(
@@ -40,7 +40,7 @@ export function OnboardingForm() {
 
       {/* Basics — all optional */}
       <fieldset className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
           The basics
         </legend>
         <div className="col-span-2 sm:col-span-1">
@@ -72,7 +72,7 @@ export function OnboardingForm() {
 
       {/* Favorites — optional */}
       <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
           Favorites
         </legend>
         <div>

@@ -49,7 +49,7 @@ export default async function BrandPage({
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
       {/* Identity hero — the full player card */}
       <div className="flex flex-col items-center gap-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
+        <span className="text-xs font-semibold uppercase tracking-wide text-brand">
           Your Brand
         </span>
         <PlayerCard
@@ -70,7 +70,7 @@ export default async function BrandPage({
       {/* The Dream — self + staff only (no longer teammate-visible) */}
       {fullView && (
         <Card>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-red-500">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-brand">
             The Dream
           </h2>
           <p className="mt-1 text-lg font-medium">{profile.dream}</p>
@@ -110,14 +110,14 @@ export default async function BrandPage({
       {/* Highlight — a pasted link only */}
       {profile.highlightUrl && (
         <Card>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-red-500">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-brand">
             Highlight
           </h2>
           <a
             href={profile.highlightUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-1 inline-block break-all text-sm font-medium text-red-500 hover:underline"
+            className="mt-1 inline-block break-all text-sm font-medium text-brand hover:underline"
           >
             {profile.highlightUrl}
           </a>
@@ -132,8 +132,8 @@ export default async function BrandPage({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+    <div className="rounded-lg border border-line bg-raised/60 px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
         {label}
       </div>
       <div className="text-base font-semibold">{value}</div>

@@ -85,11 +85,11 @@ export function PushToggle() {
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+    <div className="rounded-xl border border-ink/10 bg-ink/[0.02] px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">Daily reminder</p>
-          <p className="text-xs text-zinc-500">
+          <p className="text-sm font-semibold text-ink">Daily reminder</p>
+          <p className="text-xs text-subtle">
             One nudge on days you haven&apos;t checked in — at the time your
             coach sets. No spam.
           </p>
@@ -100,14 +100,14 @@ export function PushToggle() {
           onClick={enabled ? disable : enable}
           className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-60 ${
             enabled
-              ? "border border-white/20 text-zinc-300 hover:border-white/40"
+              ? "border border-ink/20 text-ink-mid hover:border-ink/40"
               : "bg-red-600 text-white hover:bg-red-500"
           }`}
         >
           {busy ? "…" : enabled ? "Turn off" : "Turn on"}
         </button>
       </div>
-      {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-brand">{error}</p>}
     </div>
   );
 }

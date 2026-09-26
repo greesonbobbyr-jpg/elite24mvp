@@ -5,7 +5,7 @@ import { setMyUsername, type UsernameState } from "./actions";
 
 const initialState: UsernameState = {};
 const field =
-  "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
+  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500";
 
 // The staffer's own login: their email always works; a username is optional
 // and lets them log in the same way players do.
@@ -21,12 +21,12 @@ export function LoginUsernameForm({
   return (
     <form action={formAction} className="flex flex-col gap-2">
       {email && (
-        <p className="text-xs text-zinc-500">
-          Email login: <span className="break-all text-zinc-300">{email}</span>
+        <p className="text-xs text-subtle">
+          Email login: <span className="break-all text-ink-mid">{email}</span>
         </p>
       )}
-      <label htmlFor="username" className="text-xs font-medium text-zinc-400">
-        Username {username ? "" : <span className="text-zinc-600">(optional)</span>}
+      <label htmlFor="username" className="text-xs font-medium text-muted">
+        Username {username ? "" : <span className="text-subtle">(optional)</span>}
       </label>
       <div className="flex gap-2">
         <input
@@ -51,11 +51,11 @@ export function LoginUsernameForm({
           {pending ? "Saving…" : "Save"}
         </button>
       </div>
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-subtle">
         3–20 characters · letters, numbers, underscore. Log in with either one.
       </p>
-      {state.error && <p className="text-sm text-red-500">{state.error}</p>}
-      {state.ok && <p className="text-sm text-green-400">Saved — you can log in with it now.</p>}
+      {state.error && <p className="text-sm text-brand">{state.error}</p>}
+      {state.ok && <p className="text-sm text-good">Saved — you can log in with it now.</p>}
     </form>
   );
 }

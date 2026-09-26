@@ -9,8 +9,8 @@ import { HeightFields } from "@/app/components/HeightFields";
 
 const initialState: BrandState = {};
 const fieldClass =
-  "w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-red-500";
-const labelClass = "mb-1 block text-xs font-medium text-zinc-400";
+  "w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm outline-none focus:border-red-500";
+const labelClass = "mb-1 block text-xs font-medium text-muted";
 
 type EditableProfile = {
   heightInches: number | null;
@@ -33,7 +33,7 @@ export function EditBrandForm({ profile }: { profile: EditableProfile }) {
 
   return (
     <details className={cardDefault}>
-      <summary className="cursor-pointer select-none text-sm font-semibold text-red-500">
+      <summary className="cursor-pointer select-none text-sm font-semibold text-brand">
         Edit my brand
       </summary>
       <form action={formAction} className="mt-4 flex flex-col gap-4">

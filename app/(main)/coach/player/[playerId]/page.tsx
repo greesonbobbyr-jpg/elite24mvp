@@ -73,19 +73,19 @@ export default async function CoachPlayerPage({
       <section>
         <p className="e24-eyebrow mb-2">Today</p>
         {view.checkedInAt ? (
-          <div className="rounded-xl border border-green-600/30 bg-green-600/10 px-4 py-3 text-sm font-medium text-green-300">
+          <div className="rounded-xl border border-green-600/30 bg-green-600/10 px-4 py-3 text-sm font-medium text-good-2">
             ✓ Checked in at {formatTime(view.checkedInAt)}
             {/* Review STATUS only — its text is player-private, like the journal. */}
             <span className="mt-1 block text-xs font-normal">
               {view.reviewDoneToday ? (
-                <span className="text-green-400">✓ Pro Review done</span>
+                <span className="text-good">✓ Pro Review done</span>
               ) : (
-                <span className="text-zinc-500">Pro Review not done yet</span>
+                <span className="text-subtle">Pro Review not done yet</span>
               )}
             </span>
           </div>
         ) : (
-          <div className="rounded-xl border border-amber-600/30 bg-amber-600/10 px-4 py-3 text-sm font-medium text-amber-300">
+          <div className="rounded-xl border border-amber-600/30 bg-amber-600/10 px-4 py-3 text-sm font-medium text-warn">
             Not checked in yet
           </div>
         )}
@@ -99,12 +99,12 @@ export default async function CoachPlayerPage({
         <p className="e24-eyebrow mb-2">Today&apos;s Mindset takeaway</p>
         {view.mindsetTakeaway ? (
           <div className="e24-surface rounded-2xl border border-red-600/25 p-4">
-            <p className="relative z-10 whitespace-pre-wrap text-sm text-zinc-100">
+            <p className="relative z-10 whitespace-pre-wrap text-sm text-ink">
               {view.mindsetTakeaway}
             </p>
           </div>
         ) : (
-          <p className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 text-sm text-zinc-500">
+          <p className="rounded-xl border border-ink/5 bg-ink/[0.02] px-4 py-3 text-sm text-subtle">
             Not written yet
           </p>
         )}
@@ -125,7 +125,7 @@ export default async function CoachPlayerPage({
       <section className="e24-surface rounded-2xl border border-red-600/25 p-5">
         <div className="relative z-10">
           <p className="e24-eyebrow">Points</p>
-          <p className="mt-1 text-4xl font-black tabular-nums text-white">
+          <p className="mt-1 text-4xl font-black tabular-nums text-ink">
             {view.points}
           </p>
           {canAdjust && <AdjustPointsForm playerId={view.id} />}
@@ -138,18 +138,18 @@ export default async function CoachPlayerPage({
 
 function Chip({ label, value }: { label: string; value: string }) {
   return (
-    <span className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 text-xs">
-      <span className="text-zinc-500">{label} </span>
-      <span className="font-semibold text-white">{value}</span>
+    <span className="rounded-lg border border-ink/10 bg-field px-2.5 py-1 text-xs">
+      <span className="text-subtle">{label} </span>
+      <span className="font-semibold text-ink">{value}</span>
     </span>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-center">
-      <div className="text-lg font-black tabular-nums text-white">{value}</div>
-      <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+    <div className="rounded-xl border border-ink/10 bg-field px-3 py-3 text-center">
+      <div className="text-lg font-black tabular-nums text-ink">{value}</div>
+      <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-subtle">
         {label}
       </div>
     </div>

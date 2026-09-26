@@ -7,8 +7,8 @@ import { PhotoUploadField } from "@/app/components/PhotoUploadField";
 
 const initialState: TeamSettingsState = {};
 const field =
-  "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
-const label = "mb-1 block text-xs font-medium text-zinc-400";
+  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500";
+const label = "mb-1 block text-xs font-medium text-muted";
 
 // Any hour of the day, team-local (owner note: coaches set it at whatever time
 // they want). The server accepts 0–23; minute-level times are a later step.
@@ -49,10 +49,10 @@ export function TeamSettingsForm({
 
       {/* Daily check-in reminder (Web Push) — the coach controls the trigger.
           Players opt in on their Notifications page; nothing sends without both. */}
-      <div className="border-t border-white/10 pt-4">
+      <div className="border-t border-ink/10 pt-4">
         <label htmlFor="reminderHour" className={label}>
           Daily check-in reminder{" "}
-          <span className="text-zinc-600">(players who opted in, team time)</span>
+          <span className="text-subtle">(players who opted in, team time)</span>
         </label>
         <select
           id="reminderHour"
@@ -70,12 +70,12 @@ export function TeamSettingsForm({
       </div>
 
       {/* The coach's OWN photo (shows in their header identity chip). */}
-      <div className="border-t border-white/10 pt-4">
+      <div className="border-t border-ink/10 pt-4">
         <PhotoUploadField defaultPhotoUrl={coachPhotoUrl} />
       </div>
 
-      {state.error && <p className="text-sm text-red-500">{state.error}</p>}
-      {state.ok && <p className="text-sm text-green-400">Saved.</p>}
+      {state.error && <p className="text-sm text-brand">{state.error}</p>}
+      {state.ok && <p className="text-sm text-good">Saved.</p>}
 
       <button
         type="submit"

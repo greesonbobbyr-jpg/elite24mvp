@@ -13,7 +13,7 @@ export function HeightFields({
   labelClass: string;
 }) {
   const current = splitHeight(defaultInches);
-  const unit = "pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-zinc-500";
+  const unit = "pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-subtle";
   // Desktop spin arrows would sit on top of the ft/in label in these small boxes.
   const noSpinner =
     "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";

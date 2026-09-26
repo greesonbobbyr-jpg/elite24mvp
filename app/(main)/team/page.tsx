@@ -61,7 +61,7 @@ export default async function TeamSettingsPage() {
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
       <header>
         <p className="e24-eyebrow">Team Settings</p>
-        <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">
+        <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-ink">
           {team.name}
         </h1>
       </header>

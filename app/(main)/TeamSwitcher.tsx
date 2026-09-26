@@ -20,13 +20,14 @@ export function TeamSwitcher({
   const acting = memberships.find((m) => m.id === actingMembershipId);
 
   return (
-    <details className="border-b border-zinc-900 bg-zinc-950/60 px-4 py-1.5 text-sm">
+    // Part of the black brand frame under the header, in both modes.
+    <details className="theme-dark border-b border-line-faint bg-canvas px-4 py-1.5 text-sm">
       <summary className="cursor-pointer list-none select-none">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-subtle">
           Playing for{" "}
         </span>
-        <span className="font-bold text-white">{acting?.team.name ?? "—"}</span>
-        <span className="ml-1 text-zinc-500">▾</span>
+        <span className="font-bold text-ink">{acting?.team.name ?? "—"}</span>
+        <span className="ml-1 text-subtle">▾</span>
       </summary>
       <div className="flex flex-col gap-1 py-2">
         {memberships.map((m) => (
@@ -34,12 +35,12 @@ export function TeamSwitcher({
             <input type="hidden" name="membershipId" value={m.id} />
             <button
               type="submit"
-              className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left transition hover:bg-white/5 ${
+              className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left transition hover:bg-ink/5 ${
                 m.id === actingMembershipId ? "bg-red-600/15 font-semibold" : ""
               }`}
             >
               <span>{m.team.name}</span>
-              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-subtle">
                 {roleLabel(m.role) ?? "Player"}
               </span>
             </button>

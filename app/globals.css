@@ -1,26 +1,219 @@
 @import "tailwindcss";
 
-/* Brand theme (CLAUDE.md section 9): black base, white text throughout. The
-   <html> element carries a `dark` class; this custom variant makes Tailwind's
-   `dark:` utilities respond to that class so surface styles apply everywhere. */
-@custom-variant dark (&:where(.dark, .dark *));
+/* ---- LIGHT + DARK MODE (CLAUDE.md §9) -------------------------------------
+   The app follows the phone's appearance setting; the ☰ menu's Appearance
+   switch can pin light or dark instead (cookie e24_theme → <html data-theme>,
+   set server-side so the page never flashes the wrong mode).
+
+   Every UI color is a named ROLE below: a light value on :root, and a dark
+   value that is exactly the original all-black design. Use the roles —
+   text-ink, text-muted, bg-panel, bg-field, border-line, bg-ink/5 … — never
+   raw white/black/zinc, so a new screen works in both modes for free.
+   (Raw red/green tints like bg-red-600/15 are fine: they read on both.)
+
+   `.theme-dark` pins a region dark in either mode: the brand frame (header,
+   tab bars) and the TIME OUT takeover. Player Cards keep their own fixed
+   palette — they're the collectible object, dark in both modes. */
 
 :root {
-  --background: #0a0a0a; /* black base */
-  --foreground: #ffffff; /* white text */
-  /* Native controls (select menus, pickers, scrollbars) render in their dark
-     style — otherwise a <select> draws a light box under our white text. */
-  color-scheme: dark;
+  color-scheme: light;
+  /* surfaces */
+  --canvas: #f4f4f5;
+  --panel: #ffffff;
+  --raised: #ffffff;
+  --raised-2: #e4e4e7;
+  --raised-3: #d4d4d8;
+  --field: #ffffff;
+  /* lines */
+  --line: #e4e4e7;
+  --line-strong: #d4d4d8;
+  --line-faint: #ececef;
+  /* drop-shadow tint: soft on white, deep on black */
+  --shade: rgb(24 24 27 / 0.1);
+  /* text, strongest → faintest (all but "faint" pass WCAG AA on canvas) */
+  --ink: #0b0b0d;
+  --ink-soft: #27272a;
+  --ink-mid: #3f3f46;
+  --muted: #52525b;
+  --subtle: #63636b;
+  --faint: #a1a1aa;
+  /* hint text in empty fields — clearly lighter than a typed value */
+  --placeholder: #a1a1aa;
+  /* brand + status text (darker than the dark-mode shades, for contrast) */
+  --brand: #c81e1e;
+  --brand-2: #a81a1a;
+  --brand-3: #991b1b;
+  --good: #15803d;
+  --good-2: #166534;
+  --warn: #92400e;
+  --info: #1d4ed8;
+  --gold: #8a6a0c;
+  --gold-2: #7a5c05;
+  /* Team Circle bubbles: mine is the inverse of the page */
+  --bubble-mine: #18181b;
+  --bubble-mine-ink: #ffffff;
+  --bubble-ink: #27272a;
+  --bubble-glow: rgba(255, 255, 255, 0.7);
+  --bubble-from: #fdeeee;
+  --bubble-mid: #fbe4e4;
+  --bubble-to: #f8dada;
+  --bubble-shadow: 0 4px 12px -8px rgba(127, 29, 29, 0.35);
+  --bubble-ring: rgba(220, 38, 38, 0.18);
+  --bubble-sheen: rgba(255, 255, 255, 0.35);
+  /* the .e24-surface material */
+  --surface-glow: rgba(220, 38, 38, 0.07);
+  --surface-from: #ffffff;
+  --surface-to: #ffffff;
+  --surface-shadow: 0 8px 24px -14px rgba(24, 24, 27, 0.2);
+  --surface-ring: rgba(220, 38, 38, 0.14);
+  --surface-arc: rgba(220, 38, 38, 0.08);
+  --surface-arc-2: rgba(220, 38, 38, 0.05);
+  --surface-sheen: rgba(255, 255, 255, 0);
 }
 
+/* DARK values — the original design, 1:1, except --subtle (lifted to pass
+   WCAG AA). Two copies (pinned + phone setting); keep them identical. */
+:root[data-theme="dark"],
+.theme-dark {
+  color-scheme: dark;
+  --canvas: #0a0a0a;
+  --panel: rgb(9 9 11 / 0.4);
+  --raised: #18181b;
+  --raised-2: #27272a;
+  --raised-3: #3f3f46;
+  --field: rgb(0 0 0 / 0.4);
+  --line: #27272a;
+  --line-strong: #3f3f46;
+  --line-faint: #18181b;
+  --shade: rgb(0 0 0 / 0.4);
+  --ink: #ffffff;
+  --ink-soft: #e4e4e7;
+  --ink-mid: #d4d4d8;
+  --muted: #a1a1aa;
+  --subtle: #85858e; /* was zinc-500 (#71717a): 3.9–4.3:1 on black, below AA */
+  --faint: #52525b;
+  --placeholder: #71717a;
+  --brand: #ef4444;
+  --brand-2: #f87171;
+  --brand-3: #fca5a5;
+  --good: #4ade80;
+  --good-2: #86efac;
+  --warn: #fbbf24;
+  --info: #93c5fd;
+  --gold: #e8c766;
+  --gold-2: #d4af37;
+  --bubble-mine: #ffffff;
+  --bubble-mine-ink: #18181b;
+  --bubble-ink: #ffffff;
+  --bubble-glow: rgba(248, 113, 113, 0.35);
+  --bubble-from: #b91c1c;
+  --bubble-mid: #7f1d1d;
+  --bubble-to: #450a0a;
+  --bubble-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.6);
+  --bubble-ring: rgba(255, 255, 255, 0.08);
+  --bubble-sheen: rgba(255, 255, 255, 0.1);
+  --surface-glow: rgba(220, 38, 38, 0.2);
+  --surface-from: #1a0a0c;
+  --surface-to: #0a0a0a;
+  --surface-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7);
+  --surface-ring: rgba(220, 38, 38, 0.12);
+  --surface-arc: rgba(220, 38, 38, 0.12);
+  --surface-arc-2: rgba(220, 38, 38, 0.08);
+  --surface-sheen: rgba(255, 255, 255, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #0a0a0a;
+    --panel: rgb(9 9 11 / 0.4);
+    --raised: #18181b;
+    --raised-2: #27272a;
+    --raised-3: #3f3f46;
+    --field: rgb(0 0 0 / 0.4);
+    --line: #27272a;
+    --line-strong: #3f3f46;
+    --line-faint: #18181b;
+    --shade: rgb(0 0 0 / 0.4);
+    --ink: #ffffff;
+    --ink-soft: #e4e4e7;
+    --ink-mid: #d4d4d8;
+    --muted: #a1a1aa;
+    --subtle: #85858e;
+    --faint: #52525b;
+    --placeholder: #71717a;
+    --brand: #ef4444;
+    --brand-2: #f87171;
+    --brand-3: #fca5a5;
+    --good: #4ade80;
+    --good-2: #86efac;
+    --warn: #fbbf24;
+    --info: #93c5fd;
+    --gold: #e8c766;
+    --gold-2: #d4af37;
+    --bubble-mine: #ffffff;
+    --bubble-mine-ink: #18181b;
+    --bubble-ink: #ffffff;
+    --bubble-glow: rgba(248, 113, 113, 0.35);
+    --bubble-from: #b91c1c;
+    --bubble-mid: #7f1d1d;
+    --bubble-to: #450a0a;
+    --bubble-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.6);
+    --bubble-ring: rgba(255, 255, 255, 0.08);
+    --bubble-sheen: rgba(255, 255, 255, 0.1);
+    --surface-glow: rgba(220, 38, 38, 0.2);
+    --surface-from: #1a0a0c;
+    --surface-to: #0a0a0a;
+    --surface-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7);
+    --surface-ring: rgba(220, 38, 38, 0.12);
+    --surface-arc: rgba(220, 38, 38, 0.12);
+    --surface-arc-2: rgba(220, 38, 38, 0.08);
+    --surface-sheen: rgba(255, 255, 255, 0.06);
+  }
+}
+
+/* The roles as Tailwind colors (`inline`, so a .theme-dark region's values
+   apply to everything inside it). */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-raised-2: var(--raised-2);
+  --color-raised-3: var(--raised-3);
+  --color-field: var(--field);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-line-faint: var(--line-faint);
+  --color-shade: var(--shade);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-mid: var(--ink-mid);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-faint: var(--faint);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-3: var(--brand-3);
+  --color-good: var(--good);
+  --color-good-2: var(--good-2);
+  --color-warn: var(--warn);
+  --color-info: var(--info);
+  --color-gold: var(--gold);
+  --color-gold-2: var(--gold-2);
+  --color-bubble-mine: var(--bubble-mine);
+  --color-bubble-mine-ink: var(--bubble-mine-ink);
+  --color-bubble-ink: var(--bubble-ink);
+}
+
+/* Hint text in every field, one rule (unlayered, so no utility overrides it). */
+::placeholder {
+  color: var(--placeholder);
+  opacity: 1;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--canvas);
+  color: var(--ink);
   font-family: var(--font-roboto), system-ui, -apple-system, "Segoe UI",
     Helvetica, Arial, sans-serif;
 }
@@ -70,11 +263,11 @@ body {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(120% 80% at 100% 0%, rgba(220, 38, 38, 0.2), transparent 60%),
-    linear-gradient(135deg, #1a0a0c 0%, #0a0a0a 55%);
+    radial-gradient(120% 80% at 100% 0%, var(--surface-glow), transparent 60%),
+    linear-gradient(135deg, var(--surface-from) 0%, var(--surface-to) 55%);
   box-shadow:
-    0 10px 30px -12px rgba(0, 0, 0, 0.7),
-    inset 0 0 0 1px rgba(220, 38, 38, 0.12);
+    var(--surface-shadow),
+    inset 0 0 0 1px var(--surface-ring);
 }
 /* faint concentric court-arc rings, bottom-right corner */
 .e24-surface::before {
@@ -86,8 +279,8 @@ body {
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
   background:
-    radial-gradient(circle, transparent 57%, rgba(220, 38, 38, 0.12) 58%, rgba(220, 38, 38, 0.12) 60%, transparent 61%),
-    radial-gradient(circle, transparent 71%, rgba(220, 38, 38, 0.08) 72%, rgba(220, 38, 38, 0.08) 74%, transparent 75%);
+    radial-gradient(circle, transparent 57%, var(--surface-arc) 58%, var(--surface-arc) 60%, transparent 61%),
+    radial-gradient(circle, transparent 71%, var(--surface-arc-2) 72%, var(--surface-arc-2) 74%, transparent 75%);
   pointer-events: none;
 }
 /* soft diagonal sheen */
@@ -95,31 +288,31 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, rgba(255, 255, 255, 0.06) 0%, transparent 38%);
+  background: linear-gradient(105deg, var(--surface-sheen) 0%, transparent 38%);
   pointer-events: none;
 }
 
 /* Chat-bubble material: a compact cousin of .e24-surface for OTHER people's
-   messages. A vivid red→black diagonal gradient with a soft top-left glow and a
-   thin light inset ring, plus a diagonal sheen — but NO concentric court-arc
-   rings (too busy at bubble scale). The lighter red end keeps white text legible
-   and stops stacked bubbles from reading as one dark mass. Content sits in a
-   `relative z-10` layer. */
+   messages (text in text-bubble-ink). Dark mode: a vivid red→black diagonal
+   gradient with a soft top-left glow, a thin light inset ring and a diagonal
+   sheen; the lighter red end keeps white text legible. Light mode: a soft red
+   tint with dark text (all-red would shout on a white page). No court-arc
+   rings (too busy at bubble scale). Content sits in a `relative z-10` layer. */
 .e24-bubble {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(120% 90% at 0% 0%, rgba(248, 113, 113, 0.35), transparent 55%),
-    linear-gradient(135deg, #b91c1c 0%, #7f1d1d 55%, #450a0a 100%);
+    radial-gradient(120% 90% at 0% 0%, var(--bubble-glow), transparent 55%),
+    linear-gradient(135deg, var(--bubble-from) 0%, var(--bubble-mid) 55%, var(--bubble-to) 100%);
   box-shadow:
-    0 6px 18px -10px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    var(--bubble-shadow),
+    inset 0 0 0 1px var(--bubble-ring);
 }
 .e24-bubble::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, rgba(255, 255, 255, 0.1) 0%, transparent 40%);
+  background: linear-gradient(105deg, var(--bubble-sheen) 0%, transparent 40%);
   pointer-events: none;
 }
 
@@ -130,7 +323,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #ef4444; /* red-500 */
+  color: var(--brand);
 }
 
 /* iPhones zoom the page in when you tap a text field smaller than 16px, and

@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Roboto, Barlow_Semi_Condensed } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
+import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { getCurrentUserId } from "@/lib/session";
 import { roleLabel } from "@/lib/format";
 import {
@@ -109,16 +111,20 @@ async function DevSwitcherSlot() {
   }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // `dark` forces the brand's black theme app-wide (CLAUDE.md section 9).
+  // Light/dark (CLAUDE.md §9): no data-theme = follow the phone's setting;
+  // "light"/"dark" = the person's pinned choice from the ☰ menu. Rendered
+  // server-side so the first paint is already in the right mode.
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
     <html
       lang="en"
-      className={`${roboto.variable} ${barlow.variable} dark h-full antialiased`}
+      data-theme={theme === "system" ? undefined : theme}
+      className={`${roboto.variable} ${barlow.variable} h-full antialiased`}
     >
       {/* pb-16 reserves space so the global footer + page content clear the
           player bottom tab bar (rendered in the (main) layout). */}

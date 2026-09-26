@@ -48,21 +48,21 @@ export function ReviewCard({
   // Already reviewed — show the closed loop, not a form.
   if (savedReview) {
     return (
-      <section className="rounded-xl border border-red-600/40 bg-red-950/10 p-5">
+      <section className="rounded-xl border border-red-600/40 bg-red-600/[0.04] p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="e24-eyebrow">Pro Review</h2>
-          <span className="rounded-full bg-green-600/15 px-2.5 py-0.5 text-xs font-semibold text-green-400">
+          <span className="rounded-full bg-green-600/15 px-2.5 py-0.5 text-xs font-semibold text-good">
             ✓ Done · +5
           </span>
         </div>
-        <p className="mt-2 text-sm font-semibold text-white">
+        <p className="mt-2 text-sm font-semibold text-ink">
           {OUTCOME_LABEL[savedReview.outcome]}
         </p>
-        <p className="mt-1.5 whitespace-pre-wrap text-sm text-zinc-300">
+        <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-mid">
           {savedReview.learned}
         </p>
         {savedReview.noteToTomorrow && (
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-subtle">
             For tomorrow-you: “{savedReview.noteToTomorrow}”
           </p>
         )}
@@ -74,7 +74,7 @@ export function ReviewCard({
   // "next". Tapping expands the full review form.
   if (!expanded) {
     return (
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 transition hover:border-red-500/40">
+      <section className="rounded-xl border border-line bg-canvas/60 transition hover:border-red-500/40">
         <button
           type="button"
           onClick={() => setExpanded(true)}
@@ -85,11 +85,11 @@ export function ReviewCard({
             🌙
           </span>
           <span className="e24-eyebrow shrink-0">Pro Review</span>
-          <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
+          <span className="min-w-0 flex-1 truncate text-sm text-subtle">
             End your day — how did the plan go? · +5
           </span>
           <span
-            className="shrink-0 text-lg text-red-500/70 transition-transform group-hover:rotate-90"
+            className="shrink-0 text-lg text-brand/70 transition-transform group-hover:rotate-90"
             aria-hidden
           >
             ▸
@@ -100,41 +100,41 @@ export function ReviewCard({
   }
 
   return (
-    <section className="e24-reveal rounded-xl border border-red-600/40 bg-red-950/10 p-5">
+    <section className="e24-reveal rounded-xl border border-red-600/40 bg-red-600/[0.04] p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="e24-eyebrow">Pro Review</h2>
         <button
           type="button"
           onClick={() => setExpanded(false)}
           aria-label="Collapse"
-          className="rounded-full px-1.5 py-1 text-sm text-zinc-500 transition hover:text-zinc-300 active:scale-95"
+          className="rounded-full px-1.5 py-1 text-sm text-subtle transition hover:text-ink-mid active:scale-95"
         >
           ▴
         </button>
       </div>
-      <p className="mt-1 text-lg font-semibold text-white">
+      <p className="mt-1 text-lg font-semibold text-ink">
         How did today&apos;s plan go?
       </p>
 
       {/* Plan vs action, side by side. */}
-      <div className="mt-3 rounded-lg border border-white/10 bg-black/30 p-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+      <div className="mt-3 rounded-lg border border-ink/10 bg-field p-3">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">
           You said
         </p>
-        <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-200">
+        <p className="mt-1 whitespace-pre-wrap text-sm text-ink-soft">
           {reflection}
         </p>
-        <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+        <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">
           You logged
         </p>
         {loggedQuests.length === 0 ? (
-          <p className="mt-1 text-sm text-zinc-500">No quests logged yet.</p>
+          <p className="mt-1 text-sm text-subtle">No quests logged yet.</p>
         ) : (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {loggedQuests.map((q) => (
               <span
                 key={q.title}
-                className="rounded-full bg-[#d4af37]/15 px-2.5 py-0.5 text-xs font-semibold text-[#e8c766]"
+                className="rounded-full bg-[#d4af37]/15 px-2.5 py-0.5 text-xs font-semibold text-gold"
               >
                 {q.title} +{q.points}
               </span>
@@ -153,8 +153,8 @@ export function ReviewCard({
               onClick={() => setOutcome(o.value)}
               className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wide transition active:scale-95 ${
                 outcome === o.value
-                  ? "border-red-500 bg-red-600/20 text-red-300"
-                  : "border-white/15 text-zinc-400 hover:border-white/30"
+                  ? "border-red-500 bg-red-600/20 text-brand-3"
+                  : "border-ink/15 text-muted hover:border-ink/30"
               }`}
             >
               {o.label}
@@ -172,23 +172,23 @@ export function ReviewCard({
             required
             rows={2}
             placeholder="One honest thing about today's work…"
-            className="mt-1.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
+            className="mt-1.5 w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
           />
         </div>
 
         <div>
           <label htmlFor="review-note" className="e24-eyebrow">
-            One line for tomorrow-you <span className="normal-case text-zinc-600">(optional)</span>
+            One line for tomorrow-you <span className="normal-case text-subtle">(optional)</span>
           </label>
           <input
             id="review-note"
             name="noteToTomorrow"
             placeholder="It shows up in tomorrow's check-in."
-            className="mt-1.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
+            className="mt-1.5 w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
           />
         </div>
 
-        {state.error && <p className="text-sm text-red-500">{state.error}</p>}
+        {state.error && <p className="text-sm text-brand">{state.error}</p>}
 
         <Button type="submit" size="sm" disabled={pending || !outcome} className="self-start">
           {pending ? "Saving…" : "Finish the day · +5"}

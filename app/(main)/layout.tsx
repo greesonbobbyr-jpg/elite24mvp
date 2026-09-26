@@ -76,7 +76,9 @@ export default async function MainLayout({
           (black-translucent status bar + viewport-fit=cover); 0 in a browser
           tab. The inner row keeps the centered wordmark on the row, not on
           the padded box. */}
-      <header className="border-b border-zinc-900 px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
+      {/* theme-dark: the header is the brand frame — black in both modes
+          (and the installed iPhone app's status-bar text is always white). */}
+      <header className="theme-dark border-b border-line-faint bg-black px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
         <div className="relative flex items-center justify-between">
           {/* left: player/coach identity avatar (photo or initials). Profile
               fields come from the permanent Profile since 4b (careerPoints ==
@@ -104,8 +106,9 @@ export default async function MainLayout({
           )}
           {/* center: the Elite24MVP wordmark (live text, non-link) */}
           <div
+            role="img"
             aria-label="Elite24MVP"
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black italic leading-none text-white"
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-black italic leading-none text-ink"
             style={{
               fontFamily: "var(--font-barlow)",
               fontSize: "clamp(0.95rem, 4.5vw, 1.25rem)",

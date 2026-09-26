@@ -7,7 +7,7 @@ import { Button } from "@/app/components/ui/Button";
 
 const initialState: NotificationState = {};
 const fieldClass =
-  "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
+  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500";
 
 // canSendTimeout: server-decided (matrix send_timeout — HEAD_COACH/ORG_ADMIN).
 // Staff without it never see the toggle; the server enforces it regardless.
@@ -57,11 +57,11 @@ export function NotificationComposer({
           className="mt-0.5 h-4 w-4 accent-red-600"
         />
         <span>
-          <span className="inline-flex items-center gap-1.5 font-semibold text-red-500">
+          <span className="inline-flex items-center gap-1.5 font-semibold text-brand">
             <WhistleIcon className="h-4 w-4" />
             Send as TIME OUT
           </span>
-          <span className="block text-xs text-zinc-500">
+          <span className="block text-xs text-subtle">
             Urgent — takes over every player&apos;s screen until they acknowledge it.
           </span>
         </span>
@@ -69,7 +69,7 @@ export function NotificationComposer({
       )}
 
       {state.error && (
-        <p className="relative z-10 text-sm text-red-500">{state.error}</p>
+        <p className="relative z-10 text-sm text-brand">{state.error}</p>
       )}
       <Button type="submit" disabled={pending} className="relative z-10 self-start">
         {pending ? (

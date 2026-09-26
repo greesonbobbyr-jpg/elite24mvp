@@ -40,7 +40,7 @@ function snippetOf(body: string, gifId: string | null): string {
 // Muted, neutral section kicker — quieter than the red .e24-eyebrow so the
 // bubbles carry the color.
 const kicker =
-  "text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500";
+  "text-xs font-semibold uppercase tracking-[0.15em] text-subtle";
 
 export default async function BoardPage({
   searchParams,
@@ -90,18 +90,19 @@ export default async function BoardPage({
           <header className="flex shrink-0 items-start justify-between gap-4 px-6 pb-2 pt-4">
             <div className="min-w-0">
               <p className={kicker}>Team Circle</p>
-              <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">
+              <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-ink">
                 {user.team.name}
               </h1>
             </div>
             {logoUrl ? (
               // Plain <img>: team-controlled arbitrary URL (avoid next/image
-              // domain allowlist). No logo → render nothing.
+              // domain allowlist). No logo → render nothing. Black tile so
+              // logos drawn for the black brand still show in light mode.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
                 alt={`${user.team.name} logo`}
-                className="h-14 w-14 shrink-0 object-contain"
+                className="h-14 w-14 shrink-0 rounded-xl bg-black object-contain p-1"
               />
             ) : null}
           </header>
@@ -115,7 +116,7 @@ export default async function BoardPage({
               <section className="e24-surface rounded-2xl border border-red-600/25 p-6">
                 <div className="relative z-10">
                   <p className={kicker}>Team Circle</p>
-                  <p className="mt-2 text-sm text-zinc-400">
+                  <p className="mt-2 text-sm text-muted">
                     No messages yet. Start the conversation below.
                   </p>
                 </div>
@@ -126,7 +127,7 @@ export default async function BoardPage({
                 <div className="pb-2 text-center">
                   <Link
                     href={`/board?limit=${limit + BOARD_PAGE_SIZE}`}
-                    className="inline-block rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold text-zinc-400 transition hover:border-white/30 hover:text-zinc-200"
+                    className="inline-block rounded-full border border-ink/15 px-4 py-1.5 text-xs font-semibold text-muted transition hover:border-ink/30 hover:text-ink-soft"
                   >
                     Show earlier messages
                   </Link>
@@ -218,11 +219,11 @@ export default async function BoardPage({
                       {/* name + staff tag — OTHERS, once per group */}
                       {!isMine && isFirstOfGroup && (
                         <div className="mb-1 flex items-center gap-1.5 px-1">
-                          <span className="text-xs font-semibold text-zinc-300">
+                          <span className="text-xs font-semibold text-ink-mid">
                             {authorName}
                           </span>
                           {authorBadge && (
-                            <span className="rounded bg-red-600/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-400">
+                            <span className="rounded bg-red-600/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-2">
                               {authorBadge}
                             </span>
                           )}
@@ -254,10 +255,10 @@ export default async function BoardPage({
                           data-msg-bubble
                           className={`relative z-10 rounded-2xl px-3.5 py-2.5 ${
                             isMine
-                              ? `bg-white text-zinc-900 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.5)] ${
+                              ? `bg-bubble-mine text-bubble-mine-ink shadow-[0_4px_14px_-6px_rgba(0,0,0,0.5)] ${
                                   isLastOfGroup ? "rounded-br-md" : ""
                                 }`
-                              : `e24-bubble text-white ${
+                              : `e24-bubble text-bubble-ink ${
                                   isLastOfGroup ? "rounded-bl-md" : ""
                                 }`
                           }`}
@@ -266,7 +267,7 @@ export default async function BoardPage({
                             {message.body.trim() !== "" && (
                               <p
                                 className={`whitespace-pre-wrap text-sm ${
-                                  isMine ? "text-zinc-900" : "text-white"
+                                  isMine ? "text-bubble-mine-ink" : "text-bubble-ink"
                                 }`}
                               >
                                 {message.body}
@@ -301,7 +302,7 @@ export default async function BoardPage({
                           />
                           <button
                             type="submit"
-                            className="text-[10px] text-zinc-600 transition hover:text-red-500 hover:underline"
+                            className="text-[10px] text-subtle transition hover:text-brand hover:underline"
                           >
                             Delete
                           </button>
@@ -318,7 +319,7 @@ export default async function BoardPage({
           </BoardScroller>
 
           {/* BOTTOM — pinned composer (always visible) */}
-          <div className="shrink-0 border-t border-red-600/20 bg-black/40 px-6 py-3">
+          <div className="shrink-0 border-t border-red-600/20 bg-field px-6 py-3">
             <MessageComposer
               initialBody={spotlightDraft ?? undefined}
               initialType={spotlightDraft ? "SPOTLIGHT" : undefined}
