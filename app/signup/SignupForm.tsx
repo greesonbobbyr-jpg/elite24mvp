@@ -26,6 +26,22 @@ export function SignupForm() {
           <label htmlFor="email" className={label}>Email</label>
           <input id="email" name="email" type="email" autoComplete="email" required className={field} />
         </div>
+        <div>
+          <label htmlFor="username" className={label}>
+            Username <span className="text-zinc-600">(optional — log in with it or your email)</span>
+          </label>
+          <input
+            id="username"
+            name="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            autoComplete="username"
+            maxLength={21}
+            placeholder="e.g. coachgary"
+            className={field}
+          />
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="password" className={label}>Password</label>

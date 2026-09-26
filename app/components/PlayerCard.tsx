@@ -12,6 +12,7 @@ import {
   BOTTOM_VIGNETTE,
   type Tier,
 } from "@/lib/cardTheme";
+import { formatHeight } from "@/lib/height";
 
 // The flagship player identity card. ONE skeleton, three sizes, fully driven by
 // team.primaryColor / secondaryColor (never hardcoded). Readability is a hard
@@ -50,11 +51,6 @@ function makeInitials(name: string): string {
       .map((w) => w[0]?.toUpperCase() ?? "")
       .join("") || "?"
   );
-}
-
-function formatHeight(inches?: number | null): string | null {
-  if (inches == null) return null;
-  return `${Math.floor(inches / 12)}'${inches % 12}"`;
 }
 
 // A full, solid metallic ring — the tier "material". A conic sweep of the tier's
@@ -215,7 +211,10 @@ function FullCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
       style={{
         ...metalFrameStyle(tier, 24, 5),
         width: 320,
-        touchAction: "none",
+        maxWidth: "100%", // never wider than a small phone
+        // Vertical scroll and pinch-zoom still work when a drag starts on the
+        // card ("none" trapped them); sideways drags drive the tilt.
+        touchAction: "pan-y pinch-zoom",
         transformStyle: "preserve-3d",
         willChange: "transform",
         transition: "transform 220ms cubic-bezier(.2,.7,.2,1)",

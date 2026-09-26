@@ -91,6 +91,8 @@ function PlayerAccountForm({
           name="username"
           required
           autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           autoComplete="username"
           minLength={3}
           maxLength={20}

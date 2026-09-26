@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { completeOnboarding, type OnboardingState } from "./actions";
+import { HeightFields } from "@/app/components/HeightFields";
 
 const initialState: OnboardingState = {};
 
@@ -66,19 +67,7 @@ export function OnboardingForm() {
             className={inputClass}
           />
         </div>
-        <div>
-          <label htmlFor="heightInches" className={labelClass}>
-            Height (in)
-          </label>
-          <input
-            id="heightInches"
-            name="heightInches"
-            type="number"
-            min={0}
-            placeholder="68"
-            className={inputClass}
-          />
-        </div>
+        <HeightFields inputClass={inputClass} labelClass={labelClass} />
       </fieldset>
 
       {/* Favorites — optional */}

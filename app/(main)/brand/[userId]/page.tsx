@@ -6,11 +6,7 @@ import { EditBrandForm } from "../EditBrandForm";
 import { Card } from "@/app/components/ui/Card";
 import { PlayerCard } from "@/app/components/PlayerCard";
 import { photoSrc } from "@/lib/photoUrl";
-
-function formatHeight(inches: number | null): string | null {
-  if (inches == null) return null;
-  return `${Math.floor(inches / 12)}'${inches % 12}"`;
-}
+import { formatHeight } from "@/lib/height";
 
 // A player's team-facing "Your Brand" profile. Access is org-bounded via
 // lib/brand-access (Stage 4b): the owner sees everything and can edit; org

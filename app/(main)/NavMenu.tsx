@@ -8,7 +8,9 @@ type NavLink = { href: string; label: string };
 
 // Top-right hamburger menu. Pure styling + open/close behavior — it just renders
 // whatever links it's given (the routing targets are decided by the caller).
-export function NavMenu({ links }: { links: NavLink[] }) {
+// `loginName` is what this person types to log in, shown so nobody has to
+// guess (players rarely see their username anywhere else).
+export function NavMenu({ links, loginName }: { links: NavLink[]; loginName?: string | null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -47,6 +49,12 @@ export function NavMenu({ links }: { links: NavLink[] }) {
 
       {open && (
         <nav className="e24-reveal absolute right-0 z-50 mt-2 w-52 origin-top-right overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-xl shadow-black/40">
+          {loginName && (
+            <p className="border-b border-zinc-800 px-4 py-2.5 text-xs text-zinc-500">
+              Signed in as{" "}
+              <span className="break-all font-semibold text-zinc-300">{loginName}</span>
+            </p>
+          )}
           {links.map((link) => (
             <Link
               key={link.href + link.label}

@@ -6,6 +6,7 @@ import { JoinCodeCard } from "./JoinCodeCard";
 import { TeamSettingsForm } from "./TeamSettingsForm";
 import { RosterManager } from "./RosterManager";
 import { StartSeasonForm } from "./StartSeasonForm";
+import { LoginUsernameForm } from "./LoginUsernameForm";
 
 // Staff team page (4e: matrix-gated per section). ALL staff see the roster
 // (view_roster); the join code, team settings, and password resets are
@@ -99,6 +100,12 @@ export default async function TeamSettingsPage() {
           />
         </section>
       )}
+
+      {/* Every staffer's own login (not team-wide, so no matrix gate). */}
+      <section>
+        <p className="e24-eyebrow mb-2">Your login</p>
+        <LoginUsernameForm email={user.email} username={user.username} />
+      </section>
     </main>
   );
 }

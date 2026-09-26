@@ -6,6 +6,7 @@ import { getCurrentContext } from "@/lib/context";
 import { isOnboarded } from "@/lib/onboarding";
 import { validateImageDataUrl } from "@/lib/branding";
 import { storeImage } from "@/lib/photoStore";
+import { parseHeight } from "@/lib/height";
 
 export type BrandState = { error?: string };
 
@@ -65,13 +66,15 @@ export async function updateBrand(
     "photo",
   );
   if ("error" in photoRes) return { error: photoRes.error };
+  const height = parseHeight(formData.get("heightFt"), formData.get("heightIn"));
+  if (!height.ok) return { error: height.error };
   // Offload to Supabase Storage when configured (no-op passthrough otherwise).
   const storedPhoto = photoRes.url
     ? await storeImage(photoRes.url, `players/${user.id}`)
     : null;
 
   const brandFields = {
-    heightInches: optionalInt(formData.get("heightInches")),
+    heightInches: height.inches,
     position: optionalString(formData.get("position")),
     jerseyNumber: optionalInt(formData.get("jerseyNumber")),
     pointsPerGame: optionalFloat(formData.get("pointsPerGame")),

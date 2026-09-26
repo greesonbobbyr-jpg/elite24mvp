@@ -91,6 +91,7 @@ const THUNDER_PLAYERS: PlayerSeed[] = [
 // The matrix/switcher special cases (Mustang org).
 const CASEY: PlayerSeed = { name: "Casey Rivers", email: "casey.rivers@example.com", dream: "Play up a level and earn varsity minutes this year.", heightInches: 71, position: "Combo Guard", jerseyNumber: 3, ppg: 9.0, rpg: 3.2, apg: 4.0, favoritePlayer: "Tyrese Haliburton", favoriteTeam: "Indiana Pacers" };
 const DEVON: PlayerSeed = { name: "Devon Price", email: "devon.price@example.com", dream: "Get back on the roster and prove I belong.", heightInches: 74, position: "Forward", jerseyNumber: 32, ppg: 8.1, rpg: 5.5, apg: 1.6, favoritePlayer: "Paolo Banchero", favoriteTeam: "Orlando Magic" };
+const KAI: PlayerSeed = { name: "Kai Bennett", email: "kai.bennett@example.com", dream: "Earn real minutes as a freshman.", heightInches: 68, position: "Guard", jerseyNumber: 2, ppg: 4.5, rpg: 1.8, apg: 2.2, favoritePlayer: "Jalen Brunson", favoriteTeam: "New York Knicks" };
 
 // PLACEHOLDER quests — Gary to replace (deliberately not E24P-cycle-specific).
 const QUESTS = [
@@ -143,6 +144,11 @@ function hoursAgo(n: number): Date {
   d.setHours(d.getHours() - n);
   return d;
 }
+
+// Everyone seeded joined their team three weeks ago: before every back-dated
+// alert (a player's alerts start at their membership start) and after Casey's
+// back-dated JV spot (30 days), so Casey's cookie-less default stays Varsity.
+const JOINED_DAYS_AGO = 21;
 
 const usedUsernames = new Set<string>();
 function makeUsername(name: string): string {
@@ -206,6 +212,7 @@ async function createStaff(opts: {
         teamId: opts.teamId,
         seasonId: opts.seasonId,
         role: opts.membershipRole,
+        startedAt: daysAgo(JOINED_DAYS_AGO),
       },
     });
     membershipId = m.id;
@@ -230,6 +237,7 @@ async function createPlayer(
   orgId: number,
   seasonId: number,
   passwordHash: string,
+  joinedAt: Date = daysAgo(JOINED_DAYS_AGO),
 ) {
   const onboarded = p.onboarded !== false;
   const user = await prisma.user.create({
@@ -286,7 +294,7 @@ async function createPlayer(
     },
   });
   const membership = await prisma.membership.create({
-    data: { profileId: profile.id, teamId, seasonId, role: Role.PLAYER },
+    data: { profileId: profile.id, teamId, seasonId, role: Role.PLAYER, startedAt: joinedAt },
   });
   people.set(p.email, {
     userId: user.id,
@@ -447,7 +455,9 @@ async function seedNotifications(
         title: n.title,
         body: n.body,
         isTimeout: n.isTimeout,
-        createdAt: daysAgo(n.daysAgo),
+        // "Today" = an hour before seeding — daysAgo(0) is noon, which is in
+        // the future when the seed runs in the morning.
+        createdAt: n.daysAgo === 0 ? hoursAgo(1) : daysAgo(n.daysAgo),
       },
     });
     for (const email of n.readers) {
@@ -621,6 +631,11 @@ async function main() {
   // ENDED MEMBERSHIP: Devon — removed from Varsity by Gary; history kept.
   const devon = await createPlayer(DEVON, varsity.id, mustangOrg.id, mustangSeason.id, passwordHash);
 
+  // LATE JOINER: Kai — joined Varsity right now, after every seeded alert:
+  // no inherited TIME OUT takeover, nothing unread, not counted in the
+  // coach's read receipts for alerts sent before he joined.
+  await createPlayer(KAI, varsity.id, mustangOrg.id, mustangSeason.id, passwordHash, new Date());
+
   // ---- Quests: 6 ACTIVE globals + INACTIVE clones per org (pre-converge) --
   const globalQuests = [];
   for (const q of QUESTS) globalQuests.push(await prisma.quest.create({ data: q }));
@@ -741,6 +756,7 @@ async function main() {
   console.log("    General manager:  morgan@elite24.demo (can remove, can't adjust points)");
   console.log("    Players:          jordan, malik, tyler, sam, casey   (username login)");
   console.log("    Onboarding demo:  andre, brandon (log in → setup flow)");
+  console.log("    Late joiner:      kai — joined today: no old TIME OUT, nothing unread");
   console.log("  JV (join code MUSTJV)");
   console.log("    Head coach:       jamie@elite24.demo");
   console.log("    Players:          diego, chris, casey (two-team!)");

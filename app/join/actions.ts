@@ -8,6 +8,7 @@ import { signIn } from "@/auth";
 import { getCurrentContext } from "@/lib/context";
 import { resolveJoinableTeam, joinTeamForProfile } from "@/lib/data/join";
 import { rateLimit, clientIp, RATE_LIMITED_MESSAGE } from "@/lib/ratelimit";
+import { USERNAME_RE, USERNAME_RULES, normalizeUsername } from "@/lib/login";
 
 const NO_SEASON_MESSAGE =
   "That team isn't accepting players right now — ask your coach to start the season.";
@@ -50,8 +51,6 @@ export async function lookupJoinCode(
 
 export type CreatePlayerState = { error?: string };
 
-const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
-
 export async function createPlayer(
   _prev: CreatePlayerState,
   formData: FormData,
@@ -63,7 +62,7 @@ export async function createPlayer(
 
   const code = normalizeCode(formData.get("code"));
   const name = String(formData.get("name") ?? "").trim();
-  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  const username = normalizeUsername(String(formData.get("username") ?? ""));
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
 
@@ -72,11 +71,7 @@ export async function createPlayer(
   if (!team) return { error: "That code didn't match a team." };
 
   if (!name) return { error: "Enter your name." };
-  if (!USERNAME_RE.test(username)) {
-    return {
-      error: "Username must be 3–20 characters: letters, numbers, or underscore.",
-    };
-  }
+  if (!USERNAME_RE.test(username)) return { error: USERNAME_RULES };
   if (password.length < 8) {
     return { error: "Password must be at least 8 characters." };
   }

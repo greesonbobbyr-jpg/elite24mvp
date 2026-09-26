@@ -10,7 +10,9 @@ const field =
   "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
 const label = "mb-1 block text-xs font-medium text-zinc-400";
 
-const REMINDER_HOURS = [15, 16, 17, 18, 19, 20]; // 3 PM – 8 PM team-local
+// Any hour of the day, team-local (owner note: coaches set it at whatever time
+// they want). The server accepts 0–23; minute-level times are a later step.
+const REMINDER_HOURS = Array.from({ length: 24 }, (_, h) => h);
 
 function hourLabel(h: number): string {
   const ampm = h >= 12 ? "PM" : "AM";

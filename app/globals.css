@@ -8,6 +8,9 @@
 :root {
   --background: #0a0a0a; /* black base */
   --foreground: #ffffff; /* white text */
+  /* Native controls (select menus, pickers, scrollbars) render in their dark
+     style — otherwise a <select> draws a light box under our white text. */
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -128,6 +131,27 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: #ef4444; /* red-500 */
+}
+
+/* iPhones zoom the page in when you tap a text field smaller than 16px, and
+   the zoom sticks as you move between pages — the owner's "pages open slightly
+   zoomed in" report (our fields are 14px: 16/14 ≈ 1.14×). Every field is 16px
+   on phone widths. Unlayered on purpose, so it beats Tailwind's text-sm/text-xs
+   utilities. Pinch-zoom stays enabled (accessibility) — this only stops the
+   automatic zoom. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* With viewport-fit=cover (app/layout.tsx) the page runs edge to edge, so
+   keep content out of the notch in landscape. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Respect users who prefer less motion (child-safe / accessible). */

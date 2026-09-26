@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentContext } from "@/lib/context";
+import { actingScope, getCurrentContext } from "@/lib/context";
+import { can } from "@/lib/authz";
 import {
   listTeamMessages,
   BOARD_PAGE_SIZE,
@@ -68,15 +69,21 @@ export default async function BoardPage({
   );
   const messages = await listTeamMessages(user.teamId, limit);
   const hasEarlier = messages.length >= limit && limit < BOARD_MAX_LIMIT;
+  // Moderation (delete anyone's message) — the matrix check deleteMessage
+  // uses; legacy role check only for pre-backfill logins (dies at Stage 6).
+  const scope = actingScope(ctx);
+  const mayModerate = scope ? can(ctx, "moderate_board", scope) : user.role === "COACH";
   const logoUrl = user.team.logoUrl;
   const latestId = messages.length ? messages[messages.length - 1].id : 0;
 
   return (
     // Fixed chat shell: spans from under the app header to above the tab bar, so
     // only the message list scrolls — the header + composer stay put. The offsets
-    // are tuned to the current app-header (~64px) and player/coach tab-bar
-    // heights; z-0 keeps it under the tab bar (z-40) and TIME OUT takeover (z-50).
-    <main className="fixed inset-x-0 top-[69px] bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-0 flex justify-center">
+    // are tuned to the current app-header (~64px, plus the status-bar inset it
+    // grows by when installed to the home screen — 69px in a browser tab) and
+    // player/coach tab-bar heights; z-0 keeps it under the tab bar (z-40) and
+    // TIME OUT takeover (z-50).
+    <main className="fixed inset-x-0 top-[calc(59px+max(0.625rem,env(safe-area-inset-top)))] bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-0 flex justify-center">
       <ReplyProvider>
         <div className="flex h-full w-full max-w-2xl flex-col">
           {/* TOP — fixed board header */}
@@ -128,7 +135,10 @@ export default async function BoardPage({
               <ol className="flex flex-col">
             {messages.map((message, i) => {
               const isMine = message.author.id === user.id;
-              const canDelete = user.role === "COACH" || isMine;
+              // Same rule the server enforces (deleteMessage): your own
+              // message, or moderate_board (head coach / org admin — not
+              // assistants or GMs, who used to see a Delete that did nothing).
+              const canDelete = mayModerate || isMine;
               // Staff badge from the role SNAPSHOT taken at write time
               // ("Head Coach" stays "Head Coach" even after a role change);
               // legacy fallback for unstamped rows.

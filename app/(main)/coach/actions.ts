@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { actingScope, actingTeamId, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { can } from "@/lib/authz";
 import { performAdjustPoints } from "@/lib/data/points";
 
@@ -106,7 +106,7 @@ export async function sendCheckInReminder(formData: FormData): Promise<void> {
   const isTimeout = formData.get("isTimeout") === "on" && maySendTimeout;
   await prisma.notification.create({
     data: {
-      teamId: coach.teamId,
+      teamId: actingTeamId(ctx), // same team the permission check used
       authorId: coach.id,
       title: "Check-in reminder 🏀",
       body: "Get your daily check-in in — write today's plan and get after it. Your streak is counting on you.",

@@ -82,7 +82,7 @@ export function RosterManager({
                     {p.name}
                   </p>
                   {p.username && (
-                    <p className="text-[11px] text-zinc-500">@{p.username}</p>
+                    <p className="text-[11px] text-zinc-500">Login: {p.username}</p>
                   )}
                 </div>
                 {canResetPassword && (

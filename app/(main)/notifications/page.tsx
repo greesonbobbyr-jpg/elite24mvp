@@ -1,11 +1,7 @@
 import { redirect } from "next/navigation";
-import { actingScope, getCurrentContext } from "@/lib/context";
+import { actingScope, actingTeamId, getCurrentContext } from "@/lib/context";
 import { can } from "@/lib/authz";
-import {
-  listTeamNotifications,
-  getTeamReadStatus,
-  getReadNotificationIds,
-} from "@/lib/notifications";
+import { listPlayerNotifications, getTeamReadStatus } from "@/lib/notifications";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { confirmRead } from "../actions";
 import { NotificationComposer } from "./NotificationComposer";
@@ -38,7 +34,7 @@ export default async function NotificationsPage() {
 
   // ----- Coach: compose + per-message read receipts for their own team -----
   if (user.role === "COACH") {
-    const items = await getTeamReadStatus(user.teamId);
+    const items = await getTeamReadStatus(actingTeamId(ctx));
     // The TIME OUT toggle is hidden from staff without send_timeout (the
     // server also enforces it; matrix: HEAD_COACH / ORG_ADMIN only).
     const scope = actingScope(ctx);
@@ -122,15 +118,14 @@ export default async function NotificationsPage() {
   }
 
   // ----- Player: read team notifications + acknowledge -----
-  const [notifications, readIds] = await Promise.all([
-    listTeamNotifications(user.teamId),
-    getReadNotificationIds(user.id),
-  ]);
-
-  // Presentational grouping only (uses the already-fetched readIds — no new
-  // query): prominent unread cards up top, dimmed read rows under "EARLIER".
-  const unread = notifications.filter((n) => !readIds.has(n.id));
-  const read = notifications.filter((n) => readIds.has(n.id));
+  // Acting team + alerts since joining it — the same set the TIME OUT
+  // takeover and the menu badge use. Prominent unread cards up top (ALL of
+  // them, so the badge can always be cleared), dimmed read rows under "EARLIER".
+  const { unread, read } = await listPlayerNotifications(
+    user.id,
+    actingTeamId(ctx),
+    ctx.membership?.startedAt ?? null,
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
@@ -142,7 +137,7 @@ export default async function NotificationsPage() {
       {/* Web Push opt-in — permission prompt only fires on the player's tap. */}
       <PushToggle />
 
-      {notifications.length === 0 ? (
+      {unread.length + read.length === 0 ? (
         <EmptyCard line="No notifications from your coach yet." />
       ) : (
         <>

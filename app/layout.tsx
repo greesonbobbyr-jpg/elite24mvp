@@ -44,6 +44,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#000000",
+  // Edge to edge on notched iPhones, so the env(safe-area-inset-*) padding
+  // used by the header and bottom tab bars takes effect (it's always 0
+  // without this). Pairs with statusBarStyle "black-translucent" above.
+  viewportFit: "cover",
 };
 
 // Renders the dev-only user switcher, grouped ORG → TEAM → MEMBER (Stage 5).

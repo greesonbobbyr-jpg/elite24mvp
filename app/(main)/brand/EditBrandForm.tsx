@@ -5,6 +5,7 @@ import { updateBrand, type BrandState } from "./actions";
 import { Button } from "@/app/components/ui/Button";
 import { cardDefault } from "@/app/components/ui/Card";
 import { PhotoUploadField } from "@/app/components/PhotoUploadField";
+import { HeightFields } from "@/app/components/HeightFields";
 
 const initialState: BrandState = {};
 const fieldClass =
@@ -47,10 +48,11 @@ export function EditBrandForm({ profile }: { profile: EditableProfile }) {
             <label className={labelClass}>Jersey #</label>
             <input name="jerseyNumber" type="number" min={0} defaultValue={profile.jerseyNumber ?? ""} className={fieldClass} />
           </div>
-          <div>
-            <label className={labelClass}>Height (in)</label>
-            <input name="heightInches" type="number" min={0} defaultValue={profile.heightInches ?? ""} className={fieldClass} />
-          </div>
+          <HeightFields
+            defaultInches={profile.heightInches}
+            inputClass={fieldClass}
+            labelClass={labelClass}
+          />
           <div>
             <label className={labelClass}>PPG</label>
             <input name="pointsPerGame" type="number" step="0.1" min={0} defaultValue={profile.pointsPerGame ?? ""} className={fieldClass} />

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { actingScope, actingTeamId, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { can } from "@/lib/authz";
 import { isOnboarded } from "@/lib/onboarding";
 import { todayKey } from "@/lib/journal";
@@ -270,7 +270,8 @@ export async function postNotification(
 
   await prisma.notification.create({
     data: {
-      teamId: user.teamId,
+      // The acting team — the same one the permission check above used.
+      teamId: actingTeamId(ctx),
       authorId: user.id,
       title,
       body,
@@ -287,7 +288,9 @@ export async function postNotification(
 
 // A player confirms they've read a notification. One per player per
 // notification (DB unique). Team-private: a player can only confirm a
-// notification posted to their own team.
+// notification posted to their ACTING team — the same team whose TIME OUT
+// takeover they're being shown (a two-team athlete used to be checked against
+// their original team and could never dismiss it).
 export async function confirmRead(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
@@ -305,7 +308,7 @@ export async function confirmRead(formData: FormData): Promise<void> {
     where: { id: notificationId },
     select: { teamId: true },
   });
-  if (!notification || notification.teamId !== user.teamId) return;
+  if (!notification || notification.teamId !== actingTeamId(ctx)) return;
 
   try {
     await prisma.notificationRead.create({
