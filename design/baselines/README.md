@@ -3,6 +3,8 @@
 Owner-approved card renders. `scripts/shoot-cards.ts --check` pixel-compares fresh shots against these to catch accidental drift. The owner's visual approval is the design authority; these files only record it.
 
 - `master-platinum.png`: the Platinum master, approved 2026-09-26 (geometry locked).
+- `master-bronze.png`, `master-silver.png`: approved 2026-09-26 (level review round 1).
+- Gold and Diamond: in review.
 
 Check (needs the card dev server against the local `e24cards` database):
 

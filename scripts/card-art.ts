@@ -27,7 +27,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 import { FRAME_WINDOW, MASTER_W } from "../lib/cardGeometry";
-import { LEVEL_LOOKS, brightness, rampTable, recolorChannel, type Recolor } from "../lib/finishArt";
+import { LEVEL_LOOKS, pixelRecolor, type Recolor } from "../lib/finishArt";
 
 const PLATE_SOURCE = join("design", "reference", "platinum-plate-source.png");
 const FIELD_SOURCE = join("design", "reference", "platinum-field-source.png");
@@ -115,18 +115,19 @@ async function platinumPlate(mask: Buffer): Promise<Buffer> {
 }
 
 /** Recolor RGB(A) pixels; `mask` (0..255) blends from `outside` to `inside`. */
-function recolor(pixels: Buffer, channels: number, outside: Recolor, inside?: Recolor, mask?: Buffer): Buffer {
-  const outsideTable = rampTable(outside.ramp);
-  const insideTable = inside ? rampTable(inside.ramp) : outsideTable;
+function recolor(pixels: Buffer, width: number, height: number, channels: number, outside: Recolor, inside?: Recolor, mask?: Buffer): Buffer {
+  const outer = pixelRecolor(outside, width, height);
+  const inner = inside ? pixelRecolor(inside, width, height) : outer;
+  const a = [0, 0, 0];
+  const b = [0, 0, 0];
   const out = Buffer.from(pixels);
   for (let i = 0, p = 0; i < pixels.length; i += channels, p++) {
-    const level = brightness(pixels[i], pixels[i + 1], pixels[i + 2]);
+    const x = p % width;
+    const y = Math.floor(p / width);
     const w = inside && mask ? mask[p] / 255 : 0;
-    for (let c = 0; c < 3; c++) {
-      const a = recolorChannel(outsideTable, level, c, pixels[i + c], outside);
-      const b = w > 0 && inside ? recolorChannel(insideTable, level, c, pixels[i + c], inside) : a;
-      out[i + c] = Math.round(a * (1 - w) + b * w);
-    }
+    outer(pixels[i], pixels[i + 1], pixels[i + 2], x, y, a);
+    if (w > 0) inner(pixels[i], pixels[i + 1], pixels[i + 2], x, y, b);
+    for (let c = 0; c < 3; c++) out[i + c] = Math.round(w > 0 ? a[c] * (1 - w) + b[c] * w : a[c]);
   }
   return out;
 }
@@ -145,8 +146,8 @@ async function main() {
   await writeWebp(field.data, fw, fh, 3, join(finishDir("platinum"), "field.webp"), 90);
 
   for (const [level, look] of Object.entries(LEVEL_LOOKS)) {
-    await writeWebp(recolor(plate, 3, look.frame, look.window, mask), W, H, 3, join(finishDir(level), "plate.webp"), 92);
-    await writeWebp(recolor(field.data, 3, look.field), fw, fh, 3, join(finishDir(level), "field.webp"), 90);
+    await writeWebp(recolor(plate, W, H, 3, look.frame, look.window, mask), W, H, 3, join(finishDir(level), "plate.webp"), 92);
+    await writeWebp(recolor(field.data, fw, fh, 3, look.field), fw, fh, 3, join(finishDir(level), "field.webp"), 90);
   }
 }
 

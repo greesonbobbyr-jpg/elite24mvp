@@ -29,7 +29,8 @@ export function PlayerBacklight({ finish }: { finish: Finish; team: TeamAccent }
  * Black exclusion zones keep moving foil completely off faces and text. */
 export function FrameFinish({ finish, isStatic }: { finish: Finish; isStatic: boolean }) {
   const id = useId().replace(/:/g, "");
-  const { spot: [spotHot, spotEdge], band: [band1, band2, band3, band4] } = finish.palette.frameSheen;
+  const { spot: [spotHot, spotEdge], band: [band1, band2, band3, band4], strength } = finish.palette.frameSheen;
+  const motion = strength === 1 ? "calc(.18 + var(--so, 0) * .42)" : `calc((.18 + var(--so, 0) * .42) * ${strength})`;
   return <svg aria-hidden data-layer="frame-finish" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1500" style={{ mixBlendMode: "screen" }}>
     <defs><mask id={`metal-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="1500" style={{ maskType: "luminance" }}>
       <image href={finishAssets(finish.key).plate.file} width="1000" height="1500" />
@@ -40,9 +41,31 @@ export function FrameFinish({ finish, isStatic }: { finish: Finish; isStatic: bo
       <rect x="250" y="1375" width="500" height="95" fill="black" />
     </mask></defs>
     <foreignObject width="1000" height="1500" mask={`url(#metal-${id})`}>
-      <div style={{ width: "100%", height: "100%", opacity: isStatic ? .25 : "calc(.18 + var(--so, 0) * .42)",
+      <div style={{ width: "100%", height: "100%", opacity: isStatic ? .25 * strength : motion,
         background: `radial-gradient(ellipse 30% 21% at var(--sx, 38%) var(--sy, 24%), ${spotHot} 0%, ${spotEdge} 30%, transparent 75%), linear-gradient(118deg, transparent 25%, ${band1} 38%, ${band2} 44%, ${band3} 47%, ${band4} 51%, transparent 58%)`,
         backgroundSize: "100% 100%, 220% 220%", backgroundPosition: "center, var(--sx, 38%) var(--sy, 24%)", transition: "opacity 300ms ease",
+      }} />
+    </foreignObject>
+  </svg>;
+}
+
+/** Holographic foil over the card face (Diamond): spectral bands that slide
+ * with the light as the card moves. Sits under the player, so it plays across
+ * the energy and the number but never the face. Soft light: color-dodge
+ * blew the currents out and punched pure-black holes in the tinted field. */
+export function HoloShimmer({ finish, isStatic }: { finish: Finish; isStatic: boolean }) {
+  const id = useId().replace(/:/g, "");
+  const holo = finish.palette.holo;
+  if (!holo) return null;
+  const loop = [...holo.colors, holo.colors[0]];
+  const bands = loop.map((color, i) => `${color} ${((i / (loop.length - 1)) * 100).toFixed(1)}%`).join(", ");
+  return <svg aria-hidden data-layer="holo-shimmer" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1500" style={{ mixBlendMode: "soft-light" }}>
+    <defs><clipPath id={`face-${id}`}><path d={FRAME_WINDOW} /></clipPath></defs>
+    <foreignObject width="1000" height="1500" clipPath={`url(#face-${id})`}>
+      <div style={{ width: "100%", height: "100%",
+        opacity: isStatic ? holo.strength : `calc(${holo.strength} * (.8 + var(--so, 0) * .5))`,
+        background: `linear-gradient(115deg, ${bands})`,
+        backgroundSize: "300% 300%", backgroundPosition: "var(--sx, 38%) var(--sy, 24%)", transition: "opacity 300ms ease",
       }} />
     </foreignObject>
   </svg>;

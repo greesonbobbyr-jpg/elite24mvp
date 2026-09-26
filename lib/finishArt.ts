@@ -4,8 +4,9 @@
 //
 // A level recolors by gradient map: each pixel's brightness picks a color from
 // the level's ramp, so every facet, star and current keeps its shape and only
-// the material changes. The same ramps color the live layers (number, text
-// accents, energy) through derivePalette, so they always match the art.
+// the material changes. Diamond adds holographic foil on top of its ramp. The
+// same ramps color the live layers (number, text accents, energy) through
+// derivePalette, so they always match the art; Diamond's palette is authored.
 // Pure functions: used by scripts/card-art.ts (pixels) and lib/cardTheme.ts
 // (palettes).
 
@@ -14,9 +15,22 @@ import type { FinishKey, FinishPalette } from "./cardTheme";
 /** Brightness (0..1) → color stops, ascending. */
 export type Ramp = [at: number, color: string][];
 
+/** Holographic foil: spectral colors that drift across the card and shift with
+ * each current's brightness, laid over the ramp like real holo foil (darks stay
+ * dark, highlights stay white). */
+export type Holo = {
+  /** Spectral colors, cycled across the card. */
+  colors: string[];
+  /** Color cycles along the card's diagonal. */
+  cycles: number;
+  /** How strongly the foil tints the ramp, 0..1. */
+  strength: number;
+};
+
 export type Recolor = {
   ramp: Ramp;
-  /** Share of the original Platinum color kept (Diamond's prismatic hint). */
+  holo?: Holo;
+  /** Share of the original Platinum color kept. */
   keep?: number;
   /** Brightness multiplier after mapping (quieter energy on lower levels). */
   gain?: number;
@@ -29,16 +43,21 @@ export type LevelLook = {
   window: Recolor;
   /** The energy field. */
   field: Recolor;
-  /** Live layers: number, text accents, energy colors. */
-  live: Recolor;
+  /** Live layers (number, text accents, energy colors): Platinum's palette
+   * through this ramp. Without one, the level's palette is authored. */
+  live?: Recolor;
   /** How strongly the energy leaves the player (Platinum is 1). */
   energy: number;
 };
 
-/** Each level must read as more premium than the one below; metal names
- * never print on the card. */
+/** Diamond's foil spectrum: cyan, blue, violet, magenta, gold, mint. */
+export const HOLO_SPECTRUM = ["#35f0ff", "#5b7cff", "#b150ff", "#ff4fd8", "#ffd166", "#47ffb5"];
+
+/** A gradual climb (owner review, 2026-09-26): each level reads as more
+ * premium than the one below, Gold stays under Platinum, and Diamond is the
+ * wild, holographic top. Metal names never print on the card. */
 export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
-  // Warm matte bronze, little energy.
+  // Warm matte bronze, little energy. Owner-approved 2026-09-26.
   bronze: {
     frame: { ramp: [[0, "#0d0703"], [0.3, "#35200f"], [0.55, "#6e4322"], [0.75, "#a4703f"], [0.9, "#cf9c66"], [1, "#ecc99a"]] },
     window: { ramp: [[0, "#030201"], [0.3, "#140b05"], [0.6, "#3a2311"], [0.85, "#94613a"], [1, "#e0bb90"]] },
@@ -46,7 +65,7 @@ export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
     live: { ramp: [[0, "#000000"], [0.2, "#1a0e05"], [0.45, "#5e3517"], [0.65, "#a8622c"], [0.8, "#d99159"], [0.92, "#f2c393"], [1, "#fff1e0"]] },
     energy: 0.3,
   },
-  // Cool steel, faint energy.
+  // Cool steel, faint energy. Owner-approved 2026-09-26.
   silver: {
     frame: { ramp: [[0, "#0b0c0e"], [0.3, "#383c42"], [0.55, "#80878f"], [0.75, "#c1c7cf"], [0.9, "#eceff3"], [1, "#ffffff"]] },
     window: { ramp: [[0, "#030304"], [0.3, "#101316"], [0.6, "#373e47"], [0.85, "#96a1ad"], [1, "#eef2f6"]] },
@@ -54,21 +73,21 @@ export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
     live: { ramp: [[0, "#000000"], [0.2, "#121417"], [0.45, "#3f464f"], [0.65, "#7d8793"], [0.8, "#b9c3ce"], [0.92, "#e6ecf2"], [1, "#ffffff"]] },
     energy: 0.55,
   },
-  // Warm gold, visible energy.
+  // Warm gold with visible energy, kept a step under Platinum: a darker frame,
+  // dimmer energy and number glow.
   gold: {
-    frame: { ramp: [[0, "#110b02"], [0.25, "#473007"], [0.5, "#976c16"], [0.7, "#d6a73a"], [0.85, "#f5d987"], [1, "#fffbe6"]] },
-    window: { ramp: [[0, "#040301"], [0.3, "#1a1105"], [0.6, "#553910"], [0.85, "#c68f2c"], [1, "#ffefbe"]] },
-    field: { ramp: [[0, "#000000"], [0.2, "#100801"], [0.45, "#573206"], [0.7, "#d4841b"], [0.88, "#ffcd6a"], [1, "#fffaee"]] },
-    live: { ramp: [[0, "#000000"], [0.15, "#1a0f02"], [0.35, "#5a3606"], [0.55, "#b8740e"], [0.72, "#f0a82a"], [0.86, "#ffd77a"], [1, "#fffaf0"]] },
-    energy: 0.85,
+    frame: { ramp: [[0, "#0f0a02"], [0.25, "#3f2a06"], [0.5, "#876014"], [0.7, "#c19434"], [0.85, "#e6c97a"], [1, "#fbf1d2"]] },
+    window: { ramp: [[0, "#040301"], [0.3, "#171004"], [0.6, "#4a320e"], [0.85, "#b07f27"], [1, "#f5e2ad"]] },
+    field: { ramp: [[0, "#000000"], [0.2, "#100801"], [0.45, "#573206"], [0.7, "#d4841b"], [0.88, "#ffcd6a"], [1, "#fffaee"]], gain: 0.7 },
+    live: { ramp: [[0, "#000000"], [0.15, "#170d02"], [0.35, "#4f3005"], [0.55, "#9f650d"], [0.72, "#d18f24"], [0.86, "#efc46a"], [1, "#fff5e0"]] },
+    energy: 0.65,
   },
-  // The brightest: white and ice, with a restrained prismatic hint. No gems,
-  // wings, crowns or rainbow clutter.
+  // The top: a crystal frame and white-hot energy in holographic foil. Its
+  // live palette (DIAMOND_PALETTE in lib/cardTheme.ts) is authored.
   diamond: {
-    frame: { ramp: [[0, "#0d1015"], [0.25, "#4d5868"], [0.5, "#a8bacb"], [0.7, "#e6f0f8"], [0.85, "#ffffff"], [1, "#ffffff"]], keep: 0.3 },
-    window: { ramp: [[0, "#030406"], [0.3, "#0c1015"], [0.6, "#374556"], [0.85, "#b8d0e6"], [1, "#ffffff"]], keep: 0.2 },
-    field: { ramp: [[0, "#000000"], [0.25, "#0c1016"], [0.5, "#5e748a"], [0.75, "#dce9f6"], [0.9, "#ffffff"], [1, "#ffffff"]], keep: 0.2, gain: 1.15 },
-    live: { ramp: [[0, "#000000"], [0.2, "#0e1218"], [0.45, "#4a5a6e"], [0.65, "#a3b9ce"], [0.8, "#dbe9f6"], [0.92, "#f5f9ff"], [1, "#ffffff"]], keep: 0.25 },
+    frame: { ramp: [[0, "#0d1015"], [0.25, "#555f6e"], [0.5, "#b0bfcd"], [0.7, "#eaf2f9"], [0.85, "#ffffff"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 2.2, strength: 0.55 } },
+    window: { ramp: [[0, "#030306"], [0.3, "#0c0a14"], [0.6, "#3a3450"], [0.85, "#d6d0ee"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 1.3, strength: 0.6 } },
+    field: { ramp: [[0, "#000000"], [0.25, "#0c0d12"], [0.5, "#6c7280"], [0.75, "#e6e9ef"], [0.9, "#ffffff"], [1, "#ffffff"]], holo: { colors: HOLO_SPECTRUM, cycles: 1.3, strength: 0.9 }, gain: 1.2 },
     energy: 1,
   },
 };
@@ -106,26 +125,54 @@ export function rampTable(ramp: Ramp): Uint8Array {
   return table;
 }
 
-/** Recolor one channel of one pixel (0..255). */
-export function recolorChannel(table: Uint8Array, level: number, channel: number, original: number, spec: Recolor): number {
+/** Overlay blend of one channel (0..255): tints mid-tones, keeps black and white. */
+const overlay = (base: number, top: number) =>
+  base < 128 ? (2 * base * top) / 255 : 255 - (2 * (255 - base) * (255 - top)) / 255;
+
+/** Compile a recolor for an image of the given size. The returned function
+ * writes the new RGB of pixel (r, g, b) at (x, y) into `out`. */
+export function pixelRecolor(spec: Recolor, width: number, height: number) {
+  const table = rampTable(spec.ramp);
   const keep = spec.keep ?? 0;
-  const mapped = table[level * 3 + channel] * (1 - keep) + original * keep;
-  return Math.min(255, mapped * (spec.gain ?? 1));
+  const gain = spec.gain ?? 1;
+  const holo = spec.holo;
+  const spectrum = holo?.colors.map((color) => parseHex(color).slice(0, 3) as number[]) ?? [];
+  const mapped = [0, 0, 0];
+  return (r: number, g: number, b: number, x: number, y: number, out: number[]) => {
+    const level = brightness(r, g, b);
+    for (let c = 0; c < 3; c++) mapped[c] = table[level * 3 + c];
+    if (holo) {
+      // Diagonal bands, nudged by brightness so neighboring currents differ.
+      const along = holo.cycles * (0.7 * (x / width) + 0.45 * (y / height)) + 0.25 * (level / 255);
+      const p = (along - Math.floor(along)) * spectrum.length;
+      const i = Math.floor(p) % spectrum.length;
+      const j = (i + 1) % spectrum.length;
+      const f = p - Math.floor(p);
+      for (let c = 0; c < 3; c++) {
+        const foil = spectrum[i][c] + (spectrum[j][c] - spectrum[i][c]) * f;
+        mapped[c] += (overlay(mapped[c], foil) - mapped[c]) * holo.strength;
+      }
+    }
+    const original = [r, g, b];
+    for (let c = 0; c < 3; c++) out[c] = Math.min(255, (mapped[c] * (1 - keep) + original[c] * keep) * gain);
+  };
 }
 
-/** Recolor a CSS hex color (#rgb, #rgba, #rrggbb or #rrggbbaa); alpha is kept. */
-export function recolorHex(color: string, spec: Recolor, table = rampTable(spec.ramp)): string {
+/** Recolor a CSS hex color (#rgb, #rgba, #rrggbb or #rrggbbaa) through a
+ * ramp; alpha is kept. (Colors have no position, so no holo.) */
+export function recolorHex(color: string, spec: Recolor): string {
   const [r, g, b, a] = parseHex(color);
-  const level = brightness(r, g, b);
-  const rgb = [r, g, b].map((v, c) => hex2(recolorChannel(table, level, c, v, spec))).join("");
-  return `#${rgb}${a === null ? "" : hex2(a)}`;
+  const out = [0, 0, 0];
+  pixelRecolor({ ...spec, holo: undefined }, 1, 1)(r, g, b, 0, 0, out);
+  return `#${out.map(hex2).join("")}${a === null ? "" : hex2(a)}`;
 }
 
-/** A level's live-layer palette: Platinum's, recolored through its ramp. */
+/** A level's live-layer palette: Platinum's, recolored through its live ramp. */
 export function derivePalette(platinum: FinishPalette, look: LevelLook): FinishPalette {
-  const table = rampTable(look.live.ramp);
+  const live = look.live;
+  if (!live) throw new Error("This level authors its palette; it has no live ramp.");
   const map = <T>(value: T): T => {
-    if (typeof value === "string") return recolorHex(value, look.live, table) as T;
+    if (typeof value === "string") return recolorHex(value, live) as T;
     if (Array.isArray(value)) return value.map(map) as T;
     if (value && typeof value === "object") {
       return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, map(v)])) as T;

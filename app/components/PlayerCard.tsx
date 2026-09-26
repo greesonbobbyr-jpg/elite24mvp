@@ -30,6 +30,7 @@ import {
   PlayerBacklight,
   ForegroundPlate,
   FrameFinish,
+  HoloShimmer,
 } from "@/app/components/card/LiveEffects";
 import { CardStars } from "@/app/components/card/CardStars";
 import { PortraitElectricity } from "@/app/components/card/PortraitElectricity";
@@ -201,6 +202,7 @@ function FullCard({
       {/* 13 · giant jersey number (dynamic; finish material) */}
       <FoilField finish={finish} src={cutout} meta={meta} />
       <GiantNumber text={bigNumber} finish={finish} />
+      <HoloShimmer finish={finish} isStatic={staticRender} />
       {/* 12 · atmosphere (authored texture, team-tinted) + occlusion map */}
       {/* 11 · player environmental backlight (live) */}
       <PlayerBacklight finish={finish} team={teamAccent} />

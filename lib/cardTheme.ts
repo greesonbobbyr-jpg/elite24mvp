@@ -5,7 +5,7 @@
 // so these helpers only ever produce DARK card bases + return a scrim to layer
 // behind text.
 
-import { derivePalette, LEVEL_LOOKS } from "./finishArt";
+import { derivePalette, HOLO_SPECTRUM, LEVEL_LOOKS } from "./finishArt";
 
 export const APP_RED = "#e1102a";
 const APP_RED_DEEP = "#7a0a18";
@@ -324,10 +324,12 @@ export type FinishPalette = {
     rimFoil: string;
     rimCore: string;
   };
-  /** Frame sheen: the light spot and the diagonal band. */
-  frameSheen: { spot: string[]; band: string[] };
+  /** Frame sheen: the light spot, the diagonal band, and its strength (Platinum 1). */
+  frameSheen: { spot: string[]; band: string[]; strength: number };
   /** Depth shadow behind the player. */
   shadow: string;
+  /** Holographic foil over the card face, sliding with the light (Diamond). */
+  holo?: { colors: string[]; strength: number };
 };
 
 /** Platinum's live-layer colors, exactly as approved (2026-09-26). */
@@ -357,8 +359,42 @@ export const PLATINUM_PALETTE: FinishPalette = {
     rimFoil: "#bcefff",
     rimCore: "#d7f7ff",
   },
-  frameSheen: { spot: ["#fff", "#b8efff60"], band: ["#88e8ff25", "#f7caff80", "#ffffffa0", "#85e9ff40"] },
+  frameSheen: { spot: ["#fff", "#b8efff60"], band: ["#88e8ff25", "#f7caff80", "#ffffffa0", "#85e9ff40"], strength: 1 },
   shadow: "#000815",
+};
+
+/** Diamond's live colors, authored to match its holographic art (the owner,
+ * 2026-09-26: "more wild, special and holographic"): iridescent cyan, violet
+ * and pink instead of one hue, and a stronger frame sheen and face foil. */
+export const DIAMOND_PALETTE: FinishPalette = {
+  number: {
+    body: ["#0b0620", "#160b33", "#062535", "#0a0a26", "#2c0d38", "#052b33", "#1e1645"],
+    extrude: "#05020d",
+    extrudeEdge: "#0a0418",
+    aura: "#a24dff",
+    bloom: "#46e3ff",
+    flare: "#ffd9fb",
+    edge: ["#ffffff", "#8ff7ff", "#ff9cf0", "#d6b8ff"],
+    core: "#ffffff",
+    sheen: ["#7df9ff77", "#ffffffbb", "#ff8af077"],
+  },
+  firstName: ["#ffffff", "#8ff5ff", "#c586ff", "#ff9fe6"],
+  firstNameShadow: "#0a0118",
+  accent: "#8ff5ff",
+  separator: "#f0a8ff",
+  statHeader: "#d4c2ff",
+  statValue: ["#ffffff", "#9af4ff", "#c07bff"],
+  energy: {
+    strength: 1,
+    contact: "#b98cff",
+    glow: ["#ffffff", "#c8f8ff", "#b54dff"],
+    sparks: ["#a45cff", "#f6e6ff", "#47d8ff", "#ffffff"],
+    rimFoil: "#ffd9fb",
+    rimCore: "#eafcff",
+  },
+  frameSheen: { spot: ["#fff", "#ffd6fa90"], band: ["#7df9ff55", "#ff8af0a0", "#ffffffc0", "#9d7dff70"], strength: 1.6 },
+  shadow: "#07000f",
+  holo: { colors: HOLO_SPECTRUM, strength: 0.7 },
 };
 
 export const FINISH_ORDER: FinishKey[] = [
@@ -445,7 +481,7 @@ export const FINISHES: Record<FinishKey, Finish> = {
     foilIntensity: 1.0,
     spectral: ["#cfe4f4", "#ffd9ec", "#d9ffe9", "#d9e4ff", "#cfe4f4"],
     starMaterial: { from: "#ffffff", to: "#8fa6bd" },
-    palette: derivePalette(PLATINUM_PALETTE, LEVEL_LOOKS.diamond),
+    palette: DIAMOND_PALETTE,
   },
 };
 
