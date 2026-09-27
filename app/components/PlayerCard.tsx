@@ -96,12 +96,15 @@ export function PlayerCard({
   finishOverride,
   staticRender = false,
   width,
+  avatarPx,
 }: {
   size: CardSize;
   player: CardPlayer;
   team: CardTeam;
   /** Full card only: rendered width in CSS px (or a CSS length like "100%"). */
   width?: number | string;
+  /** Avatar only: diameter in CSS px (default 40). */
+  avatarPx?: number;
   /**
    * DEV PREVIEW ONLY (card-preview studio): force a level regardless of
    * points, so every level can share identical sample data.
@@ -110,7 +113,7 @@ export function PlayerCard({
   /** Freeze all dynamic finish motion + tilt (regression baselines, Δ11). */
   staticRender?: boolean;
 }) {
-  if (size === "avatar") return <AvatarCard player={player} team={team} finishOverride={finishOverride} />;
+  if (size === "avatar") return <AvatarCard player={player} team={team} finishOverride={finishOverride} px={avatarPx} />;
   if (size === "compact") return <CompactCard player={player} team={team} finishOverride={finishOverride} />;
   return (
     <FullCard
@@ -322,7 +325,9 @@ const ROW_FACE_CLIP =
 // faint slice of its energy, then avatar, name, number and position, points
 // and stars in the full card's colors.
 function CompactCard({ player, team, finishOverride }: { player: CardPlayer; team: CardTeam; finishOverride?: FinishKey }) {
-  const { total, stars, finish } = useCardContext(player, finishOverride);
+  // Tier from career points (total); the row shows the points it's ranked by,
+  // like the full card's POINTS panel.
+  const { stars, finish } = useCardContext(player, finishOverride);
   const { palette } = finish;
   const art = finishAssets(finish.key);
   return (
@@ -381,7 +386,7 @@ function CompactCard({ player, team, finishOverride }: { player: CardPlayer; tea
             </p>
           )}
           <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/75 tabular-nums">
-            {total} pts
+            {player.points} pts
           </p>
           <span className="mt-1 flex justify-end">
             <CardStars count={stars} finish={finish} sizePx={8} gapPx={2} />
@@ -446,6 +451,15 @@ function AvatarCard({
           <GiantNumber text={bigNumber} finish={finish} />
           <HoloShimmer finish={finish} isStatic />
           <PlayerBacklight finish={finish} team={teamAccentFor(team)} />
+          {/* The level's glow behind the player: this small, the card's own
+              backlight is too faint to carry the tier's color on its own. */}
+          <span
+            className="absolute"
+            style={{
+              left: u(120), top: u(380), width: u(760), height: u(640), mixBlendMode: "screen",
+              background: `radial-gradient(closest-side, ${withAlpha(finish.palette.energy.glow[2], 0.55)}, transparent)`,
+            }}
+          />
           {placed && (
             // eslint-disable-next-line @next/next/no-img-element
             <img ref={attach} src={cutout!} alt={player.name} className="absolute" style={cutoutCss(placed)} onError={onImageError} />

@@ -6,7 +6,7 @@ import {
   getWeeklyRanking,
   type RankedPlayer,
 } from "@/lib/leaderboard";
-import { PlayerCard } from "@/app/components/PlayerCard";
+import { PlayerCard, type CardTeam } from "@/app/components/PlayerCard";
 import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
 
 // Single-team leaderboard. STRICTLY the current user's own team — no other team
@@ -15,18 +15,8 @@ import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
 // player's team-facing brand page (same team only).
 //
 // Layout: a spotlight PODIUM for the top 3 (rank 1 centered + larger, 2 left,
-// 3 right, with gold/silver/bronze medal rings) and a LIST of compact PlayerCards
-// for rank 4+. Photos show where set (podium disc + compact card), else initials.
-
-// First two initials of a name (mirrors IdentityChip's placeholder avatar).
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-}
+// 3 right, with gold/silver/bronze medal glows) and a LIST of compact PlayerCards
+// for rank 4+. Every circle is the player's mini card in their tier.
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
@@ -37,21 +27,18 @@ function firstName(name: string): string {
 const MEDALS = [
   {
     order: "order-2",
-    ring: "#E8C766",
     glow: "rgba(212,175,55,0.55)",
     chipBg: "linear-gradient(180deg,#E8C766,#D4AF37)",
     chipText: "#1a1204",
   },
   {
     order: "order-1",
-    ring: "#e5e7eb",
     glow: "rgba(203,213,225,0.45)",
     chipBg: "linear-gradient(180deg,#f1f5f9,#cbd5e1)",
     chipText: "#111827",
   },
   {
     order: "order-3",
-    ring: "#d98a4a",
     glow: "rgba(205,127,50,0.45)",
     chipBg: "linear-gradient(180deg,#d98a4a,#b45309)",
     chipText: "#ffffff",
@@ -61,9 +48,11 @@ const MEDALS = [
 function PodiumItem({
   player,
   slot,
+  team,
 }: {
-  player: Omit<RankedPlayer, "photoCutoutUrl">;
+  player: Omit<RankedPlayer, "photoCutoutUrl"> & { cutoutUrl: string | null };
   slot: number;
+  team: CardTeam;
 }) {
   const medal = MEDALS[slot];
   const big = slot === 0;
@@ -74,26 +63,23 @@ function PodiumItem({
         href={`/brand/${player.id}`}
         className="flex flex-col items-center transition active:scale-[0.97]"
       >
-        <span
-          className="flex items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-red-700 to-red-950 font-black uppercase text-white"
-          style={{
-            width: size,
-            height: size,
-            fontSize: size * 0.34,
-            boxShadow: `0 0 0 3px ${medal.ring}, 0 0 26px ${medal.glow}`,
-            textShadow: "0 2px 6px rgba(0,0,0,0.5)",
-          }}
-        >
-          {player.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={player.photoUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            initials(player.name)
-          )}
+        {/* The player's mini card (their tier's ring and card); the medal
+            glow and chip carry the podium place. */}
+        <span className="rounded-full" style={{ boxShadow: `0 0 26px ${medal.glow}` }}>
+          <PlayerCard
+            size="avatar"
+            avatarPx={size}
+            player={{
+              name: player.name,
+              jerseyNumber: player.jerseyNumber,
+              points: player.points,
+              total: player.careerPoints,
+              photoUrl: player.photoUrl,
+              cutoutUrl: player.cutoutUrl,
+              photoMeta: player.photoMeta,
+            }}
+            team={team}
+          />
         </span>
         <span
           className="mt-3 rounded-full px-2.5 py-0.5 text-xs font-black tabular-nums shadow-sm"
@@ -144,9 +130,10 @@ export default async function LeaderboardPage({
     cutoutUrl: cutoutSrc(p.id, photoCutoutUrl),
   }));
   const weekly = weekView
-    ? (await getWeeklyRanking(boardTeamId)).map((p) => ({
+    ? (await getWeeklyRanking(boardTeamId)).map(({ photoCutoutUrl, ...p }) => ({
         ...p,
         photoUrl: photoSrc(p.id, p.photoUrl),
+        cutoutUrl: cutoutSrc(p.id, photoCutoutUrl),
       }))
     : [];
   // "Most improved": biggest positive gain vs. your OWN last week.
@@ -230,14 +217,19 @@ export default async function LeaderboardPage({
                     <span className="w-7 shrink-0 text-center text-sm font-black tabular-nums text-zinc-500">
                       {p.rank}
                     </span>
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-red-700 to-red-950 text-xs font-bold text-white ring-1 ring-red-500/40">
-                      {p.photoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        initials(p.name)
-                      )}
-                    </span>
+                    <PlayerCard
+                      size="avatar"
+                      player={{
+                        name: p.name,
+                        jerseyNumber: p.jerseyNumber,
+                        points: p.weekPoints,
+                        total: p.careerPoints,
+                        photoUrl: p.photoUrl,
+                        cutoutUrl: p.cutoutUrl,
+                        photoMeta: p.photoMeta,
+                      }}
+                      team={user.team}
+                    />
                     <span
                       className={`min-w-0 flex-1 truncate text-sm font-bold uppercase tracking-wide ${
                         isMe ? "text-red-400" : "text-white"
@@ -272,7 +264,7 @@ export default async function LeaderboardPage({
         <section className="e24-surface rounded-2xl border border-red-600/25 px-4 py-6">
           <div className="relative z-10 flex items-end justify-center gap-2">
             {podium.map((player, i) => (
-              <PodiumItem key={player.id} player={player} slot={i} />
+              <PodiumItem key={player.id} player={player} slot={i} team={user.team} />
             ))}
           </div>
         </section>
@@ -301,6 +293,7 @@ export default async function LeaderboardPage({
                         position: player.position,
                         rank: player.rank,
                         points: player.points,
+                        total: player.careerPoints,
                         photoUrl: player.photoUrl,
                         cutoutUrl: player.cutoutUrl,
                         photoMeta: player.photoMeta,

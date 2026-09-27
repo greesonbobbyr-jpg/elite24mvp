@@ -25,6 +25,8 @@ export type RosterRow = {
   /** Card cutout + its placement: the avatar sits on the card like the full card. */
   photoCutoutUrl: string | null;
   photoMeta: unknown;
+  /** Career points: the card tier (the roster ranks by team points). */
+  careerPoints: number;
   points: number;
   rank: number;
   checkedInAt: Date | null;
@@ -59,6 +61,7 @@ async function activeRoster(teamId: number) {
           photoUrl: true,
           photoCutoutUrl: true,
           photoMeta: true,
+          careerPoints: true,
           currentStreak: true,
         },
       },
@@ -75,6 +78,7 @@ async function activeRoster(teamId: number) {
         photoUrl: m.profile.photoUrl,
         photoCutoutUrl: m.profile.photoCutoutUrl,
         photoMeta: m.profile.photoMeta,
+        careerPoints: m.profile.careerPoints,
         points: m.points,
         currentStreak: m.profile.currentStreak,
       }));
@@ -108,6 +112,7 @@ async function activeRoster(teamId: number) {
     photoUrl: p.profile?.photoUrl ?? null,
     photoCutoutUrl: p.profile?.photoCutoutUrl ?? null,
     photoMeta: p.profile?.photoMeta ?? null,
+    careerPoints: p.profile?.points ?? 0,
     points: p.profile?.points ?? 0,
     currentStreak: p.profile?.currentStreak ?? 0,
   }));

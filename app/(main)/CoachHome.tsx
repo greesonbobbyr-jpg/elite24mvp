@@ -172,6 +172,7 @@ export async function CoachHome({
                       position: r.position,
                       rank: r.rank,
                       points: r.points,
+                      total: r.careerPoints,
                       photoUrl: photoSrc(r.id, r.photoUrl),
                       cutoutUrl: cutoutSrc(r.id, r.photoCutoutUrl),
                       photoMeta: r.photoMeta,
