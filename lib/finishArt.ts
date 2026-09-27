@@ -108,6 +108,27 @@ export const LEVEL_LOOKS: Record<Exclude<FinishKey, "platinum">, LevelLook> = {
   },
 };
 
+/** Staff cards: the same frame in quiet graphite (Silver's steel, darker),
+ * no energy (owner, 2026-09-26). Staff don't progress through levels. */
+export const STAFF_LOOK: Pick<LevelLook, "frame" | "window" | "live" | "energy"> = {
+  frame: { ramp: [[0, "#08090b"], [0.3, "#26292e"], [0.55, "#5a616a"], [0.75, "#9aa2ab"], [0.9, "#c9ced4"], [1, "#e9ecef"]] },
+  window: { ramp: [[0, "#020203"], [0.3, "#08090b"], [0.6, "#1f2328"], [0.85, "#5c646e"], [1, "#b4bcc5"]] },
+  live: { ramp: [[0, "#000000"], [0.2, "#111316"], [0.45, "#3b4148"], [0.65, "#7a838d"], [0.8, "#b3bcc6"], [0.92, "#dfe5eb"], [1, "#f6f8fa"]] },
+  energy: 0,
+};
+
+// ---- mini art: the frame for the small sizes ---------------------------------
+//
+// Card units of the rails and corner the small sizes cut from a level's plate
+// (measured on the Platinum plate; every level shares its geometry).
+
+/** The left rail's bright crystal band, bent into the avatar ring. */
+export const RING_BAND = { x0: 44, x1: 66, y0: 500, y1: 1150 };
+
+/** The corner, top rail and left rail cells of the rows' mini frame; the
+ * other sides mirror them, so it's symmetric and free of the card's notches. */
+export const FRAME_CELLS = { size: 80, corner: { x: 40, y: 17 }, top: { x: 250, y: 17 }, left: { x: 40, y: 600 } };
+
 // ---- the recolor -----------------------------------------------------------
 
 /** Brightness fed to a ramp, 0..255: mostly luma (keeps the structure), part
@@ -204,7 +225,7 @@ export function recolorHex(color: string, spec: Recolor): string {
 }
 
 /** A level's live-layer palette: Platinum's, recolored through its live ramp. */
-export function derivePalette(platinum: FinishPalette, look: LevelLook): FinishPalette {
+export function derivePalette(platinum: FinishPalette, look: Pick<LevelLook, "live" | "energy">): FinishPalette {
   const live = look.live;
   if (!live) throw new Error("This level authors its palette; it has no live ramp.");
   const map = <T>(value: T): T => {

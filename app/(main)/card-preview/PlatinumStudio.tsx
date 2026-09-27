@@ -86,6 +86,16 @@ export function PlatinumStudio({ isStatic }: { isStatic: boolean }) {
           <PlayerCard size="full" player={player} team={TEAM} finishOverride={level} staticRender={freeze} width="100%" />
         </div>
         <p className="mt-3 text-center text-xs text-zinc-500">Live card · drag across the frame to explore the light</p>
+        <div className="mt-6 space-y-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">Small sizes</p>
+          <div data-shot={`compact-${level}`}>
+            <PlayerCard size="compact" player={player} team={TEAM} finishOverride={level} />
+          </div>
+          <div data-shot={`avatar-${level}`} className="inline-flex items-center gap-3 rounded-xl bg-zinc-950 px-3 py-2">
+            <PlayerCard size="avatar" player={player} team={TEAM} finishOverride={level} />
+            <span className="text-sm font-semibold text-zinc-200">{player.name}</span>
+          </div>
+        </div>
       </section>
       {compare && <section style={{ width: size, maxWidth: "100%" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}<img src={REF} alt="Approved B3 number and foil reference" className="w-full" />

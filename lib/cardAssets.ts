@@ -1,4 +1,5 @@
 import type { FinishKey } from "./cardTheme";
+import { FRAME_CELLS } from "./finishArt";
 
 /** A full-canvas authored image (1000x1500 units). A missing required file
  * renders the ASSET MISSING state, never a drawn substitute. */
@@ -20,3 +21,20 @@ export function finishAssets(finish: FinishKey) {
 export function allAssetsFor(finish: FinishKey): AssetSpec[] {
   return Object.values(finishAssets(finish));
 }
+
+/** The small sizes' art, cut from the level's plate by scripts/card-art.ts:
+ * the avatar ring and the rows' mini frame (a nine-slice). */
+export function miniArt(finish: FinishKey) {
+  return { ring: `/card/finishes/${finish}/ring.webp`, frame: `/card/finishes/${finish}/frame.webp` };
+}
+
+/** Staff cards: the same cuts in graphite. */
+export const STAFF_ART = {
+  plate: { file: "/card/staff/plate.webp", kind: "art", layer: 16, required: true } satisfies AssetSpec,
+  ring: "/card/staff/ring.webp",
+  frame: "/card/staff/frame.webp",
+};
+
+/** Pixels per cell of the mini frame's nine-slice: FRAME_CELLS.size card
+ * units on the 2048-px-wide plate. */
+export const FRAME_SLICE = Math.round(FRAME_CELLS.size * 2.048);

@@ -7,9 +7,10 @@ import { FINISHES } from "@/lib/cardTheme";
 import { PlatinumStudio } from "./PlatinumStudio";
 import { PortraitDebug } from "./PortraitDebug";
 
-// CARD-PREVIEW GALLERY (Stage 2) — the 9 dev environments of the card system
-// (§45): the five player finishes with IDENTICAL sample data, plus the four
-// staff roles. Dev-only (the page gates on NODE_ENV); nothing here ships.
+// CARD-PREVIEW GALLERY (Stage 2) — dev environments of the card system (§45):
+// the player card, the four staff roles and the small sizes in context. Every
+// level with a real processed photo lives in the studio (?master=1). Dev-only
+// (the page gates on NODE_ENV); nothing here ships.
 //
 // REFERENCE OVERLAY MODE (§46, required): any image dropped into
 // design/reference/ can be rendered absolutely over a card at exactly the
@@ -159,8 +160,11 @@ export function Gallery({
       <section className="flex flex-col gap-4">
         <h2 className="e24-eyebrow">Recomposed sizes — in context</h2>
         <div className="flex max-w-xl flex-col gap-6">
-          <div data-shot="context-wide">
-            <PlayerCard size="wide" player={SAMPLE_PLAYER} team={SAMPLE_TEAM} />
+          <div data-shot="context-staff-row">
+            <StaffCard
+              size="compact"
+              person={{ name: "Darnell Brooks", role: "Head Coach", teamName: SAMPLE_TEAM.name, orgName: "Mustang Athletics" }}
+            />
           </div>
           <div
             data-shot="context-compact"

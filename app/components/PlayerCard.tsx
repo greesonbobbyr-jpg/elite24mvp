@@ -4,7 +4,6 @@ import { EnergyEmission, FoilField } from "@/app/components/card/FoilField";
 
 import type { CSSProperties } from "react";
 import {
-  accentColor,
   withAlpha,
   FINISHES,
   finishForStars,
@@ -14,7 +13,7 @@ import {
   type FinishKey,
 } from "@/lib/cardTheme";
 import { PORTRAIT, fy, u, zoneStyle, giantNumber } from "@/lib/cardGeometry";
-import { finishAssets } from "@/lib/cardAssets";
+import { FRAME_SLICE, finishAssets, miniArt } from "@/lib/cardAssets";
 import { cutoutCss, isPortraitMetaV2, PORTRAIT_TARGETS } from "@/lib/portrait/normalize";
 import { CardCompositor } from "@/app/components/card/CardCompositor";
 import { AssetLayer } from "@/app/components/card/AssetLayer";
@@ -36,18 +35,18 @@ import { CardStars } from "@/app/components/card/CardStars";
 import { PortraitElectricity } from "@/app/components/card/PortraitElectricity";
 import { DepthShadow, RimLight } from "@/app/components/card/CutoutLighting";
 import { TeamLogoBadge, TopRightSlot } from "@/app/components/card/TeamLogoBadge";
-import { chamferClip, headCropStyle } from "@/app/components/card/chrome";
+import { PortraitDisc } from "@/app/components/card/PortraitDisc";
 
-// THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, four
-// sizes — full (the locked master), wide, compact, avatar — each RECOMPOSED
-// for its context, never scaled down (§44). Geometry lives in
-// lib/cardGeometry (one card, locked after the milestone); material finishes
-// in lib/cardTheme FINISHES (level changes swap tokens only — Δ4). The team
-// is an environmental accent (§51); readability is a hard rule: text always
-// sits on darkness. Keyframes live in a component <style> so globals.css
-// stays untouched and the component is drop-in reusable.
+// THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, three
+// sizes — full (the locked master), compact, avatar — each RECOMPOSED for its
+// context, never scaled down (§44). Geometry lives in lib/cardGeometry (one
+// card, locked); material finishes in lib/cardTheme FINISHES and each level's
+// authored art (level changes swap tokens and art only — Δ4). The team is an
+// environmental accent (§51); readability is a hard rule: text always sits on
+// darkness. Keyframes live in a component <style> so globals.css stays
+// untouched and the component is drop-in reusable.
 
-export type CardSize = "full" | "wide" | "compact" | "avatar";
+export type CardSize = "full" | "compact" | "avatar";
 
 export type CardPlayer = {
   name: string;
@@ -104,17 +103,15 @@ export function PlayerCard({
   /** Full card only: rendered width in CSS px (or a CSS length like "100%"). */
   width?: number | string;
   /**
-   * DEV PREVIEW ONLY (card-preview gallery): force a material finish
-   * regardless of points, so the five finish environments can share identical
-   * sample data.
+   * DEV PREVIEW ONLY (card-preview studio): force a level regardless of
+   * points, so every level can share identical sample data.
    */
   finishOverride?: FinishKey;
   /** Freeze all dynamic finish motion + tilt (regression baselines, Δ11). */
   staticRender?: boolean;
 }) {
-  if (size === "avatar") return <AvatarCard player={player} team={team} />;
-  if (size === "compact") return <CompactCard player={player} team={team} />;
-  if (size === "wide") return <WideCard player={player} team={team} />;
+  if (size === "avatar") return <AvatarCard player={player} finishOverride={finishOverride} />;
+  if (size === "compact") return <CompactCard player={player} finishOverride={finishOverride} />;
   return (
     <FullCard
       player={player}
@@ -299,272 +296,91 @@ function PendingPortrait({ initials, finish }: { initials: string; finish: Finis
 }
 
 
-// ------------------------------------------------------- SHARED (redesign) --
+// ------------------------------------------------------------ SMALL SIZES --
+//
+// The compact row (leaderboard, coach roster) and the avatar (Team Circle,
+// header chip) wear their level's own art, cut from its plate by
+// scripts/card-art.ts (miniArt) — never CSS-drawn metal. General UI keeps
+// initials/photo fallbacks (Δ5 applies to full-card creation only).
 
-/** Finish + portrait context every recomposed size derives from. */
-function useCardContext(player: CardPlayer) {
+/** Finish + portrait context the small sizes derive from. */
+function useCardContext(player: CardPlayer, finishOverride?: FinishKey) {
   const total = player.total ?? player.points;
-  const stars = starsForPoints(total);
-  const finish = finishForStars(stars);
+  const earned = starsForPoints(total);
+  const finish = finishOverride ? FINISHES[finishOverride] : finishForStars(earned);
+  const stars = finishOverride ? finish.stars : earned;
   const meta = isPortraitMetaV2(player.photoMeta) ? player.photoMeta : null;
   const cutout = player.cutoutUrl ?? null;
   return { total, stars, finish, meta, cutout };
 }
 
-const WIDE_ASPECT = 16 / 10;
+/** The row's face, cut to sit inside the mini frame's chamfered corners. */
+const ROW_FACE_CLIP =
+  "polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px)";
 
-// ---------------------------------------------------------------- WIDE ------
-
-// Horizontal recomposition of the master's TOP HALF (§44): same finish
-// language — chamfered metal, dark environment, ghosted number behind the
-// right side, cutout bust left, name block dominant, micro star group. No
-// tilt; the finish carries the material feel.
-function WideCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
-  const { total, stars, finish, cutout } = useCardContext(player);
-  const accent = accentColor(team.primaryColor, team.secondaryColor);
-  const initials = player.initials || makeInitials(player.name);
-  const height = formatHeight(player.heightInches);
-  const words = player.name.trim().split(/\s+/);
-  const surname = words.length > 1 ? words[words.length - 1] : words[0];
-  const firstName = words.length > 1 ? words.slice(0, -1).join(" ") : null;
-  const bigNumber = giantNumber(player.jerseyNumber);
-  const clipOuter = chamferClip(0, 0.055, WIDE_ASPECT);
-  const clipFace = chamferClip(0.012, 0.045, WIDE_ASPECT);
-
+// COMPACT: a slim card — the level's mini frame around its card face with a
+// faint slice of its energy, then avatar, name, number and position, points
+// and stars in the full card's colors.
+function CompactCard({ player, finishOverride }: { player: CardPlayer; finishOverride?: FinishKey }) {
+  const { total, stars, finish } = useCardContext(player, finishOverride);
+  const { palette } = finish;
+  const art = finishAssets(finish.key);
   return (
-    <div
-      className="relative"
-      style={{
-        width: 360,
-        maxWidth: "100%",
-        aspectRatio: `${WIDE_ASPECT}`,
-        filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.5))",
-      }}
-    >
-      {/* thin finish frame */}
-      <span
+    <div className="relative h-[72px] w-full" data-finish={finish.key}>
+      <div
         aria-hidden
-        className="absolute inset-0"
-        style={{
-          clipPath: clipOuter,
-          background: `conic-gradient(from 130deg at 50% 46%, ${finish.metal.join(", ")}, ${finish.metal[0]})`,
-        }}
-      />
-      {/* face */}
-      <div className="absolute inset-0" style={{ clipPath: clipFace }}>
+        className="absolute overflow-hidden"
+        style={{ inset: 3, clipPath: ROW_FACE_CLIP, background: `#040507 url(${art.plate.file}) 50% 30% / 140% auto` }}
+      >
+        <span className="absolute inset-0" style={{ background: `url(${art.field.file}) 50% 38% / 120% auto`, opacity: 0.5 }} />
+        {/* text always sits on darkness */}
         <span
-          aria-hidden
           className="absolute inset-0"
-          style={{
-            background:
-              `radial-gradient(90% 90% at 22% 50%, ${withAlpha(finish.lightHue, 0.14)} 0%, transparent 60%),` +
-              `radial-gradient(110% 90% at 85% 110%, ${withAlpha(accent, 0.1)} 0%, transparent 55%),` +
-              `linear-gradient(120deg, ${finish.background.top} 0%, ${finish.background.mid} 55%, ${finish.background.bottom} 100%)`,
-          }}
+          style={{ background: "linear-gradient(90deg, rgba(0,0,0,.35), rgba(0,0,0,.1) 45%, rgba(0,0,0,.6))" }}
         />
-        {/* ghosted number behind the right half */}
-        {bigNumber && (
-          <span
-            aria-hidden
-            className="absolute -top-2 right-2 select-none font-black italic leading-none"
-            style={{
-              fontFamily: "var(--font-barlow)",
-              fontSize: 132,
-              letterSpacing: "-0.04em",
-              color: "transparent",
-              WebkitTextStrokeWidth: 1.5,
-              WebkitTextStrokeColor: withAlpha(finish.metalHighlight, 0.32),
-            }}
-          >
-            {bigNumber}
-          </span>
-        )}
-        {/* cutout bust, bottom-anchored left */}
-        {cutout ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={cutout}
-            alt=""
-            className="absolute bottom-0 left-0 h-[96%] w-[42%] object-contain object-bottom"
-            style={{
-              filter: `drop-shadow(0 0 14px ${withAlpha(finish.lightHue, 0.3 * finish.lightIntensity)})`,
-            }}
-          />
-        ) : (
-          <span
-            className="absolute bottom-0 left-0 flex h-full w-[42%] items-center justify-center font-black uppercase italic text-white/80"
-            style={{ fontFamily: "var(--font-barlow)", fontSize: 44 }}
-          >
-            {initials}
-          </span>
-        )}
-        {/* readability scrim under the text side */}
-        <span
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,0) 30%, rgba(0,0,0,0.3) 55%, rgba(0,0,0,0.45) 100%)",
-          }}
-        />
-        {/* name block */}
-        <div className="absolute inset-y-0 left-[44%] right-3 flex flex-col justify-center">
-          {firstName && (
-            <p
-              className="truncate text-[11px] font-bold uppercase leading-none"
-              style={{ letterSpacing: "0.14em", color: accent }}
-            >
-              {firstName}
-            </p>
-          )}
-          <p
-            className="truncate font-black uppercase italic leading-[0.95]"
-            style={{
-              fontFamily: "var(--font-barlow)",
-              fontSize: surname.length > 9 ? 26 : 32,
-              color: "transparent",
-              backgroundImage:
-                "linear-gradient(180deg, #ffffff 0%, #eef2f6 42%, #a7b2bf 55%, #e3e9f0 74%, #cfd7df 100%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.55))",
-            }}
-          >
-            {surname}
-          </p>
-          <p className="mt-1.5 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-white/80">
-            {[
-              player.jerseyNumber != null ? `#${player.jerseyNumber}` : null,
-              player.position,
-              height,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <CardStars count={stars} finish={finish} sizePx={11} gapPx={3} />
-            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/70">
-              Prospect
-            </span>
-            <span className="ml-auto text-[10px] font-bold tabular-nums text-white/80">
-              {total} pts
-            </span>
-          </div>
-        </div>
-        {/* logo — top-left, same as the master */}
-        <div className="absolute left-2 top-2 h-10 w-10">
-          {team.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={team.logoUrl}
-              alt=""
-              className="h-full w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.55)]"
-            />
-          ) : null}
-        </div>
       </div>
-    </div>
-  );
-}
-
-// -------------------------------------------------------------- COMPACT -----
-
-// COMPACT (§44): a mini identity row in the same finish language — thin metal
-// frame, cutout bust breaking the top edge over a small ghost number,
-// condensed name, rank/points, micro star group. General-UI resilience keeps
-// initials/photo fallbacks here (Δ5 applies to full-card CREATION only).
-function CompactCard({
-  player,
-  team,
-}: {
-  player: CardPlayer;
-  team: CardTeam;
-}) {
-  const { total, stars, finish, cutout } = useCardContext(player);
-  const accent = accentColor(team.primaryColor, team.secondaryColor);
-  const bigNumber = giantNumber(player.jerseyNumber);
-
-  return (
-    <div className="relative h-[72px] w-full" style={{ overflow: "visible" }}>
-      {/* thin finish frame + dark environment */}
       <span
         aria-hidden
-        className="absolute inset-0 rounded-xl"
+        className="pointer-events-none absolute inset-0"
         style={{
-          background: `linear-gradient(120deg, ${finish.background.top} 0%, ${finish.background.mid} 55%, ${finish.background.bottom} 100%)`,
-          boxShadow: `inset 0 0 0 1px ${withAlpha(finish.metalHighlight, 0.25)}, inset 0 1px 0 ${withAlpha(
-            finish.metalHighlight,
-            0.12,
-          )}, 0 4px 12px -6px rgba(0,0,0,0.6)`,
-        }}
-      />
-      {/* faint team tint on the right edge */}
-      <span
-        aria-hidden
-        className="absolute inset-0 rounded-xl"
-        style={{
-          background: `radial-gradient(60% 120% at 100% 50%, ${withAlpha(accent, 0.12)} 0%, transparent 60%)`,
+          borderStyle: "solid",
+          borderWidth: 10,
+          borderColor: "transparent",
+          borderImageSource: `url(${miniArt(finish.key).frame})`,
+          borderImageSlice: FRAME_SLICE,
+          borderImageWidth: "10px",
+          borderImageRepeat: "stretch",
         }}
       />
 
-      <div className="relative flex h-full items-center gap-3 pl-2 pr-4">
-        {/* bust: cutout breaks the row's top edge over a small ghost number */}
-        <div className="relative h-full w-16 shrink-0">
-          {bigNumber && (
-            <span
-              aria-hidden
-              className="absolute bottom-0 left-1/2 -translate-x-1/2 select-none font-black italic leading-none"
-              style={{
-                fontFamily: "var(--font-barlow)",
-                fontSize: 52,
-                color: "transparent",
-                WebkitTextStrokeWidth: 1,
-                WebkitTextStrokeColor: withAlpha(finish.metalHighlight, 0.25),
-              }}
-            >
-              {bigNumber}
-            </span>
-          )}
-          {cutout ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={cutout}
-              alt=""
-              className="absolute bottom-0 left-1/2 h-[86px] w-auto max-w-none -translate-x-1/2 object-contain object-bottom"
-              style={{
-                filter: `drop-shadow(0 0 8px ${withAlpha(finish.lightHue, 0.35 * finish.lightIntensity)})`,
-              }}
-            />
-          ) : (
-            <span className="absolute inset-y-0 left-1/2 flex -translate-x-1/2 items-center">
-              <AvatarCard player={player} team={team} />
-            </span>
-          )}
-        </div>
+      <div className="relative flex h-full items-center gap-3 pl-3.5 pr-4">
+        <AvatarCard player={player} finishOverride={finish.key} px={48} />
 
-        <div className="relative min-w-0 flex-1">
+        <div className="min-w-0 flex-1">
           <p
             className="truncate text-base font-black italic uppercase leading-none text-white"
             style={{ fontFamily: "var(--font-barlow)" }}
           >
             {player.name}
           </p>
-          <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-white/65">
-            {player.jerseyNumber != null ? `#${player.jerseyNumber} · ` : ""}
+          <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-white/75">
+            {player.jerseyNumber != null && (
+              <>
+                <span style={{ color: palette.accent }}>#{player.jerseyNumber}</span>
+                <span style={{ color: palette.separator }}> · </span>
+              </>
+            )}
             {player.position ?? "Player"}
           </p>
         </div>
 
-        <div className="relative shrink-0 text-right">
+        <div className="shrink-0 text-right">
           {player.rank != null && (
-            <p
-              className="text-lg font-black leading-none tabular-nums"
-              style={{ color: finish.metalHighlight }}
-            >
+            <p className="text-lg font-black leading-none tabular-nums" style={{ color: palette.statHeader }}>
               #{player.rank}
             </p>
           )}
-          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/65 tabular-nums">
+          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/75 tabular-nums">
             {total} pts
           </p>
           <span className="mt-1 flex justify-end">
@@ -576,61 +392,28 @@ function CompactCard({
   );
 }
 
-// --------------------------------------------------------------- AVATAR -----
-
-// AVATAR (§44): circular finish ring + cutout HEAD CROP (face-box anchored
-// when meta exists). Players only — staff circles are the STAFF treatment.
-function AvatarCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
-  const { finish, meta, cutout } = useCardContext(player);
+// AVATAR: the player's head (face-box crop when meta exists) on the level's
+// card face, inside its ring — the frame's crystal band bent into a circle.
+function AvatarCard({ player, finishOverride, px = 40 }: { player: CardPlayer; finishOverride?: FinishKey; px?: number }) {
+  const { finish, meta, cutout } = useCardContext(player, finishOverride);
   const initials = player.initials || makeInitials(player.name);
-  const DISC = 36; // inner disc px (ring adds 2px per side)
-  void team;
+  // ring.webp's band spans radii 78–95 of 96 px; the disc tucks just under it.
+  const inset = px * 0.09;
+  const disc = px - inset * 2;
 
   return (
     <div
-      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full"
-      style={{
-        background: `conic-gradient(from 130deg, ${finish.metal.join(", ")}, ${finish.metal[0]})`,
-        padding: 2,
-        boxShadow: "0 2px 6px rgba(0,0,0,0.45)",
-      }}
+      className="relative inline-flex shrink-0"
+      style={{ width: px, height: px, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.45))" }}
     >
       <div
-        className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full"
-        style={{
-          background: `radial-gradient(120% 120% at 50% 20%, ${finish.background.mid} 0%, ${finish.background.bottom} 100%)`,
-        }}
+        className="absolute flex items-center justify-center overflow-hidden rounded-full"
+        style={{ inset, background: `#05070a url(${finishAssets(finish.key).plate.file}) 50% 32% / 600% auto` }}
       >
-        {cutout && meta ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={cutout} alt={player.name} style={headCropStyle(meta, DISC)} />
-        ) : cutout ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={cutout}
-            alt={player.name}
-            className="h-full w-full object-cover object-top"
-          />
-        ) : player.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={player.photoUrl}
-            alt={player.name}
-            className="h-full w-full rounded-full object-cover"
-          />
-        ) : (
-          <span
-            className="text-xs font-black uppercase text-white"
-            style={{ fontFamily: "var(--font-barlow)" }}
-          >
-            {initials}
-          </span>
-        )}
+        <PortraitDisc name={player.name} initials={initials} cutout={cutout} photo={player.photoUrl ?? null} meta={meta} disc={disc} />
       </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={miniArt(finish.key).ring} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" />
     </div>
   );
 }
-
-
-
-

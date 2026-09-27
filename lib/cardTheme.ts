@@ -5,7 +5,7 @@
 // so these helpers only ever produce DARK card bases + return a scrim to layer
 // behind text.
 
-import { derivePalette, HOLO_SPECTRUM, LEVEL_LOOKS } from "./finishArt";
+import { derivePalette, HOLO_SPECTRUM, LEVEL_LOOKS, STAFF_LOOK } from "./finishArt";
 
 export const APP_RED = "#e1102a";
 const APP_RED_DEEP = "#7a0a18";
@@ -483,6 +483,13 @@ export const FINISHES: Record<FinishKey, Finish> = {
     starMaterial: { from: "#ffffff", to: "#8fa6bd" },
     palette: DIAMOND_PALETTE,
   },
+};
+
+/** Staff cards (not a level: staff don't progress). Silver's tokens with a
+ * quiet steel palette and no energy, for the name and panel lettering. */
+export const STAFF_FINISH: Finish = {
+  ...FINISHES.silver,
+  palette: derivePalette(PLATINUM_PALETTE, STAFF_LOOK),
 };
 
 /** Finish tokens for a star count (1–5). */
