@@ -15,7 +15,8 @@ import { ReplyProvider } from "./ReplyProvider";
 import { BoardScroller } from "./BoardScroller";
 import { getGif } from "@/lib/gifs";
 import { PlayerCard } from "@/app/components/PlayerCard";
-import { photoSrc } from "@/lib/photoUrl";
+import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
+import { StaffCard } from "@/app/components/StaffCard";
 
 // The team's message board — a Messenger-style chat. Team-private: only the
 // current user's own team is queried and posted to (CLAUDE.md section 3.2).
@@ -182,19 +183,41 @@ export default async function BoardPage({
                     {!isMine &&
                       (isFirstOfGroup ? (
                         <div className="mt-6 shrink-0" aria-hidden>
-                          <PlayerCard
-                            size="avatar"
-                            player={{
-                              name: authorName,
-                              photoUrl: photoSrc(
-                                message.author.id,
-                                message.authorProfile?.photoUrl ??
-                                  message.author.profile?.photoUrl,
-                              ),
-                              points: 0,
-                            }}
-                            team={user.team}
-                          />
+                          {authorBadge ? (
+                            <StaffCard
+                              size="avatar"
+                              person={{
+                                name: authorName,
+                                role: authorBadge,
+                                photoUrl: photoSrc(message.author.id, message.author.photoUrl ?? message.authorProfile?.photoUrl),
+                                cutoutUrl: cutoutSrc(
+                                  message.author.id,
+                                  message.author.photoCutoutUrl ?? message.authorProfile?.photoCutoutUrl,
+                                ),
+                                photoMeta: message.author.photoMeta ?? message.authorProfile?.photoMeta,
+                              }}
+                            />
+                          ) : (
+                            // The author's mini card: their level, number and cutout.
+                            <PlayerCard
+                              size="avatar"
+                              player={{
+                                name: authorName,
+                                photoUrl: photoSrc(
+                                  message.author.id,
+                                  message.authorProfile?.photoUrl ?? message.author.profile?.photoUrl,
+                                ),
+                                cutoutUrl: cutoutSrc(
+                                  message.author.id,
+                                  message.authorProfile?.photoCutoutUrl ?? message.author.profile?.photoCutoutUrl,
+                                ),
+                                photoMeta: message.authorProfile?.photoMeta ?? message.author.profile?.photoMeta,
+                                jerseyNumber: message.authorProfile?.jerseyNumber ?? message.author.profile?.jerseyNumber ?? null,
+                                points: message.authorProfile?.careerPoints ?? message.author.profile?.points ?? 0,
+                              }}
+                              team={user.team}
+                            />
+                          )}
                         </div>
                       ) : (
                         <span className="w-10 shrink-0" aria-hidden />

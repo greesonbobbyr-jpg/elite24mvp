@@ -305,8 +305,10 @@ async function createPlayer(
 // DEV-ONLY sample portraits (card redesign §49/§55): if the owner has dropped
 // the Cason Wallace sample into design/reference/, every seeded person gets it
 // so cards/leaderboard/roster/chat evaluate with a real portrait. Preferred:
-// sample-athlete-cutout.png (background already removed, real alpha); else
-// sample-athlete.* is used for BOTH original and cutout (un-cut placeholder).
+// sample-athlete-processed.webp + .meta.json — the app pipeline's own cutout of
+// the sample photo and its card placement, so cards and avatars render exactly
+// as for a real upload; else sample-athlete-cutout.png (background removed, no
+// placement); else sample-athlete.* for BOTH original and cutout (un-cut).
 // The seed only ever runs against local/dev DBs (SEED_CONFIRM guard) — this
 // sample is never production data.
 async function seedSamplePortraits(): Promise<number> {
@@ -322,9 +324,12 @@ async function seedSamplePortraits(): Promise<number> {
     return null;
   };
   const original = read("sample-athlete");
-  const cutout = read("sample-athlete-cutout") ?? original;
+  const processed = read("sample-athlete-processed");
+  const metaPath = pathJoin(refDir, "sample-athlete-processed.meta.json");
+  const processedMeta = processed && existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, "utf8")) : null;
+  const cutout = (processedMeta ? processed : null) ?? read("sample-athlete-cutout") ?? original;
   if (!cutout) return 0;
-  const photoMeta = { version: 1, seeded: true };
+  const photoMeta = processedMeta ?? { version: 1, seeded: true };
   const photoFields = {
     photoUrl: original ?? cutout,
     photoCutoutUrl: cutout,

@@ -26,7 +26,7 @@ export type StaffPerson = {
   initials?: string | null;
 };
 
-export type StaffCardSize = "full" | "compact";
+export type StaffCardSize = "full" | "compact" | "avatar";
 
 const FONT = "var(--font-barlow), sans-serif";
 /** The full staff card's width in CSS px (its layout is in card units). */
@@ -54,6 +54,7 @@ export function StaffCard({
   verified?: React.ReactNode;
 }) {
   void verified; // accepted, intentionally unrendered until the feature exists
+  if (size === "avatar") return <StaffPortrait person={person} px={40} />;
   if (size === "compact") return <CompactStaff person={person} />;
   return <FullStaff person={person} />;
 }

@@ -9,6 +9,9 @@ export type RankedPlayer = {
   jerseyNumber: number | null;
   position: string | null;
   photoUrl: string | null;
+  /** Card cutout + its placement: the avatar sits on the card like the full card. */
+  photoCutoutUrl: string | null;
+  photoMeta: unknown;
 };
 
 // The team's ACTIVE PLAYER memberships in the current season — the board
@@ -26,6 +29,8 @@ async function activePlayerMemberships(teamId: number) {
           jerseyNumber: true,
           position: true,
           photoUrl: true,
+          photoCutoutUrl: true,
+          photoMeta: true,
         },
       },
     },
@@ -69,6 +74,8 @@ export async function getTeamRanking(teamId: number): Promise<RankedPlayer[]> {
         jerseyNumber: m.jerseyNumber ?? m.profile.jerseyNumber,
         position: m.profile.position,
         photoUrl: m.profile.photoUrl,
+        photoCutoutUrl: m.profile.photoCutoutUrl,
+        photoMeta: m.profile.photoMeta,
       }))
       .sort((a, b) => b.points - a.points);
     return rank1224(sorted);
@@ -80,7 +87,7 @@ export async function getTeamRanking(teamId: number): Promise<RankedPlayer[]> {
     where: { teamId, role: "PLAYER" },
     include: {
       profile: {
-        select: { points: true, jerseyNumber: true, position: true, photoUrl: true },
+        select: { points: true, jerseyNumber: true, position: true, photoUrl: true, photoCutoutUrl: true, photoMeta: true },
       },
     },
   });
@@ -92,6 +99,8 @@ export async function getTeamRanking(teamId: number): Promise<RankedPlayer[]> {
       jerseyNumber: p.profile?.jerseyNumber ?? null,
       position: p.profile?.position ?? null,
       photoUrl: p.profile?.photoUrl ?? null,
+      photoCutoutUrl: p.profile?.photoCutoutUrl ?? null,
+      photoMeta: p.profile?.photoMeta ?? null,
     }))
     .sort((a, b) => b.points - a.points);
   return rank1224(sorted);

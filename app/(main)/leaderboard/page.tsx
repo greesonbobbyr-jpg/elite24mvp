@@ -7,7 +7,7 @@ import {
   type RankedPlayer,
 } from "@/lib/leaderboard";
 import { PlayerCard } from "@/app/components/PlayerCard";
-import { photoSrc } from "@/lib/photoUrl";
+import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
 
 // Single-team leaderboard. STRICTLY the current user's own team — no other team
 // is queried or shown (CLAUDE.md section 3.2 / 3.5). A coach views their own
@@ -62,7 +62,7 @@ function PodiumItem({
   player,
   slot,
 }: {
-  player: RankedPlayer;
+  player: Omit<RankedPlayer, "photoCutoutUrl">;
   slot: number;
 }) {
   const medal = MEDALS[slot];
@@ -137,10 +137,11 @@ export default async function LeaderboardPage({
 
   // Boards are the ACTING membership's team (4d); legacy teamId fallback.
   const boardTeamId = ctx.membership?.teamId ?? user.teamId;
-  // photoSrc: serve photos via /api/photo instead of inlining base64 into HTML.
-  const ranked = (await getTeamRanking(boardTeamId)).map((p) => ({
+  // photoSrc/cutoutSrc: serve photos via /api/photo instead of inlining base64 into HTML.
+  const ranked = (await getTeamRanking(boardTeamId)).map(({ photoCutoutUrl, ...p }) => ({
     ...p,
     photoUrl: photoSrc(p.id, p.photoUrl),
+    cutoutUrl: cutoutSrc(p.id, photoCutoutUrl),
   }));
   const weekly = weekView
     ? (await getWeeklyRanking(boardTeamId)).map((p) => ({
@@ -301,6 +302,8 @@ export default async function LeaderboardPage({
                         rank: player.rank,
                         points: player.points,
                         photoUrl: player.photoUrl,
+                        cutoutUrl: player.cutoutUrl,
+                        photoMeta: player.photoMeta,
                       }}
                       team={user.team}
                     />

@@ -22,6 +22,9 @@ export type RosterRow = {
   position: string | null;
   jerseyNumber: number | null;
   photoUrl: string | null;
+  /** Card cutout + its placement: the avatar sits on the card like the full card. */
+  photoCutoutUrl: string | null;
+  photoMeta: unknown;
   points: number;
   rank: number;
   checkedInAt: Date | null;
@@ -54,6 +57,8 @@ async function activeRoster(teamId: number) {
           position: true,
           jerseyNumber: true,
           photoUrl: true,
+          photoCutoutUrl: true,
+          photoMeta: true,
           currentStreak: true,
         },
       },
@@ -68,6 +73,8 @@ async function activeRoster(teamId: number) {
         position: m.profile.position,
         jerseyNumber: m.jerseyNumber ?? m.profile.jerseyNumber,
         photoUrl: m.profile.photoUrl,
+        photoCutoutUrl: m.profile.photoCutoutUrl,
+        photoMeta: m.profile.photoMeta,
         points: m.points,
         currentStreak: m.profile.currentStreak,
       }));
@@ -86,6 +93,8 @@ async function activeRoster(teamId: number) {
           position: true,
           jerseyNumber: true,
           photoUrl: true,
+          photoCutoutUrl: true,
+          photoMeta: true,
           currentStreak: true,
         },
       },
@@ -97,6 +106,8 @@ async function activeRoster(teamId: number) {
     position: p.profile?.position ?? null,
     jerseyNumber: p.profile?.jerseyNumber ?? null,
     photoUrl: p.profile?.photoUrl ?? null,
+    photoCutoutUrl: p.profile?.photoCutoutUrl ?? null,
+    photoMeta: p.profile?.photoMeta ?? null,
     points: p.profile?.points ?? 0,
     currentStreak: p.profile?.currentStreak ?? 0,
   }));

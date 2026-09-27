@@ -3,7 +3,7 @@ import { getTeamOverview } from "@/lib/coach";
 import { formatTime } from "@/lib/format";
 import { PlayerCard } from "@/app/components/PlayerCard";
 import { sendCheckInReminder } from "./coach/actions";
-import { photoSrc } from "@/lib/photoUrl";
+import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
 
 // The coach's team dashboard (shown at "/" for a COACH). A TODAY summary with a
 // check-in progress ring + the full roster (alphabetical by last name) as compact
@@ -173,6 +173,8 @@ export async function CoachHome({
                       rank: r.rank,
                       points: r.points,
                       photoUrl: photoSrc(r.id, r.photoUrl),
+                      cutoutUrl: cutoutSrc(r.id, r.photoCutoutUrl),
+                      photoMeta: r.photoMeta,
                     }}
                     team={user.team}
                   />

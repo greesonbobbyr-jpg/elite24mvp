@@ -35,7 +35,7 @@ import { CardStars } from "@/app/components/card/CardStars";
 import { PortraitElectricity } from "@/app/components/card/PortraitElectricity";
 import { DepthShadow, RimLight } from "@/app/components/card/CutoutLighting";
 import { TeamLogoBadge, TopRightSlot } from "@/app/components/card/TeamLogoBadge";
-import { PortraitDisc } from "@/app/components/card/PortraitDisc";
+import { useImageOk } from "@/app/components/card/PortraitDisc";
 
 // THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, three
 // sizes — full (the locked master), compact, avatar — each RECOMPOSED for its
@@ -110,8 +110,8 @@ export function PlayerCard({
   /** Freeze all dynamic finish motion + tilt (regression baselines, Δ11). */
   staticRender?: boolean;
 }) {
-  if (size === "avatar") return <AvatarCard player={player} finishOverride={finishOverride} />;
-  if (size === "compact") return <CompactCard player={player} finishOverride={finishOverride} />;
+  if (size === "avatar") return <AvatarCard player={player} team={team} finishOverride={finishOverride} />;
+  if (size === "compact") return <CompactCard player={player} team={team} finishOverride={finishOverride} />;
   return (
     <FullCard
       player={player}
@@ -321,7 +321,7 @@ const ROW_FACE_CLIP =
 // COMPACT: a slim card — the level's mini frame around its card face with a
 // faint slice of its energy, then avatar, name, number and position, points
 // and stars in the full card's colors.
-function CompactCard({ player, finishOverride }: { player: CardPlayer; finishOverride?: FinishKey }) {
+function CompactCard({ player, team, finishOverride }: { player: CardPlayer; team: CardTeam; finishOverride?: FinishKey }) {
   const { total, stars, finish } = useCardContext(player, finishOverride);
   const { palette } = finish;
   const art = finishAssets(finish.key);
@@ -354,7 +354,7 @@ function CompactCard({ player, finishOverride }: { player: CardPlayer; finishOve
       />
 
       <div className="relative flex h-full items-center gap-3 pl-3.5 pr-4">
-        <AvatarCard player={player} finishOverride={finish.key} px={48} />
+        <AvatarCard player={player} team={team} finishOverride={finish.key} px={48} />
 
         <div className="min-w-0 flex-1">
           <p
@@ -392,25 +392,78 @@ function CompactCard({ player, finishOverride }: { player: CardPlayer; finishOve
   );
 }
 
-// AVATAR: the player's head (face-box crop when meta exists) on the level's
-// card face, inside its ring — the frame's crystal band bent into a circle.
-function AvatarCard({ player, finishOverride, px = 40 }: { player: CardPlayer; finishOverride?: FinishKey; px?: number }) {
+/** The avatar's round window onto the card, in card units: head, shoulders
+ * and the energy leaving them, with the number behind. */
+const AVATAR_VIEW = { x: 170, y: 260, size: 660 };
+/** With no photo, the window frames the glowing jersey number instead. */
+const NUMBER_VIEW = { x: 110, y: 160, size: 780 };
+
+// AVATAR: a small round window onto the player's own card (owner review,
+// 2026-09-26: just the player "doesn't have the player card vibe"). The
+// level's energy, backlight and jersey number sit behind the cutout exactly
+// where the full card puts them, inside the level's ring — the frame's
+// crystal band bent into a circle. A photo without card placement fills the
+// disc; no photo shows the glowing number (initials without one).
+function AvatarCard({
+  player,
+  team,
+  finishOverride,
+  px = 40,
+}: {
+  player: CardPlayer;
+  team: CardTeam;
+  finishOverride?: FinishKey;
+  px?: number;
+}) {
   const { finish, meta, cutout } = useCardContext(player, finishOverride);
   const initials = player.initials || makeInitials(player.name);
+  const bigNumber = giantNumber(player.jerseyNumber);
+  const src = cutout ?? player.photoUrl ?? null;
+  const { ok: imageOk, attach, onError: onImageError } = useImageOk(src);
+  const placed = imageOk && cutout && meta ? meta : null;
+  const photo = imageOk && !placed ? src : null;
+  const view = imageOk || !bigNumber ? AVATAR_VIEW : NUMBER_VIEW;
   // ring.webp's band spans radii 78–95 of 96 px; the disc tucks just under it.
   const inset = px * 0.09;
   const disc = px - inset * 2;
+  const s = disc / view.size; // px per card unit
 
   return (
     <div
       className="relative inline-flex shrink-0"
       style={{ width: px, height: px, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.45))" }}
     >
-      <div
-        className="absolute flex items-center justify-center overflow-hidden rounded-full"
-        style={{ inset, background: `#05070a url(${finishAssets(finish.key).plate.file}) 50% 32% / 600% auto` }}
-      >
-        <PortraitDisc name={player.name} initials={initials} cutout={cutout} photo={player.photoUrl ?? null} meta={meta} disc={disc} />
+      <div className="absolute flex items-center justify-center overflow-hidden rounded-full" style={{ inset, background: "#030406", isolation: "isolate" }}>
+        {/* The card itself, scaled so the window fills the disc. */}
+        <div
+          aria-hidden={!placed}
+          className="absolute"
+          style={{ left: -view.x * s, top: -view.y * s, width: 1000 * s, height: 1500 * s, "--u": `${s}px` } as CSSProperties}
+        >
+          {/* A touch brighter than on the full card, so the currents read this small. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={finishAssets(finish.key).field.file} alt="" className="absolute inset-0 h-full w-full" style={{ filter: "brightness(1.25)" }} />
+          <GiantNumber text={bigNumber} finish={finish} />
+          <HoloShimmer finish={finish} isStatic />
+          <PlayerBacklight finish={finish} team={teamAccentFor(team)} />
+          {placed && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img ref={attach} src={cutout!} alt={player.name} className="absolute" style={cutoutCss(placed)} onError={onImageError} />
+          )}
+        </div>
+        {photo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img ref={attach} src={photo} alt={player.name} onError={onImageError}
+            className={`absolute inset-0 h-full w-full object-cover${cutout ? " object-top" : ""}`} />
+        )}
+        {!imageOk && !bigNumber && (
+          <span
+            className="relative font-black uppercase italic text-white"
+            style={{ fontFamily: "var(--font-barlow)", fontSize: disc * 0.36, textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}
+          >
+            {initials}
+          </span>
+        )}
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={miniArt(finish.key).ring} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" />

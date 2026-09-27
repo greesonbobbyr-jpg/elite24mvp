@@ -83,10 +83,14 @@ export default async function MainLayout({
               name: user.name,
               role: user.role,
               photoUrl: user.photoUrl,
+              photoCutoutUrl: user.photoCutoutUrl,
+              photoMeta: user.photoMeta,
               team: user.team,
               profile: ctx.profile
                 ? {
                     photoUrl: ctx.profile.photoUrl,
+                    photoCutoutUrl: ctx.profile.photoCutoutUrl,
+                    photoMeta: ctx.profile.photoMeta,
                     jerseyNumber: ctx.profile.jerseyNumber,
                     points: ctx.profile.careerPoints,
                   }
