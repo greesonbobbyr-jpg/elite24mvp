@@ -13,28 +13,53 @@ const NODES = { left: { x: 223, y: 796 }, right: { x: 762, y: 805 } };
 
 type Roots = { left: CardPoint; right: CardPoint };
 
-/** Measure this player's shoulder roots from the cutout's alpha. */
+/** Shoulder roots, measured once per cutout and placement for the session
+ * (in flight too): a card's three field passes, and every card showing the
+ * same photo — a row of small cards, a branch reopened — share one read of
+ * its pixels. */
+const rootsByCutout = new Map<string, Promise<Roots | null>>();
+
+function measureRoots(src: string, meta: PortraitMetaV2): Promise<Roots | null> {
+  const key = `${src}\n${JSON.stringify(meta)}`;
+  let roots = rootsByCutout.get(key);
+  if (!roots) {
+    roots = new Promise((resolve) => {
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = 512;
+          canvas.height = Math.round((image.naturalHeight * 512) / image.naturalWidth);
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          if (!ctx) return resolve(null);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          resolve(shoulderRoots(pixels, canvas.width, canvas.height, meta));
+        } catch {
+          resolve(null); // Unreadable external alpha keeps the authored layout.
+        }
+      };
+      image.onerror = () => {
+        rootsByCutout.delete(key); // a photo that failed to load may load next time
+        resolve(null);
+      };
+      image.src = src;
+    });
+    rootsByCutout.set(key, roots);
+  }
+  return roots;
+}
+
+/** This player's shoulder roots, from the cutout's alpha. */
 function useShoulderRoots(src: string | null, meta: PortraitMetaV2 | null) {
   const [measured, setMeasured] = useState<{ src: string; roots: Roots } | null>(null);
   useEffect(() => {
     if (!src || !meta) return;
     let active = true;
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 512;
-        canvas.height = Math.round((image.naturalHeight * 512) / image.naturalWidth);
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        if (!ctx) return;
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        const roots = shoulderRoots(pixels, canvas.width, canvas.height, meta);
-        if (active && roots) setMeasured({ src, roots });
-      } catch { /* Unreadable external alpha keeps the authored layout. */ }
-    };
-    image.src = src;
+    measureRoots(src, meta).then((roots) => {
+      if (active && roots) setMeasured({ src, roots });
+    });
     return () => { active = false; };
   }, [src, meta]);
   return measured?.src === src ? measured.roots : null;
