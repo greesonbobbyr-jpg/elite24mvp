@@ -75,60 +75,57 @@ export function CardCompositor({
     setVars(0, 0, 1, 50, 32, false);
   };
 
-  // `--u`: master unit in CSS px, pure CSS (SSR safe, no measurement). A
-  // numeric width is the card's size but shrinks to fit a narrow phone
-  // (max-width 100%; a 340px card on a 320px phone made the page zoomable
-  // sideways): the unit is that exact px value, or the rendered width's
-  // (container-query units) once shrunk. A string width (e.g. "100%") always
-  // scales with the container.
-  const unit =
-    typeof width === "number"
-      ? `min(${width / MASTER_W}px, calc(100cqw / ${MASTER_W}))`
-      : `calc(100cqw / ${MASTER_W})`;
-
+  // The card's box: a numeric width is the card's size but shrinks to fit a
+  // narrow phone (max-width 100%; a 340px card on a 320px phone made the
+  // page zoomable sideways); a string width (e.g. "100%") scales with the
+  // container. `--u`, the master unit in CSS px, is pure CSS (SSR safe, no
+  // measurement): the box's width / 1000 in its container units. It's
+  // measured from the box AROUND the stage so the stage's own shadow scales
+  // too — read on the stage, container units come from whatever container
+  // is outside the card, and a small card got a screen-sized shadow.
   return (
-    <div
-      ref={ref}
-      {...rest}
-      onPointerMove={
-        staticRender
-          ? undefined
-          : (e) => track(e.clientX, e.clientY, e.pointerType === "touch" ? 1.03 : 1)
-      }
-      onPointerLeave={staticRender ? undefined : rest_}
-      onPointerUp={staticRender ? undefined : rest_}
-      onPointerCancel={staticRender ? undefined : rest_}
-      className={`pc-stage relative${staticRender ? " pc-static" : ""}${className ? ` ${className}` : ""}`}
-      style={{
-        width,
-        maxWidth: "100%",
-        aspectRatio: `${CARD_ASPECT}`,
-        containerType: "inline-size",
-        // The cutout and its lighting are positioned past the card's edges
-        // (each layer is clipped to the card when painted); without this they
-        // still widened the page, letting it open zoomed-in on a phone.
-        // "clip", not "hidden": no scroll container, and the 3D tilt holds.
-        overflow: "clip",
-        isolation: "isolate",
-        // Vertical scroll and pinch-zoom still work when a gesture starts on
-        // the card; sideways drags drive the tilt. A still card leaves touch
-        // alone, so it can sit in a row that scrolls sideways.
-        touchAction: staticRender ? undefined : "pan-y pinch-zoom",
-        transformStyle: "preserve-3d",
-        willChange: staticRender ? undefined : "transform",
-        transition: staticRender ? undefined : "transform 220ms cubic-bezier(.2,.7,.2,1)",
-        transform: staticRender
-          ? undefined
-          : "perspective(1200px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(var(--sc,1))",
-        ...({
-          "--u": unit,
-          ...(staticRender ? { "--so": "0" } : {}),
-        } as CSSProperties),
-        ...style,
-      }}
-    >
-      <style>{STAGE_STYLE}</style>
-      {children}
+    <div style={{ width, maxWidth: "100%", containerType: "inline-size" }}>
+      <div
+        ref={ref}
+        {...rest}
+        onPointerMove={
+          staticRender
+            ? undefined
+            : (e) => track(e.clientX, e.clientY, e.pointerType === "touch" ? 1.03 : 1)
+        }
+        onPointerLeave={staticRender ? undefined : rest_}
+        onPointerUp={staticRender ? undefined : rest_}
+        onPointerCancel={staticRender ? undefined : rest_}
+        className={`pc-stage relative${staticRender ? " pc-static" : ""}${className ? ` ${className}` : ""}`}
+        style={{
+          width: "100%",
+          aspectRatio: `${CARD_ASPECT}`,
+          // The cutout and its lighting are positioned past the card's edges
+          // (each layer is clipped to the card when painted); without this they
+          // still widened the page, letting it open zoomed-in on a phone.
+          // "clip", not "hidden": no scroll container, and the 3D tilt holds.
+          overflow: "clip",
+          isolation: "isolate",
+          // Vertical scroll and pinch-zoom still work when a gesture starts on
+          // the card; sideways drags drive the tilt. A still card leaves touch
+          // alone, so it can sit in a row that scrolls sideways.
+          touchAction: staticRender ? undefined : "pan-y pinch-zoom",
+          transformStyle: "preserve-3d",
+          willChange: staticRender ? undefined : "transform",
+          transition: staticRender ? undefined : "transform 220ms cubic-bezier(.2,.7,.2,1)",
+          transform: staticRender
+            ? undefined
+            : "perspective(1200px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(var(--sc,1))",
+          ...({
+            "--u": `calc(100cqw / ${MASTER_W})`,
+            ...(staticRender ? { "--so": "0" } : {}),
+          } as CSSProperties),
+          ...style,
+        }}
+      >
+        <style>{STAGE_STYLE}</style>
+        {children}
+      </div>
     </div>
   );
 }
