@@ -1,5 +1,6 @@
 import type { Prisma, Role } from "@prisma/client";
 import { prisma } from "./prisma";
+import { rank1224 } from "./leaderboard";
 import { cutoutSrc, photoSrc } from "./photoUrl";
 import { getOrgStructure } from "./structure";
 
@@ -9,7 +10,8 @@ import { getOrgStructure } from "./structure";
 //
 // MATRIX RESPECT BY CONSTRUCTION: every select below carries CARD INFO ONLY —
 // name, photo + card placement, jersey, position, role, career points (the
-// card level). No dream, no per-game stats, no contact/guardian data, no
+// card level), team points and place on the team board — what the player's
+// card shows. No dream, no per-game stats, no contact/guardian data, no
 // takeaways; journals are structurally unreachable (nothing outside
 // lib/data/reflections.ts can query them — the build gate enforces it). A
 // test locks this allowlist.
@@ -37,6 +39,9 @@ export type OrgPerson = {
   photoCutoutUrl: string | null;
   photoMeta: Prisma.JsonValue | null; // the cutout's card placement
   careerPoints: number; // career total — the card level
+  points: number; // team points — the team board's number
+  /** Place on the team board (1224, as on the player's card); staff: null. */
+  teamRank: number | null;
 };
 
 export type OrgAdmin = {
@@ -100,6 +105,7 @@ export async function getOrgViewData(organizationId: number) {
       select: {
         teamId: true,
         role: true,
+        points: true,
         jerseyNumber: true,
         profile: {
           select: {
@@ -140,6 +146,8 @@ export async function getOrgViewData(organizationId: number) {
       photoCutoutUrl: cutoutSrc(m.profile.userId, m.profile.photoCutoutUrl),
       photoMeta: m.profile.photoMeta,
       careerPoints: m.profile.careerPoints,
+      points: m.points,
+      teamRank: null,
     };
     const bucket = peopleByTeam.get(m.teamId) ?? { staff: [], players: [] };
     (m.role === "PLAYER" ? bucket.players : bucket.staff).push(person);
@@ -147,6 +155,9 @@ export async function getOrgViewData(organizationId: number) {
   }
   for (const bucket of peopleByTeam.values()) {
     bucket.staff.sort((a, b) => a.roleRank - b.roleRank || a.name.localeCompare(b.name));
+    const board = rank1224([...bucket.players].sort((a, b) => b.points - a.points));
+    const places = new Map(board.map((p) => [p.userId, p.rank]));
+    for (const p of bucket.players) p.teamRank = places.get(p.userId) ?? null;
     bucket.players.sort((a, b) => b.careerPoints - a.careerPoints || a.name.localeCompare(b.name));
   }
 

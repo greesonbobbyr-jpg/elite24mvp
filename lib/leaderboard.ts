@@ -50,7 +50,7 @@ async function isPreBackfillTeam(teamId: number) {
 
 // Standard "competition" (1224) ranking: equal points share a rank, the next
 // distinct score skips accordingly (two at 980 are both 3, the next is 5).
-function rank1224<T extends { points: number }>(sorted: T[]): (T & { rank: number })[] {
+export function rank1224<T extends { points: number }>(sorted: T[]): (T & { rank: number })[] {
   let rank = 0;
   return sorted.map((p, i, arr) => {
     if (i === 0 || p.points !== arr[i - 1].points) rank = i + 1;

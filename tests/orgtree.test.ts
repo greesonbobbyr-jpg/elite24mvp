@@ -34,7 +34,7 @@ let nextUserId = 1;
 function person(name: string, role: OrgPerson["role"] = "PLAYER"): OrgPerson {
   return {
     userId: nextUserId++, name, role, roleRank: 0, jerseyNumber: null, position: null,
-    photoUrl: null, photoCutoutUrl: null, photoMeta: null, careerPoints: 0,
+    photoUrl: null, photoCutoutUrl: null, photoMeta: null, careerPoints: 0, points: 0, teamRank: null,
   };
 }
 function team(id: number, name: string, people: OrgPerson[] = []): OrgViewTeam {

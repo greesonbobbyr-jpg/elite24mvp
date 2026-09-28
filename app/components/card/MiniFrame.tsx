@@ -1,11 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
 import { FRAME_SLICE } from "@/lib/cardAssets";
 
-// THE MINI CARD'S CHROME, shared by the player and staff mini cards: a 2:3
-// card that fills its container's width, its face cut to sit inside the
-// frame's chamfered corners, the level's nine-slice frame on top, and the
+// THE MINI CARD'S CHROME, for the staff mini card and the org tree's empty
+// seat: a 2:3 card that fills its container's width, its face cut to sit
+// inside the frame's chamfered corners, the nine-slice frame on top, and the
 // name band at its foot. Sized in container units (cqw), so one card works
-// from a phone's podium to a desktop org tree.
+// at any width. (The player mini is the full card at a smaller size.)
 
 /** Frame and face insets as a share of the card's width (the frame art's
  * nine-slice border is 1/16 of the width). */

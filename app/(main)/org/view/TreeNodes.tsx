@@ -9,8 +9,8 @@ import { PlayerCard } from "@/app/components/PlayerCard";
 import { StaffCard, StaffPortrait, type StaffPerson } from "@/app/components/StaffCard";
 import { MINI_CARD, MiniBorder, MiniFace } from "@/app/components/card/MiniFrame";
 
-// The org tree's nodes: small cards from the card family (players in their
-// level's frame and energy, staff in graphite) and round division badges.
+// The org tree's nodes: small cards from the card family (a player's own card
+// at a smaller size, staff in graphite) and round division badges.
 // Each node carries data-node for the tree's connector lines, search flash
 // and scrolling. The open node and a search hit glow red.
 
@@ -67,7 +67,7 @@ export function OwnerNode({ owner, lit, onClick }: { owner: OrgAdmin | null; lit
       data-node={OWNER_NODE}
       onClick={onClick}
       aria-label={owner ? `Org Owner: ${owner.name}` : "Org Owner"}
-      className="relative w-28 shrink-0 active:scale-[0.97] md:w-[132px]"
+      className="relative w-[120px] shrink-0 active:scale-[0.97] md:w-36"
       style={glow(lit)}
     >
       {owner ? <StaffCard size="mini" person={staffPerson(owner, "Org Owner")} /> : <EmptySeatCard title="Org Owner" sub={null} />}
@@ -160,7 +160,7 @@ export function CoachNode({ team, open, lit, onClick }: { team: TreeTeam; open: 
       onClick={onClick}
       aria-expanded={open}
       aria-label={coach ? `Head Coach ${coach.name}, ${team.name}` : `${team.name}: no head coach yet`}
-      className="relative w-24 shrink-0 active:scale-[0.97] md:w-28"
+      className="relative w-[104px] shrink-0 active:scale-[0.97] md:w-[124px]"
       style={glow(open || lit)}
     >
       {coach ? (
@@ -172,21 +172,24 @@ export function CoachNode({ team, open, lit, onClick }: { team: TreeTeam; open: 
   );
 }
 
-/** A player's mini card; tapping it opens their Brand page. */
+/** A player's own card at a smaller size; tapping it opens their Brand page. */
 export function PlayerNode({ player, team, lit }: { player: OrgPerson; team: TreeTeam; lit: boolean }) {
   return (
     <Link
       href={`/brand/${player.userId}`}
       data-node={playerNode(team.id, player.userId)}
       aria-label={player.position ? `${player.name}, ${player.position}` : player.name}
-      className="relative w-[84px] shrink-0 active:scale-[0.97] md:w-[88px]"
+      className="relative w-24 shrink-0 active:scale-[0.97] md:w-28"
       style={glow(lit)}
     >
       <PlayerCard
         size="mini"
         player={{
           name: player.name,
+          jerseyNumber: player.jerseyNumber,
           position: player.position,
+          rank: player.teamRank,
+          rosterSize: team.players.length,
           points: player.careerPoints,
           total: player.careerPoints,
           photoUrl: player.photoUrl,

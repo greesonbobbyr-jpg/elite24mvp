@@ -3,7 +3,8 @@ import { afterAll, describe, expect, it } from "vitest";
 // GROUPING CHUNK 2 PROOFS — the read-only Org View loader + the org tree on
 // the seeded 12U–17U Mustang club:
 //   1. Staff ordered HC → AC → GM; empty roles simply absent; players ordered
-//      by card level (career points).
+//      by card level (career points), each with their place on the team
+//      board — the same place the team leaderboard gives them.
 //   2. Owner = the EARLIEST unrevoked ORG_ADMIN grant (seed: Gary), with the
 //      membership-less admin (Alex) listed too.
 //   3. Rollups match the seeded club; the two-team athlete counts once.
@@ -59,6 +60,12 @@ dbDescribe("Grouping Chunk 2 — Org View loader", () => {
     const career = varsity.players.map((p) => p.careerPoints);
     expect([...career].sort((a, b) => b - a)).toEqual(career);
     expect(career[0]).toBeGreaterThan(career[career.length - 1]); // the seed spreads the levels
+
+    const { getTeamRanking } = await import("../lib/leaderboard");
+    const board = await getTeamRanking(varsity.id);
+    for (const p of varsity.players) {
+      expect(p.teamRank, p.name).toBe(board.find((b) => b.id === p.userId)?.rank);
+    }
   });
 
   it("owner = earliest ORG_ADMIN grant (Gary); membership-less admin listed", async () => {
