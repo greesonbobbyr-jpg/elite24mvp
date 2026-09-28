@@ -9,8 +9,8 @@ import {
 } from "./actions";
 
 const field =
-  "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
-const label = "mb-1 block text-xs font-medium text-zinc-400";
+  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-red-500";
+const label = "mb-1 block text-xs font-medium text-muted";
 const button =
   "mt-1 w-full rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:opacity-60";
 
@@ -42,12 +42,12 @@ export function JoinForm() {
           autoCapitalize="characters"
           className={`${field} text-center text-lg font-semibold uppercase tracking-[0.35em]`}
         />
-        <p className="mt-1 text-[11px] text-zinc-500">
+        <p className="mt-1 text-[11px] text-subtle">
           Ask your coach for your team&apos;s join code.
         </p>
       </div>
 
-      {lookup.error && <p className="text-sm text-red-500">{lookup.error}</p>}
+      {lookup.error && <p className="text-sm text-brand">{lookup.error}</p>}
 
       <button type="submit" disabled={lookingUp} className={button}>
         {lookingUp ? "Checking…" : "Continue"}
@@ -70,9 +70,9 @@ function PlayerAccountForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      <div className="rounded-lg border border-red-600/25 bg-black/40 px-3 py-2.5 text-sm">
-        <span className="text-zinc-400">You&apos;re joining </span>
-        <span className="font-semibold text-white">{teamName}</span>
+      <div className="rounded-lg border border-red-600/25 bg-field px-3 py-2.5 text-sm">
+        <span className="text-muted">You&apos;re joining </span>
+        <span className="font-semibold text-ink">{teamName}</span>
       </div>
       <input type="hidden" name="code" value={code} />
 
@@ -91,12 +91,14 @@ function PlayerAccountForm({
           name="username"
           required
           autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           autoComplete="username"
           minLength={3}
           maxLength={20}
           className={field}
         />
-        <p className="mt-1 text-[11px] text-zinc-500">
+        <p className="mt-1 text-[11px] text-subtle">
           3–20 characters · letters, numbers, underscore. You&apos;ll log in with this.
         </p>
       </div>
@@ -131,14 +133,14 @@ function PlayerAccountForm({
         </div>
       </div>
 
-      {state.error && <p className="text-sm text-red-500">{state.error}</p>}
+      {state.error && <p className="text-sm text-brand">{state.error}</p>}
 
       <button type="submit" disabled={pending} className={button}>
         {pending ? "Creating your account…" : "Join team & get started"}
       </button>
 
       {/* Full reload resets the two-phase state cleanly. */}
-      <a href="/join" className="text-center text-xs text-zinc-500 hover:underline">
+      <a href="/join" className="text-center text-xs text-subtle hover:underline">
         Wrong code? Start over
       </a>
     </form>

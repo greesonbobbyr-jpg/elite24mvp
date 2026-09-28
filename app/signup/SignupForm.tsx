@@ -6,8 +6,8 @@ import { TeamBrandingFields } from "@/app/components/TeamBrandingFields";
 
 const initialState: SignupState = {};
 const field =
-  "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
-const label = "mb-1 block text-xs font-medium text-zinc-400";
+  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-red-500";
+const label = "mb-1 block text-xs font-medium text-muted";
 
 export function SignupForm() {
   const [state, formAction, pending] = useActionState(signup, initialState);
@@ -15,7 +15,7 @@ export function SignupForm() {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
           You (coach)
         </p>
         <div>
@@ -25,6 +25,22 @@ export function SignupForm() {
         <div>
           <label htmlFor="email" className={label}>Email</label>
           <input id="email" name="email" type="email" autoComplete="email" required className={field} />
+        </div>
+        <div>
+          <label htmlFor="username" className={label}>
+            Username <span className="text-subtle">(optional — log in with it or your email)</span>
+          </label>
+          <input
+            id="username"
+            name="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            autoComplete="username"
+            maxLength={21}
+            placeholder="e.g. coachgary"
+            className={field}
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -38,8 +54,8 @@ export function SignupForm() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-white/10 pt-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+      <div className="flex flex-col gap-3 border-t border-ink/10 pt-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
           Your team
         </p>
         <div>
@@ -49,7 +65,7 @@ export function SignupForm() {
         <TeamBrandingFields />
       </div>
 
-      {state.error && <p className="text-sm text-red-500">{state.error}</p>}
+      {state.error && <p className="text-sm text-brand">{state.error}</p>}
 
       <button
         type="submit"

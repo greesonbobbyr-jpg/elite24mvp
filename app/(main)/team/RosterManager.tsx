@@ -40,7 +40,7 @@ export function RosterManager({
 
   if (players.length === 0) {
     return (
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-subtle">
         No players yet — share your join code above.
       </p>
     );
@@ -51,19 +51,19 @@ export function RosterManager({
       {/* One-time temp password reveal */}
       {resetState.resetPassword && (
         <div className="rounded-lg border border-green-600/40 bg-green-600/10 px-3 py-2.5 text-sm">
-          <p className="font-semibold text-green-300">
+          <p className="font-semibold text-good-2">
             New password for {resetState.resetName}:
-            <code className="ml-2 rounded bg-black/40 px-2 py-0.5 font-mono text-white">
+            <code className="ml-2 rounded bg-field px-2 py-0.5 font-mono text-ink">
               {resetState.resetPassword}
             </code>
           </p>
-          <p className="mt-1 text-xs text-green-400/70">
+          <p className="mt-1 text-xs text-good/70">
             Shown once — write it down and hand it to them now.
           </p>
         </div>
       )}
       {(removeState.error || resetState.error) && (
-        <p className="text-sm text-red-500">
+        <p className="text-sm text-brand">
           {removeState.error ?? resetState.error}
         </p>
       )}
@@ -74,15 +74,15 @@ export function RosterManager({
           return (
             <li
               key={p.id}
-              className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5"
+              className="rounded-xl border border-ink/5 bg-ink/[0.02] px-3 py-2.5"
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-white">
+                  <p className="truncate text-sm font-semibold text-ink">
                     {p.name}
                   </p>
                   {p.username && (
-                    <p className="text-[11px] text-zinc-500">@{p.username}</p>
+                    <p className="text-[11px] text-subtle">Login: {p.username}</p>
                   )}
                 </div>
                 {canResetPassword && (
@@ -91,7 +91,7 @@ export function RosterManager({
                     <button
                       type="submit"
                       disabled={resetting}
-                      className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-zinc-300 transition hover:border-white/30 active:scale-95 disabled:opacity-60"
+                      className="rounded-full border border-ink/15 px-3 py-1 text-xs font-semibold text-ink-mid transition hover:border-ink/30 active:scale-95 disabled:opacity-60"
                     >
                       Reset password
                     </button>
@@ -101,7 +101,7 @@ export function RosterManager({
                   <button
                     type="button"
                     onClick={() => setConfirmingId(confirming ? null : p.id)}
-                    className="shrink-0 rounded-full border border-red-600/40 px-3 py-1 text-xs font-semibold text-red-400 transition hover:border-red-500 active:scale-95"
+                    className="shrink-0 rounded-full border border-red-600/40 px-3 py-1 text-xs font-semibold text-brand-2 transition hover:border-red-500 active:scale-95"
                   >
                     {confirming ? "Cancel" : "Remove"}
                   </button>
@@ -109,8 +109,8 @@ export function RosterManager({
               </div>
 
               {confirming && (
-                <div className="mt-2 rounded-lg border border-red-600/40 bg-red-950/20 p-3">
-                  <p className="text-xs text-red-300">
+                <div className="mt-2 rounded-lg border border-red-600/40 bg-red-600/[0.07] p-3">
+                  <p className="text-xs text-brand-3">
                     This removes {p.name.split(" ")[0]} from the roster and
                     leaderboards. Their account, journal, streak, and career
                     points are kept — they can re-join anytime with the team

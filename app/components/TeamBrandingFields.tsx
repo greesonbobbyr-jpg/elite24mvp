@@ -52,8 +52,8 @@ export function TeamBrandingFields({
 
       {/* Logo */}
       <div>
-        <p className="mb-1 block text-xs font-medium text-zinc-400">
-          Team logo <span className="text-zinc-600">(optional)</span>
+        <p className="mb-1 block text-xs font-medium text-muted">
+          Team logo <span className="text-subtle">(optional)</span>
         </p>
         <div
           onDragOver={(e) => {
@@ -70,7 +70,7 @@ export function TeamBrandingFields({
           className={`flex cursor-pointer items-center gap-3 rounded-lg border border-dashed px-3 py-4 text-sm transition ${
             dragging
               ? "border-red-500 bg-red-600/10"
-              : "border-red-600/30 bg-black/40 hover:border-red-500"
+              : "border-red-600/30 bg-field hover:border-red-500"
           }`}
         >
           {logo ? (
@@ -81,15 +81,15 @@ export function TeamBrandingFields({
               className="h-14 w-14 shrink-0 rounded object-contain"
             />
           ) : (
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded bg-white/5 text-2xl text-zinc-600">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded bg-ink/5 text-2xl text-faint">
               +
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-zinc-300">
+            <p className="text-ink-mid">
               {logo ? "Logo added" : "Drag & drop, or click to choose a file"}
             </p>
-            <p className="text-[11px] text-zinc-500">PNG, JPG, or WEBP</p>
+            <p className="text-[11px] text-subtle">PNG, JPG, or WEBP</p>
           </div>
         </div>
         <input
@@ -106,12 +106,12 @@ export function TeamBrandingFields({
               setLogo(null);
               if (inputRef.current) inputRef.current.value = "";
             }}
-            className="mt-1.5 text-xs text-zinc-400 hover:text-red-400 hover:underline"
+            className="mt-1.5 text-xs text-muted hover:text-brand-2 hover:underline"
           >
             Remove logo
           </button>
         )}
-        {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+        {error && <p className="mt-1 text-xs text-brand">{error}</p>}
       </div>
 
       {/* Colors */}
@@ -127,7 +127,7 @@ export function TeamBrandingFields({
           onPick={setSecondary}
         />
         {(primary || secondary) && (
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 text-xs text-subtle">
             <span>Your uniforms:</span>
             {primary && <JerseyIcon hex={primary} className="h-16 w-14" />}
             {secondary && <JerseyIcon hex={secondary} className="h-16 w-14" />}
@@ -149,8 +149,8 @@ function Swatches({
 }) {
   return (
     <div>
-      <p className="mb-1.5 block text-xs font-medium text-zinc-400">
-        {label} <span className="text-zinc-600">(optional)</span>
+      <p className="mb-1.5 block text-xs font-medium text-muted">
+        {label} <span className="text-subtle">(optional)</span>
       </p>
       <div className="flex flex-wrap gap-1.5">
         {TEAM_COLORS.map((c) => {
@@ -165,7 +165,7 @@ function Swatches({
               onClick={() => onPick(isSel ? null : c.hex)}
               className={`rounded-lg p-0.5 transition ${
                 isSel
-                  ? "scale-105 ring-2 ring-white ring-offset-2 ring-offset-black"
+                  ? "scale-105 ring-2 ring-ink ring-offset-2 ring-offset-canvas"
                   : "hover:scale-110"
               }`}
             >

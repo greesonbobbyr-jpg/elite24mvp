@@ -122,6 +122,11 @@ model Profile {
   // Identity ("card info" — the teammate-visible surface per the matrix)
   name         String
   photoUrl     String?
+  // Card portrait (card redesign): background-removed cutout derived from
+  // photoUrl (the original is never overwritten) + the Stage-4 normalization
+  // metadata {version, faceBox, eyeY, headTopY, shoulderY, scale, tx, ty}.
+  photoCutoutUrl String?
+  photoMeta      Json?
   jerseyNumber Int? // preferred; Membership can override per team
   position     String?
   gradYear     Int?
@@ -329,6 +334,9 @@ model User {
   // Team Settings; players use PlayerProfile.photoUrl (via their Brand page). Both
   // render in the PlayerCard/avatar with an initials fallback.
   photoUrl String?
+  // Card portrait cutout + normalization metadata (card redesign; see Profile).
+  photoCutoutUrl String?
+  photoMeta      Json?
 
   teamId Int
   team   Team @relation(fields: [teamId], references: [id])
@@ -402,6 +410,9 @@ model PlayerProfile {
   // in-field, no-hosting pattern as Team.logoUrl). Owner-only upload; null =
   // fall back to initials in the PlayerCard.
   photoUrl String?
+  // Card portrait cutout + normalization metadata (card redesign; see Profile).
+  photoCutoutUrl String?
+  photoMeta      Json?
 
   // Convenience cache of the player's total points. The PointsLedger is the
   // source of truth; this is kept in sync in the same transaction as each

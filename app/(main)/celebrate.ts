@@ -66,7 +66,8 @@ export function celebrate(anchor: HTMLElement | null, points: number): void {
 
     const label = document.createElement("div");
     label.textContent = `+${points}`;
-    label.style.cssText = `position:absolute;left:${cx}px;top:${cy}px;transform:translate(-50%,-50%);color:#e8c766;font-weight:800;font-size:18px;text-shadow:0 0 10px rgba(212,175,55,0.7);`;
+    // var(--gold): pale gold on the dark page, deep gold on the light one.
+    label.style.cssText = `position:absolute;left:${cx}px;top:${cy}px;transform:translate(-50%,-50%);color:var(--gold);font-weight:800;font-size:18px;text-shadow:0 0 10px rgba(212,175,55,0.7);`;
     layer.appendChild(label);
     label.animate(
       [

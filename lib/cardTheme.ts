@@ -5,6 +5,8 @@
 // so these helpers only ever produce DARK card bases + return a scrim to layer
 // behind text.
 
+import { derivePalette, HOLO_SPECTRUM, LEVEL_LOOKS, STAFF_LOOK } from "./finishArt";
+
 export const APP_RED = "#e1102a";
 const APP_RED_DEEP = "#7a0a18";
 
@@ -155,8 +157,10 @@ export type Tier = {
   sweepSec: number; // sweep duration in seconds (0 = no sweep, e.g. Prospect)
 };
 
-// Deliberately NOT easy — Platinum ≈ weeks of daily max effort. Single source of
-// truth; re-tune here only.
+// OWNER-LOCKED thresholds (card redesign): 0 / 1k / 5k / 20k / 50k career
+// points. Deliberately NOT easy — the top level ≈ seasons of daily max effort.
+// Single source of truth; re-tune here only. (Legacy ring/glow/glint fields
+// survive for the pre-redesign card until Stages 5–7 replace their consumers.)
 export const TIERS: Tier[] = [
   {
     key: "prospect",
@@ -171,7 +175,7 @@ export const TIERS: Tier[] = [
   {
     key: "bronze",
     label: "Bronze",
-    min: 100,
+    min: 1000,
     // deep bronze → bright copper → brown
     ring: ["#3f2410", "#7a4a20", "#d98f4e", "#f0b877", "#9a5f2c", "#3f2410"],
     glow: "rgba(200,120,60,0.35)",
@@ -181,7 +185,7 @@ export const TIERS: Tier[] = [
   {
     key: "silver",
     label: "Silver",
-    min: 300,
+    min: 5000,
     // charcoal → white-hot → grey
     ring: ["#2f3236", "#6b7178", "#c9ced6", "#ffffff", "#8b9199", "#2f3236"],
     glow: "rgba(210,220,230,0.30)",
@@ -191,7 +195,7 @@ export const TIERS: Tier[] = [
   {
     key: "gold",
     label: "Gold",
-    min: 700,
+    min: 20000,
     // dark gold/amber → pale-gold highlight → dark gold
     ring: ["#4d3608", "#997012", "#e6b73a", "#fff1b0", "#b98f1e", "#4d3608"],
     glow: "rgba(230,183,58,0.45)",
@@ -201,7 +205,7 @@ export const TIERS: Tier[] = [
   {
     key: "platinum",
     label: "Platinum",
-    min: 1500,
+    min: 50000,
     // iridescent cool blue / violet / silver shift
     ring: [
       "#2f5a72",
@@ -227,4 +231,314 @@ export function tierForPoints(points: number): Tier {
 
 export function tierByKey(key: TierKey): Tier {
   return TIERS.find((t) => t.key === key) ?? TIERS[0];
+}
+
+// ---- stars (card redesign) -------------------------------------------------
+
+/**
+ * Star count for the card's TIER panel: 1–5, one per tier level reached.
+ * EARNED STARS ONLY — the card renders exactly this many; never hollow, dim,
+ * or locked placeholder stars.
+ */
+export function starsForPoints(points: number): 1 | 2 | 3 | 4 | 5 {
+  const idx = TIERS.findIndex((t) => t.key === tierForPoints(points).key);
+  return (idx + 1) as 1 | 2 | 3 | 4 | 5;
+}
+
+// ---- finish tokens (card redesign, Δ2/Δ4) ----------------------------------
+//
+// The SECOND token system: material finishes. Geometry lives in
+// lib/cardGeometry.ts and never varies by level; a prospect-level change may
+// only ever select one of these finish token sets. The metal names below are
+// INTERNAL ONLY — they never print on the card (the card shows stars +
+// "PROSPECT"; tier display labels stay in TIERS above).
+
+export type FinishKey = "bronze" | "silver" | "gold" | "platinum" | "diamond";
+
+export type Finish = {
+  /** Internal token name — never rendered as text on the card. */
+  key: FinishKey;
+  /** Star count this finish corresponds to (1–5). */
+  stars: 1 | 2 | 3 | 4 | 5;
+  /** Conic metal colorway for the frame (dark → highlight → mid → dark). */
+  metal: string[];
+  /** Brightest metal tone — star fill, number stroke highlights. */
+  metalHighlight: string;
+  /** Darkest metal tone — bevel shadows. */
+  metalShadow: string;
+  /** Card-face environment: dark foundation gradient stops. */
+  background: { top: string; mid: string; bottom: string };
+  /** Lighting hue for backlight (layer 1) + rim (layer 2) + spill (layer 3). */
+  lightHue: string;
+  /** Overall lighting strength 0..1. */
+  lightIntensity: number;
+  /**
+   * Foil/spectral strength 0..1 — the progression is sacred (each level up
+   * must read as strictly more premium); exact numbers tunable in the loop.
+   */
+  foilIntensity: number;
+  /** Spectral gradient stops for the foil sweep (card surfaces only — Δ13). */
+  spectral: string[];
+  /** Star SVG fill gradient (the finish's metal). */
+  starMaterial: { from: string; to: string };
+  /** Colors of the live layers, matched to this level's authored art. */
+  palette: FinishPalette;
+};
+
+/** The live layers' colors (number, text accents, energy, frame sheen). */
+export type FinishPalette = {
+  number: {
+    /** Dark body under the foil, top-left → bottom-right. */
+    body: string[];
+    /** Offset extrusion: fill and stroke. */
+    extrude: string;
+    extrudeEdge: string;
+    /** Wide aura and tight bloom behind the glyphs. */
+    aura: string;
+    bloom: string;
+    /** Broken spark line, bevel gradient and hairline core. */
+    flare: string;
+    edge: string[];
+    core: string;
+    /** Moving sheen band inside the glyphs. */
+    sheen: string[];
+  };
+  /** First-name gradient (top → bottom) and its shadow. */
+  firstName: string[];
+  firstNameShadow: string;
+  /** Details line: the jersey number and the separators. */
+  accent: string;
+  separator: string;
+  /** Stat panel headers and the points value gradient. */
+  statHeader: string;
+  statValue: string[];
+  energy: {
+    /** How strongly the energy leaves the player (0 none … 1 Platinum). */
+    strength: number;
+    /** Bloom where the energy meets the shoulders; root glow, center → edge. */
+    contact: string;
+    glow: string[];
+    /** Shoulder sparks: glow stroke, shard fill, shard glow, arc line. */
+    sparks: string[];
+    /** Rim light flecks and hairline. */
+    rimFoil: string;
+    rimCore: string;
+  };
+  /** Frame sheen: the light spot, the diagonal band, and its strength (Platinum 1). */
+  frameSheen: { spot: string[]; band: string[]; strength: number };
+  /** Depth shadow behind the player. */
+  shadow: string;
+  /** Holographic foil over the card face, sliding with the light (Diamond). */
+  holo?: { colors: string[]; strength: number };
+};
+
+/** Platinum's live-layer colors, exactly as approved (2026-09-26). */
+export const PLATINUM_PALETTE: FinishPalette = {
+  number: {
+    body: ["#051834", "#101b40", "#063951", "#07172b", "#211936", "#0a263e", "#1a3b59"],
+    extrude: "#030b17",
+    extrudeEdge: "#031026",
+    aura: "#168cff",
+    bloom: "#38aaff",
+    flare: "#b4f4ff",
+    edge: ["#fff", "#8ae5ff", "#e6b2ff", "#d5faff"],
+    core: "#ffffff",
+    sheen: ["#b4c9ff55", "#fff9", "#f5b3ff66"],
+  },
+  firstName: ["#effcff", "#77d4f1", "#147dad", "#69c5eb"],
+  firstNameShadow: "#001122",
+  accent: "#60d8ff",
+  separator: "#75dfff",
+  statHeader: "#9eeaff",
+  statValue: ["#c9f9ff", "#65cfff", "#2477ba"],
+  energy: {
+    strength: 1,
+    contact: "#5cc8ff",
+    glow: ["#ffffff", "#9fe2ff", "#1a8cff"],
+    sparks: ["#009cff", "#d1f6ff", "#149dff", "#b6f1ff"],
+    rimFoil: "#bcefff",
+    rimCore: "#d7f7ff",
+  },
+  frameSheen: { spot: ["#fff", "#b8efff60"], band: ["#88e8ff25", "#f7caff80", "#ffffffa0", "#85e9ff40"], strength: 1 },
+  shadow: "#000815",
+};
+
+/** Diamond's live colors, authored to match its holographic art (the owner,
+ * 2026-09-26: "more wild, special and holographic"): iridescent cyan, violet
+ * and pink instead of one hue, and a stronger frame sheen and face foil. */
+export const DIAMOND_PALETTE: FinishPalette = {
+  number: {
+    body: ["#0b0620", "#160b33", "#062535", "#0a0a26", "#2c0d38", "#052b33", "#1e1645"],
+    extrude: "#05020d",
+    extrudeEdge: "#0a0418",
+    aura: "#a24dff",
+    bloom: "#46e3ff",
+    flare: "#ffd9fb",
+    edge: ["#ffffff", "#8ff7ff", "#ff9cf0", "#d6b8ff"],
+    core: "#ffffff",
+    sheen: ["#7df9ff77", "#ffffffbb", "#ff8af077"],
+  },
+  firstName: ["#ffffff", "#8ff5ff", "#c586ff", "#ff9fe6"],
+  firstNameShadow: "#0a0118",
+  accent: "#8ff5ff",
+  separator: "#f0a8ff",
+  statHeader: "#d4c2ff",
+  statValue: ["#ffffff", "#9af4ff", "#c07bff"],
+  energy: {
+    strength: 1,
+    contact: "#b98cff",
+    glow: ["#ffffff", "#c8f8ff", "#b54dff"],
+    sparks: ["#a45cff", "#f6e6ff", "#47d8ff", "#ffffff"],
+    rimFoil: "#ffd9fb",
+    rimCore: "#eafcff",
+  },
+  frameSheen: { spot: ["#fff", "#ffd6fa90"], band: ["#7df9ff55", "#ff8af0a0", "#ffffffc0", "#9d7dff70"], strength: 2.4 },
+  shadow: "#07000f",
+  holo: { colors: HOLO_SPECTRUM, strength: 1 },
+};
+
+export const FINISH_ORDER: FinishKey[] = [
+  "bronze",
+  "silver",
+  "gold",
+  "platinum",
+  "diamond",
+];
+
+export const FINISHES: Record<FinishKey, Finish> = {
+  // 1★ — premium matte bronze. Still a card you're proud of (§31): warm dark
+  // metal, minimal foil, quiet confidence.
+  bronze: {
+    key: "bronze",
+    stars: 1,
+    metal: ["#2b1a0e", "#5c3a1c", "#a4713a", "#d9a05e", "#7a4f24", "#2b1a0e"],
+    metalHighlight: "#e8b877",
+    metalShadow: "#1c1108",
+    background: { top: "#1a120c", mid: "#0e0a07", bottom: "#070503" },
+    lightHue: "#c98a4b",
+    lightIntensity: 0.35,
+    foilIntensity: 0.03,
+    spectral: ["#d9a05e", "#f0c98e", "#d9a05e"],
+    starMaterial: { from: "#e8b877", to: "#8a5a28" },
+    palette: derivePalette(PLATINUM_PALETTE, LEVEL_LOOKS.bronze),
+  },
+  // 2★ — silver, subtle foil begins.
+  silver: {
+    key: "silver",
+    stars: 2,
+    metal: ["#23262a", "#565c64", "#aeb6c0", "#eef2f6", "#7c848e", "#23262a"],
+    metalHighlight: "#f4f7fa",
+    metalShadow: "#15171a",
+    background: { top: "#14161a", mid: "#0b0d10", bottom: "#050607" },
+    lightHue: "#b9c4d0",
+    lightIntensity: 0.45,
+    foilIntensity: 0.18,
+    spectral: ["#aeb6c0", "#e8f1ff", "#c9d4e2", "#aeb6c0"],
+    starMaterial: { from: "#f4f7fa", to: "#848d98" },
+    palette: derivePalette(PLATINUM_PALETTE, LEVEL_LOOKS.silver),
+  },
+  // 3★ — gold, true holographic behavior arrives.
+  gold: {
+    key: "gold",
+    stars: 3,
+    metal: ["#3a2a06", "#8a660f", "#d9ab2e", "#ffe89a", "#a87f16", "#3a2a06"],
+    metalHighlight: "#ffee9d",
+    metalShadow: "#241a04",
+    background: { top: "#191307", mid: "#0e0b05", bottom: "#060502" },
+    lightHue: "#e6b73a",
+    lightIntensity: 0.55,
+    foilIntensity: 0.45,
+    spectral: ["#d9ab2e", "#fff3b8", "#e0742e", "#d9ab2e"],
+    starMaterial: { from: "#ffee9d", to: "#a87f16" },
+    palette: derivePalette(PLATINUM_PALETTE, LEVEL_LOOKS.gold),
+  },
+  // 4★ — platinum: cool, iridescent, the geometric MASTER finish.
+  platinum: {
+    key: "platinum",
+    stars: 4,
+    metal: ["#1f2f3a", "#4a7c94", "#9fd3e8", "#eefaff", "#6d9ab0", "#1f2f3a"],
+    metalHighlight: "#f2fbff",
+    metalShadow: "#13202a",
+    background: { top: "#101820", mid: "#0a0f14", bottom: "#04070a" },
+    lightHue: "#9fd3e8",
+    lightIntensity: 0.65,
+    foilIntensity: 0.75,
+    spectral: ["#9fd3e8", "#e9d6ff", "#8affd6", "#9fb2ff", "#9fd3e8"],
+    starMaterial: { from: "#f2fbff", to: "#5f93ab" },
+    palette: PLATINUM_PALETTE,
+  },
+  // 5★ — diamond: maximum, sophisticated. Absolutely no gems/wings/crowns or
+  // rainbow clutter (§35) — restraint at full intensity.
+  diamond: {
+    key: "diamond",
+    stars: 5,
+    metal: ["#252a33", "#6b7f96", "#cfe4f4", "#ffffff", "#8fa6bd", "#252a33"],
+    metalHighlight: "#ffffff",
+    metalShadow: "#161a21",
+    background: { top: "#12161d", mid: "#0b0e13", bottom: "#050608" },
+    lightHue: "#dceafe",
+    lightIntensity: 0.75,
+    foilIntensity: 1.0,
+    spectral: ["#cfe4f4", "#ffd9ec", "#d9ffe9", "#d9e4ff", "#cfe4f4"],
+    starMaterial: { from: "#ffffff", to: "#8fa6bd" },
+    palette: DIAMOND_PALETTE,
+  },
+};
+
+/** Staff cards (not a level: staff don't progress). Silver's tokens with a
+ * quiet steel palette and no energy, for the name and panel lettering. */
+export const STAFF_FINISH: Finish = {
+  ...FINISHES.silver,
+  palette: derivePalette(PLATINUM_PALETTE, STAFF_LOOK),
+};
+
+/** Finish tokens for a star count (1–5). */
+export function finishForStars(stars: number): Finish {
+  const key = FINISH_ORDER[Math.min(5, Math.max(1, Math.round(stars))) - 1];
+  return FINISHES[key];
+}
+
+/** Finish tokens for a career-points total. */
+export function finishForPoints(points: number): Finish {
+  return finishForStars(starsForPoints(points));
+}
+
+// ---- TEAM TOKENS = environmental identity (v4 clarification 4) -------------
+//
+// The SECOND identity system, deliberately separate from FINISHES:
+//   FINISH TOKENS = collectible MATERIAL (owned by prospect level — chassis
+//                   metal, bevels, edges, foil intensity, reflectivity, number
+//                   material family, star material, value progression).
+//   TEAM TOKENS   = environmental IDENTITY (owned by the team — subtle
+//                   background/environment illumination, atmospheric energy,
+//                   selected accent lighting, first-name accent, restrained
+//                   accent lines, player environmental backlight).
+// Team color NEVER recolors or overrides the physical prospect metal: a 3★
+// player on a red team gets a GOLD chassis with restrained RED environment.
+// These two are never merged into one theme object; the compositor takes
+// `finish` and `teamAccent` as separate props.
+
+export type TeamAccent = {
+  /** The one team hue used for environmental identity (hex). */
+  hue: string;
+  /** rgba() helpers pre-baked at the intensities the compositor uses. */
+  illumination: string; // background/environment glow
+  atmosphere: string; // particle/energy tint
+  backlight: string; // player environmental backlight tint
+  text: string; // first-name accent (readability-safe)
+};
+
+/** Derive the team's environmental tokens from its brand colors. */
+export function teamAccentFor(team: {
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+}): TeamAccent {
+  const hue = accentColor(team.primaryColor, team.secondaryColor);
+  return {
+    hue,
+    illumination: withAlpha(hue, 0.18),
+    atmosphere: withAlpha(hue, 0.22),
+    backlight: withAlpha(hue, 0.28),
+    text: numberColor(team.primaryColor, team.secondaryColor),
+  };
 }

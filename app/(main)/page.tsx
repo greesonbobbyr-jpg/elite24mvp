@@ -89,7 +89,7 @@ export default async function Home() {
           />
           <div className="relative z-10">
             <h2 className="e24-eyebrow">My Dream</h2>
-            <p className="mt-1 text-xl font-bold leading-snug text-white">
+            <p className="mt-1 text-xl font-bold leading-snug text-ink">
               {profile.dream}
             </p>
           </div>
@@ -98,50 +98,50 @@ export default async function Home() {
 
       {/* Progress strip — streak · tier · rank at a glance */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-center">
-          <p className="text-lg font-black leading-none text-white">
+        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center">
+          <p className="text-lg font-black leading-none text-ink">
             🔥 {streak}
             {shieldReady && streak > 0 && (
               <span title="Shield ready — one missed day won't break it" className="ml-1 align-middle text-[10px]">🛡️</span>
             )}
           </p>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-subtle">
             Day streak
           </p>
         </div>
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-center">
-          <p className="text-lg font-black uppercase leading-none text-white">
+        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center">
+          <p className="text-lg font-black uppercase leading-none text-ink">
             {tier.label}
           </p>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-subtle">
             {nextTier ? `${nextTier.min - points} pts to ${nextTier.label}` : "Top tier"}
           </p>
         </div>
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-center">
-          <p className="text-lg font-black leading-none text-white">
+        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center">
+          <p className="text-lg font-black leading-none text-ink">
             {myRank > 0 ? `#${myRank}` : "—"}
           </p>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-subtle">
             Team rank
           </p>
         </div>
       </div>
 
       {/* Daily check-in (the core loop) — the main act */}
-      <Card className="bg-gradient-to-b from-zinc-900/60 to-zinc-950 shadow-lg shadow-black/40">
+      <Card className="bg-gradient-to-b from-raised/60 to-panel shadow-lg shadow-shade">
         <h2 className="text-lg font-semibold">What will you work on today?</h2>
         {todaysEntry ? (
           <div className="mt-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/15 px-3 py-1 text-xs font-semibold text-red-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/15 px-3 py-1 text-xs font-semibold text-brand-2">
               ✓ Checked in today · +{POINTS_PER_CHECKIN}
             </span>
-            <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-200">
+            <p className="mt-3 whitespace-pre-wrap text-sm text-ink-soft">
               {todaysEntry.reflection}
             </p>
             {/* Peak-motivation moment — chain into the next habit, don't dead-end. */}
             <Link
               href="/quests"
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-red-500 transition hover:text-red-400"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition hover:text-brand-2"
             >
               Next up: Quests · {questsDone} of {quests.length} done →
             </Link>
@@ -162,13 +162,13 @@ export default async function Home() {
           savedTakeaway={takeaway?.text ?? ""}
         />
       ) : (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/60">
+        <section className="rounded-xl border border-line bg-canvas/60">
           <div className="flex w-full items-center gap-3 px-4 py-3">
             <span aria-hidden className="shrink-0 text-base">
               🔒
             </span>
             <span className="e24-eyebrow shrink-0">1-Minute Mindset</span>
-            <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
+            <span className="min-w-0 flex-1 truncate text-sm text-subtle">
               Check in to unlock today&apos;s story
             </span>
           </div>

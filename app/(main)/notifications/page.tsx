@@ -1,11 +1,7 @@
 import { redirect } from "next/navigation";
-import { actingScope, getCurrentContext } from "@/lib/context";
+import { actingScope, actingTeamId, getCurrentContext } from "@/lib/context";
 import { can } from "@/lib/authz";
-import {
-  listTeamNotifications,
-  getTeamReadStatus,
-  getReadNotificationIds,
-} from "@/lib/notifications";
+import { listPlayerNotifications, getTeamReadStatus } from "@/lib/notifications";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { confirmRead } from "../actions";
 import { NotificationComposer } from "./NotificationComposer";
@@ -38,7 +34,7 @@ export default async function NotificationsPage() {
 
   // ----- Coach: compose + per-message read receipts for their own team -----
   if (user.role === "COACH") {
-    const items = await getTeamReadStatus(user.teamId);
+    const items = await getTeamReadStatus(actingTeamId(ctx));
     // The TIME OUT toggle is hidden from staff without send_timeout (the
     // server also enforces it; matrix: HEAD_COACH / ORG_ADMIN only).
     const scope = actingScope(ctx);
@@ -49,7 +45,7 @@ export default async function NotificationsPage() {
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
         <header>
           <p className="e24-eyebrow">Notifications</p>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-subtle">
             Post to your team · read receipts
           </p>
         </header>
@@ -71,26 +67,26 @@ export default async function NotificationsPage() {
               >
                 <div className="relative z-10">
                   <div className="flex items-baseline justify-between gap-3">
-                    <h2 className="font-bold text-white">
+                    <h2 className="font-bold text-ink">
                       {n.isTimeout && <TimeoutBadge />}
                       {n.title}
                     </h2>
-                    <span className="shrink-0 text-xs text-zinc-500">
+                    <span className="shrink-0 text-xs text-subtle">
                       {formatDate(n.createdAt)}
                     </span>
                   </div>
-                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-zinc-300">
+                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-mid">
                     {n.body}
                   </p>
 
                   {/* Per-message read receipt */}
-                  <div className="mt-4 border-t border-white/10 pt-3">
+                  <div className="mt-4 border-t border-ink/10 pt-3">
                     <div className="flex items-center justify-between gap-3">
                       <p className="e24-eyebrow">
                         Read by {n.readCount} of {n.totalPlayers}
                       </p>
                     </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400"
                         style={{
@@ -122,27 +118,26 @@ export default async function NotificationsPage() {
   }
 
   // ----- Player: read team notifications + acknowledge -----
-  const [notifications, readIds] = await Promise.all([
-    listTeamNotifications(user.teamId),
-    getReadNotificationIds(user.id),
-  ]);
-
-  // Presentational grouping only (uses the already-fetched readIds — no new
-  // query): prominent unread cards up top, dimmed read rows under "EARLIER".
-  const unread = notifications.filter((n) => !readIds.has(n.id));
-  const read = notifications.filter((n) => readIds.has(n.id));
+  // Acting team + alerts since joining it — the same set the TIME OUT
+  // takeover and the menu badge use. Prominent unread cards up top (ALL of
+  // them, so the badge can always be cleared), dimmed read rows under "EARLIER".
+  const { unread, read } = await listPlayerNotifications(
+    user.id,
+    actingTeamId(ctx),
+    ctx.membership?.startedAt ?? null,
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
       <header>
         <p className="e24-eyebrow">Notifications</p>
-        <p className="mt-1 text-sm text-zinc-500">Messages from your coach</p>
+        <p className="mt-1 text-sm text-subtle">Messages from your coach</p>
       </header>
 
       {/* Web Push opt-in — permission prompt only fires on the player's tap. */}
       <PushToggle />
 
-      {notifications.length === 0 ? (
+      {unread.length + read.length === 0 ? (
         <EmptyCard line="No notifications from your coach yet." />
       ) : (
         <>
@@ -166,7 +161,7 @@ export default async function NotificationsPage() {
                     />
                     <div
                       className={`relative z-10 flex-1 p-5 ${
-                        n.isTimeout ? "bg-red-950/30" : ""
+                        n.isTimeout ? "bg-red-600/10" : ""
                       }`}
                     >
                       {/* author identity row — name + role snapshot (4c) */}
@@ -175,15 +170,15 @@ export default async function NotificationsPage() {
                           {initials(n.authorName)}
                         </span>
                         <div className="min-w-0 flex-1 leading-tight">
-                          <p className="truncate text-sm font-semibold text-white">
+                          <p className="truncate text-sm font-semibold text-ink">
                             {n.authorName}
                             {n.authorRoleLabel && (
-                              <span className="font-normal text-zinc-400">
+                              <span className="font-normal text-muted">
                                 {" "}· {n.authorRoleLabel}
                               </span>
                             )}
                           </p>
-                          <p className="text-[11px] text-zinc-500">
+                          <p className="text-[11px] text-subtle">
                             {formatDateTime(n.createdAt)}
                           </p>
                         </div>
@@ -193,11 +188,11 @@ export default async function NotificationsPage() {
                         />
                       </div>
 
-                      <h2 className="mt-3 font-bold text-white">
+                      <h2 className="mt-3 font-bold text-ink">
                         {n.isTimeout && <TimeoutBadge />}
                         {n.title}
                       </h2>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-200">
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-ink-soft">
                         {n.body}
                       </p>
 
@@ -226,18 +221,18 @@ export default async function NotificationsPage() {
                 {read.map((n) => (
                   <li
                     key={n.id}
-                    className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5"
+                    className="flex items-center gap-2.5 rounded-xl border border-ink/5 bg-ink/[0.02] px-3 py-2.5"
                   >
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600/20 text-[11px] font-bold text-green-400">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600/20 text-[11px] font-bold text-good">
                       ✓
                     </span>
                     {n.isTimeout && (
-                      <WhistleIcon className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                      <WhistleIcon className="h-3.5 w-3.5 shrink-0 text-subtle" />
                     )}
-                    <span className="min-w-0 flex-1 truncate text-sm text-zinc-400">
+                    <span className="min-w-0 flex-1 truncate text-sm text-muted">
                       {n.title}
                     </span>
-                    <span className="shrink-0 text-[11px] text-zinc-600">
+                    <span className="shrink-0 text-[11px] text-subtle">
                       {formatDate(n.createdAt)}
                     </span>
                   </li>
@@ -257,7 +252,7 @@ function EmptyCard({ line }: { line: string }) {
     <section className="e24-surface rounded-2xl border border-red-600/25 p-6">
       <div className="relative z-10">
         <p className="e24-eyebrow">Notifications</p>
-        <p className="mt-2 text-sm text-zinc-400">{line}</p>
+        <p className="mt-2 text-sm text-muted">{line}</p>
       </div>
     </section>
   );
@@ -275,15 +270,15 @@ function ReceiptGroup({
 }) {
   const chip =
     tone === "read"
-      ? "bg-green-600/15 text-green-300 ring-1 ring-green-500/30"
-      : "bg-white/5 text-zinc-400 ring-1 ring-white/10";
+      ? "bg-green-600/15 text-good-2 ring-1 ring-green-500/30"
+      : "bg-ink/5 text-muted ring-1 ring-ink/10";
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">
         {label}
       </p>
       {names.length === 0 ? (
-        <p className="mt-1 text-xs text-zinc-600">
+        <p className="mt-1 text-xs text-subtle">
           {tone === "read" ? "—" : "All caught up"}
         </p>
       ) : (

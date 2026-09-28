@@ -1,27 +1,53 @@
 "use client";
+import { EnergyEmission, FoilField } from "@/app/components/card/FoilField";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+
+import type { CSSProperties } from "react";
 import {
-  cardGradient,
-  accentColor,
-  numberColor,
-  tierForPoints,
   withAlpha,
-  shade,
-  hexToRgb,
-  BOTTOM_VIGNETTE,
-  type Tier,
+  FINISHES,
+  finishForStars,
+  starsForPoints,
+  teamAccentFor,
+  type Finish,
+  type FinishKey,
 } from "@/lib/cardTheme";
+import { PORTRAIT, fy, u, zoneStyle, giantNumber } from "@/lib/cardGeometry";
+import { FRAME_SLICE, finishAssets, miniArt } from "@/lib/cardAssets";
+import { cutoutCss, isPortraitMetaV2, PORTRAIT_TARGETS } from "@/lib/portrait/normalize";
+import { CardCompositor } from "@/app/components/card/CardCompositor";
+import { AssetLayer } from "@/app/components/card/AssetLayer";
+import {
+  GiantNumber,
+  NameBlock,
+  DetailsLine,
+  StatRailText,
+  FooterMark,
+} from "@/app/components/card/DynamicLayers";
+import {
+  BackgroundIllumination,
+  PlayerBacklight,
+  ForegroundPlate,
+  FrameFinish,
+  HoloShimmer,
+} from "@/app/components/card/LiveEffects";
+import { CardStars } from "@/app/components/card/CardStars";
+import { PortraitElectricity } from "@/app/components/card/PortraitElectricity";
+import { DepthShadow, RimLight } from "@/app/components/card/CutoutLighting";
+import { TeamLogoBadge, TopRightSlot } from "@/app/components/card/TeamLogoBadge";
+import { useImageOk } from "@/app/components/card/PortraitDisc";
+import { formatHeight } from "@/lib/height";
 
-// The flagship player identity card. ONE skeleton, three sizes, fully driven by
-// team.primaryColor / secondaryColor (never hardcoded). Readability is a hard
-// rule: text always sits on a dark scrim/panel, never colored-on-colored. The
-// full size adds a holo tilt + a solid beveled-metal TIER border (the tier IS
-// the border) with a diagonal light sweep that glints the metal edge. Self-
-// contained: the keyframes live in a component <style> so globals.css stays
-// untouched and the component is drop-in reusable later.
+// THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, four
+// sizes — full (the locked master), mini, compact, avatar — each RECOMPOSED
+// for its context, never scaled down (§44). Geometry lives in lib/cardGeometry (one
+// card, locked); material finishes in lib/cardTheme FINISHES and each level's
+// authored art (level changes swap tokens and art only — Δ4). The team is an
+// environmental accent (§51); readability is a hard rule: text always sits on
+// darkness. Keyframes live in a component <style> so globals.css stays
+// untouched and the component is drop-in reusable.
 
-export type CardSize = "full" | "wide" | "compact" | "avatar";
+export type CardSize = "full" | "mini" | "compact" | "avatar";
 
 export type CardPlayer = {
   name: string;
@@ -30,7 +56,14 @@ export type CardPlayer = {
   heightInches?: number | null;
   rank?: number | null;
   points: number;
+  /** Career total (drives stars/finish); falls back to `points` when absent. */
+  total?: number;
+  /** Roster size for the LEADERBOARD panel ("#1 of 7"). */
+  rosterSize?: number | null;
   photoUrl?: string | null;
+  /** Card-portrait cutout (photo pipeline A) + its normalization meta (v2). */
+  cutoutUrl?: string | null;
+  photoMeta?: unknown;
   initials?: string | null;
 };
 
@@ -52,590 +85,513 @@ function makeInitials(name: string): string {
   );
 }
 
-function formatHeight(inches?: number | null): string | null {
-  if (inches == null) return null;
-  return `${Math.floor(inches / 12)}'${inches % 12}"`;
-}
-
-// A full, solid metallic ring — the tier "material". A conic sweep of the tier's
-// stops gives each side a different tone (light catching a beveled frame). No gap,
-// no spin: the border is a static shined-metal frame.
-function conicMetal(colors: string[]): string {
-  return `conic-gradient(from 130deg, ${colors.join(", ")}, ${colors[0]})`;
-}
 
 export function PlayerCard({
   size,
   player,
   team,
+  finishOverride,
+  staticRender = false,
+  width,
+  avatarPx,
 }: {
   size: CardSize;
   player: CardPlayer;
   team: CardTeam;
+  /** Full card only: rendered width in CSS px (or a CSS length like "100%").
+   * The mini card always fills its container's width. */
+  width?: number | string;
+  /** Avatar only: diameter in CSS px (default 40). */
+  avatarPx?: number;
+  /**
+   * DEV PREVIEW ONLY (card-preview studio): force a level regardless of
+   * points, so every level can share identical sample data.
+   */
+  finishOverride?: FinishKey;
+  /** Freeze all dynamic finish motion + tilt (regression baselines, Δ11). */
+  staticRender?: boolean;
 }) {
-  if (size === "avatar") return <AvatarCard player={player} team={team} />;
-  if (size === "compact") return <CompactCard player={player} team={team} />;
-  if (size === "wide") return <WideCard player={player} team={team} />;
-  return <FullCard player={player} team={team} />;
-}
-
-// Shared beveled-metal frame styling (the tier border) for full + wide. `radius`
-// is the outer corner; `pad` the ring thickness.
-function metalFrameStyle(tier: Tier, radius: number, pad: number): CSSProperties {
-  return {
-    position: "relative",
-    background: conicMetal(tier.ring),
-    padding: pad,
-    borderRadius: radius,
-    boxShadow: [
-      "0 22px 46px -20px rgba(0,0,0,.65)", // drop shadow
-      "0 0 0 1px rgba(0,0,0,.55)", // crisp outer edge line
-      tier.glow ? `0 0 22px ${tier.glow}` : "", // outer tier glow (raised)
-      "inset 0 1.5px 1px rgba(255,255,255,.30)", // top bevel highlight
-      "inset 0 -2px 3px rgba(0,0,0,.55)", // bottom bevel shadow
-    ]
-      .filter(Boolean)
-      .join(", "),
-  };
-}
-
-// The thin dark line + inset top highlight between the metal ring and the face.
-const BODY_EDGE = "0 0 0 1px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)";
-
-// The giant ghosted jersey-number watermark. Outline-only, stroked in the team
-// SECONDARY color when there is one (hollow, secondary-edged); otherwise a faint
-// solid white fill (the original look). Shared by full + wide.
-function GhostNumber({
-  number,
-  strokeColor,
-  size,
-  className,
-}: {
-  number: number;
-  strokeColor: string | null;
-  size: number;
-  className: string;
-}) {
+  if (size === "avatar") return <AvatarCard player={player} team={team} finishOverride={finishOverride} px={avatarPx} />;
+  if (size === "compact") return <CompactCard player={player} team={team} finishOverride={finishOverride} />;
+  if (size === "mini") return <MiniCard player={player} team={team} finishOverride={finishOverride} />;
   return (
-    <span
-      aria-hidden
-      className={`pointer-events-none absolute select-none font-black italic leading-none ${className}`}
-      style={{
-        fontFamily: "var(--font-barlow)",
-        fontSize: size,
-        ...(strokeColor
-          ? {
-              color: "transparent",
-              WebkitTextStrokeWidth: "2px",
-              WebkitTextStrokeColor: strokeColor,
-            }
-          : { color: "rgba(255,255,255,0.08)" }),
-      }}
-    >
-      {number}
-    </span>
+    <FullCard
+      player={player}
+      team={team}
+      finishOverride={finishOverride}
+      staticRender={staticRender}
+      width={width}
+    />
   );
 }
+
 
 // ---------------------------------------------------------------- FULL ------
+//
+// THE FULL PLAYER CARD = the deterministic layered COMPOSITOR (Plan v4 §4.5).
+// One geometry (lib/cardGeometry, 1000×1500 master units — PROVISIONAL until
+// ★ GEOMETRY LOCKED ★); MATERIAL from finish tokens + authored finish assets;
+// ENVIRONMENT from team tokens. Flat 16-layer stack, front → back:
+//   1 specular · 2 foil · 3 frame highlights · 4 team logo · 5 footer type ·
+//   6 stat text + stars · 7 stat-rail fg chassis (art) · 8 name + details ·
+//   9 player rim light · 10 cutout · 11 backlight · 12 atmosphere · 13 giant
+//   number · 14 background illumination · 15 background art · 16 chassis art.
+// Authored artwork that is not supplied renders ASSET MISSING — never a
+// CSS/SVG substitute.
 
-function FullCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const raf = useRef<number | null>(null);
-  const [reduced, setReduced] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduced(mq.matches);
-    sync();
-    mq.addEventListener?.("change", sync);
-    return () => {
-      mq.removeEventListener?.("change", sync);
-      if (raf.current) cancelAnimationFrame(raf.current);
-    };
-  }, []);
-
-  const gradient = cardGradient(team.primaryColor);
-  const accent = accentColor(team.primaryColor, team.secondaryColor);
-  const numColor = numberColor(team.primaryColor, team.secondaryColor);
-  const hasSecondary = !!(team.secondaryColor && hexToRgb(team.secondaryColor));
-  const initials = player.initials || makeInitials(player.name);
-  const tier: Tier = tierForPoints(player.points);
-  const height = formatHeight(player.heightInches);
-
-  const setVars = (
-    rx: number,
-    ry: number,
-    sc: number,
-    sx: number,
-    sy: number,
-    on: boolean,
-  ) => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.setProperty("--rx", `${rx}deg`);
-    el.style.setProperty("--ry", `${ry}deg`);
-    el.style.setProperty("--sc", `${sc}`);
-    el.style.setProperty("--sx", `${sx}%`);
-    el.style.setProperty("--sy", `${sy}%`);
-    el.style.setProperty("--so", on ? "1" : "0");
-  };
-
-  const track = (clientX: number, clientY: number, zoom: number) => {
-    if (reduced) return;
-    const el = ref.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const px = (clientX - r.left) / r.width;
-    const py = (clientY - r.top) / r.height;
-    const MAX = 11;
-    const ry = (px - 0.5) * 2 * MAX;
-    const rx = -(py - 0.5) * 2 * MAX;
-    if (raf.current) cancelAnimationFrame(raf.current);
-    raf.current = requestAnimationFrame(() =>
-      setVars(rx, ry, zoom, px * 100, py * 100, true),
-    );
-  };
-
-  const rest = () => {
-    if (raf.current) cancelAnimationFrame(raf.current);
-    setVars(0, 0, 1, 50, 50, false);
-  };
-
-  return (
-    <div
-      ref={ref}
-      onPointerMove={(e) =>
-        track(e.clientX, e.clientY, e.pointerType === "touch" ? 1.04 : 1)
-      }
-      onPointerLeave={rest}
-      onPointerUp={rest}
-      onPointerCancel={rest}
-      className="pc-frame"
-      style={{
-        ...metalFrameStyle(tier, 24, 5),
-        width: 320,
-        touchAction: "none",
-        transformStyle: "preserve-3d",
-        willChange: "transform",
-        transition: "transform 220ms cubic-bezier(.2,.7,.2,1)",
-        transform:
-          "perspective(1000px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(var(--sc,1))",
-      }}
-    >
-      {/* Self-contained keyframes + reduced-motion fallback (namespaced pc-*). */}
-      <style>{PC_STYLE}</style>
-
-      {/* Diagonal light sweep: a moving band (screen blend) that brightens the
-          card face AND catches a hot glint on the metal edge it crosses. Sits
-          above the body (z) but is clipped to the card shape. Reduced motion
-          disables it — the metal border stays a static gradient. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-        style={{ borderRadius: 24, zIndex: 20 }}
-      >
-        {tier.sweepSec > 0 && (
-          <span
-            className="pc-sweep-band absolute inset-0"
-            style={{
-              mixBlendMode: "screen",
-              background: `linear-gradient(115deg, rgba(255,255,255,0) 42%, ${withAlpha(
-                "#ffffff",
-                tier.glint,
-              )} 50%, rgba(255,255,255,0) 58%)`,
-              animationName: "pc-sweep",
-              animationDuration: `${tier.sweepSec}s`,
-              animationTimingFunction: "linear",
-              animationIterationCount: "infinite",
-              willChange: "transform",
-            }}
-          />
-        )}
-      </span>
-
-      <div
-        className="pc-body relative overflow-hidden"
-        style={{
-          background: gradient,
-          borderRadius: 19,
-          aspectRatio: "2.5 / 3.5",
-          boxShadow: BODY_EDGE,
-        }}
-      >
-        {/* ghosted jersey number — outline in the RAW secondary color (its true
-            team color, not the readability-lightened one). Top-right corner. */}
-        {player.jerseyNumber != null && (
-          <GhostNumber
-            number={player.jerseyNumber}
-            strokeColor={
-              hasSecondary ? withAlpha(team.secondaryColor as string, 0.4) : null
-            }
-            size={160}
-            className={`${
-              String(player.jerseyNumber).length <= 1 ? "right-8" : "right-2"
-            } -top-1`}
-          />
-        )}
-
-        {/* bottom vignette so name/stats always sit on darkness */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ background: BOTTOM_VIGNETTE }}
-        />
-
-        {/* pointer sheen */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            opacity: "var(--so,0)",
-            transition: "opacity 200ms ease",
-            mixBlendMode: "soft-light",
-            background:
-              "radial-gradient(circle at var(--sx,50%) var(--sy,50%), rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 45%)",
-          }}
-        />
-
-        <div className="relative z-10 flex h-full flex-col p-4">
-          {/* top row: logo chip */}
-          <div className="flex items-start">
-            <LogoChip team={team} size={66} />
-          </div>
-
-          {/* photo / initials */}
-          <div className="mt-2 flex flex-1 items-center justify-center">
-            <PhotoDisc
-              initials={initials}
-              photoUrl={player.photoUrl}
-              accent={accent}
-              size={196}
-            />
-          </div>
-
-          {/* name + line */}
-          <div>
-            <h2
-              className="truncate text-3xl font-black italic uppercase leading-[0.95] text-white"
-              style={{
-                fontFamily: "var(--font-barlow)",
-                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-              }}
-            >
-              {player.name}
-            </h2>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-[11px] font-bold uppercase tracking-[0.14em] text-white/80">
-              {player.jerseyNumber != null && (
-                <span style={{ color: numColor }}>#{player.jerseyNumber}</span>
-              )}
-              {[player.position, height].filter(Boolean).map((part, i) => (
-                <span key={i} className="flex items-center gap-2">
-                  <span aria-hidden className="text-white/30">
-                    ·
-                  </span>
-                  {part}
-                </span>
-              ))}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- WIDE ------
-
-// Horizontal banner (~16:10) — same design system as FULL, re-arranged: photo
-// left, huge name right, #·pos·height under, team logo anchored right, ghost
-// number behind the right half. Metallic tier border; NO tilt; no animated sweep
-// (the gradient's built-in sheen carries the material feel).
-function WideCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
-  const gradient = cardGradient(team.primaryColor);
-  const accent = accentColor(team.primaryColor, team.secondaryColor);
-  const numColor = numberColor(team.primaryColor, team.secondaryColor);
-  const hasSecondary = !!(team.secondaryColor && hexToRgb(team.secondaryColor));
-  const initials = player.initials || makeInitials(player.name);
-  const tier = tierForPoints(player.points);
-  const height = formatHeight(player.heightInches);
-
-  return (
-    <div style={{ ...metalFrameStyle(tier, 22, 5), width: 360, maxWidth: "100%" }}>
-      <div
-        className="pc-body relative overflow-hidden"
-        style={{
-          background: gradient,
-          borderRadius: 17,
-          aspectRatio: "16 / 10",
-          boxShadow: BODY_EDGE,
-        }}
-      >
-        {/* ghost number — lower-right so it clears the name up top. RAW secondary. */}
-        {player.jerseyNumber != null && (
-          <GhostNumber
-            number={player.jerseyNumber}
-            strokeColor={
-              hasSecondary ? withAlpha(team.secondaryColor as string, 0.4) : null
-            }
-            size={120}
-            className={`${
-              String(player.jerseyNumber).length <= 1 ? "right-6" : "right-2"
-            } bottom-1`}
-          />
-        )}
-        {/* left scrim so the name stays on darkness over the watermark */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.12) 55%, rgba(0,0,0,0) 100%)",
-          }}
-        />
-        {/* team logo anchored top-right */}
-        <div className="absolute right-3 top-3 z-10">
-          <LogoChip team={team} size={46} />
-        </div>
-
-        <div className="relative z-10 flex h-full flex-col p-4">
-          {/* info line — top (clears the top-right logo via pr) */}
-          <p className="flex flex-wrap items-center gap-x-2 pr-14 text-[10px] font-bold uppercase tracking-[0.14em] text-white/80">
-            {player.jerseyNumber != null && (
-              <span style={{ color: numColor }}>#{player.jerseyNumber}</span>
-            )}
-            {[player.position, height].filter(Boolean).map((part, i) => (
-              <span key={i} className="flex items-center gap-2">
-                <span aria-hidden className="text-white/30">
-                  ·
-                </span>
-                {part}
-              </span>
-            ))}
-          </p>
-
-          {/* photo + big name — aligned up so the name sits high, clear of the number */}
-          <div className="flex flex-1 items-start gap-4">
-            <PhotoDisc
-              initials={initials}
-              photoUrl={player.photoUrl}
-              accent={accent}
-              size={120}
-            />
-            <h2
-              className="min-w-0 flex-1 pr-10 text-3xl font-black italic uppercase leading-[0.9] text-white"
-              style={{
-                fontFamily: "var(--font-barlow)",
-                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-              }}
-            >
-              {player.name}
-            </h2>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// -------------------------------------------------------------- COMPACT -----
-
-function CompactCard({
+function FullCard({
   player,
   team,
+  finishOverride,
+  staticRender = false,
+  width,
 }: {
   player: CardPlayer;
   team: CardTeam;
+  finishOverride?: FinishKey;
+  staticRender?: boolean;
+  width?: number | string;
 }) {
-  const gradient = cardGradient(team.primaryColor);
-  const accent = accentColor(team.primaryColor, team.secondaryColor);
   const initials = player.initials || makeInitials(player.name);
-  const tier = tierForPoints(player.points);
+  const height = formatHeight(player.heightInches);
+
+  // FINISH (material) <- prospect level; TEAM (environment) <- team colors.
+  const total = player.total ?? player.points;
+  const earnedStars = starsForPoints(total);
+  const finish: Finish = finishOverride ? FINISHES[finishOverride] : finishForStars(earnedStars);
+  const shownStars = finishOverride ? finish.stars : earnedStars;
+  const teamAccent = teamAccentFor(team);
+  const art = finishAssets(finish.key);
+
+  // Portrait: only a real normalized cutout renders as the hero.
+  const meta = isPortraitMetaV2(player.photoMeta) ? player.photoMeta : null;
+  const cutout = player.cutoutUrl ?? null;
+  const cutoutPlacement = meta ? cutoutCss(meta) : null;
+
+  const words = player.name.trim().split(/\s+/);
+  const surname = words.length > 1 ? words[words.length - 1] : words[0];
+  const firstName = words.length > 1 ? words.slice(0, -1).join(" ") : null;
+  const bigNumber = giantNumber(player.jerseyNumber);
+  const rankText =
+    player.rank != null
+      ? `#${player.rank}${player.rosterSize ? ` of ${player.rosterSize}` : ""}`
+      : "—";
+
+  // The torso fades out just above the name block (bottomY), so text never
+  // fights the cutout; this is a fade, not occlusion (occlusion is ordering).
+  const fadeStart = fy(PORTRAIT.fadeStartY) * 100;
+  const fadeEnd = PORTRAIT_TARGETS.bottomY * 100;
+  const torsoFade: CSSProperties = {
+    WebkitMaskImage: `linear-gradient(180deg, #fff 0%, #fff ${fadeStart}%, transparent ${fadeEnd}%)`,
+    maskImage: `linear-gradient(180deg, #fff 0%, #fff ${fadeStart}%, transparent ${fadeEnd}%)`,
+    clipPath: "inset(0 8% 0 8%)",
+  };
 
   return (
-    <div
-      className="relative flex h-[72px] w-full items-center gap-3 overflow-hidden rounded-xl pl-3 pr-4"
-      style={{ background: gradient }}
+    <CardCompositor
+      width={width}
+      staticRender={staticRender}
+      data-finish={finish.key}
+      style={{ filter: `drop-shadow(0 ${u(30)} ${u(40)} rgba(0,0,0,0.55))` }}
     >
-      {/* accent edge strip (team) */}
-      <span
-        aria-hidden
-        className="absolute inset-y-0 left-0 w-1.5"
-        style={{ background: accent }}
+      {/* 16 · physical chassis (authored) */}
+      <AssetLayer spec={art.plate} />
+      {/* 14 · background illumination (live; team hue) */}
+      <BackgroundIllumination finish={finish} team={teamAccent} />
+      {/* 13 · giant jersey number (dynamic; finish material) */}
+      <FoilField finish={finish} src={cutout} meta={meta} />
+      <GiantNumber text={bigNumber} finish={finish} />
+      <HoloShimmer finish={finish} isStatic={staticRender} />
+      {/* 12 · atmosphere (authored texture, team-tinted) + occlusion map */}
+      {/* 11 · player environmental backlight (live) */}
+      <PlayerBacklight finish={finish} team={teamAccent} />
+      {/* 10 · normalized cutout — its opaque pixels ARE the number occlusion */}
+      {cutout && cutoutPlacement && meta ? (
+        <>
+          <span aria-hidden data-layer="depth-shadow" className="pointer-events-none absolute inset-0" style={torsoFade}>
+            <DepthShadow src={cutout} meta={meta} finish={finish} style={cutoutPlacement} />
+          </span>
+          <EnergyEmission finish={finish} src={cutout} meta={meta} />
+          <span data-layer="cutout" className="pointer-events-none absolute inset-0" style={torsoFade}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cutout} alt={player.name} className="absolute" style={cutoutPlacement} />
+          </span>
+          {/* 9 · rim light (live; face-damped, shoulder-weighted) */}
+          <span aria-hidden data-layer="rim-light" className="pointer-events-none absolute inset-0" style={torsoFade}>
+            <RimLight src={cutout} meta={meta} finish={finish} style={cutoutPlacement} />
+            <PortraitElectricity src={cutout} meta={meta} finish={finish} style={cutoutPlacement} />
+          </span>
+        </>
+      ) : cutout ? (
+        // Seeded/meta-less cutout: best-effort contain in the portrait target.
+        <span data-layer="cutout" className="pointer-events-none absolute inset-0" style={torsoFade}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={cutout}
+            alt={player.name}
+            className="absolute left-1/2 -translate-x-1/2 object-contain object-bottom"
+            style={{
+              bottom: `${(1 - PORTRAIT_TARGETS.bottomY) * 100}%`,
+              maxWidth: `${PORTRAIT_TARGETS.maxW * 100}%`,
+              height: `${(PORTRAIT_TARGETS.bottomY - PORTRAIT_TARGETS.zone.y) * 100}%`,
+            }}
+          />
+        </span>
+      ) : (
+        <PendingPortrait initials={initials} finish={finish} />
+      )}
+      <span aria-hidden data-layer="name-scrim" className="pointer-events-none absolute" style={{ inset: "55% 8% 17%", background: "linear-gradient(transparent, rgba(0,4,8,.12) 12%, rgba(0,4,8,.66) 38%, rgba(0,3,6,.94) 72%, #000 100%)" }} />
+      <FoilField finish={finish} src={cutout} meta={meta} fringe />
+      {/* 8 · name block + details (dynamic) */}
+      <NameBlock firstName={firstName} surname={surname} finish={finish} />
+      <DetailsLine
+        parts={[player.jerseyNumber != null ? `#${player.jerseyNumber}` : null, player.position, height]}
+        finish={finish}
       />
-      {/* readability scrim (keeps right-side stats legible on lighter mids) */}
+      {/* 7 · stat-rail / lower-chassis foreground pieces (authored, above the player) */}
+      <ForegroundPlate finish={finish} />
+      {/* 6 · stat typography + earned stars */}
+      <StatRailText points={player.points} rankText={rankText} stars={shownStars} finish={finish} />
+      {/* 5 · footer wordmark */}
+      <FooterMark />
+      {/* 4 · team logo (top-left) + intentionally-empty top-right slot */}
+      <TeamLogoBadge logoUrl={team.logoUrl} />
+      <TopRightSlot />
+      {/* 3 · frame highlights (masked, live) */}
+      <FrameFinish finish={finish} isStatic={staticRender} />
+    </CardCompositor>
+  );
+}
+
+/** CLEARLY-PENDING portrait state (Δ5 concern 7): initials, never a "finished" card. */
+function PendingPortrait({ initials, finish }: { initials: string; finish: Finish }) {
+  return (
+    <div
+      data-layer="portrait-pending"
+      className="pointer-events-none absolute flex flex-col items-center justify-center"
+      style={{ ...zoneStyle(PORTRAIT.zone), gap: u(16) }}
+    >
+      <span
+        className="flex items-center justify-center rounded-full border-2 border-dashed"
+        style={{
+          width: u(260),
+          height: u(260),
+          borderColor: withAlpha(finish.metalHighlight, 0.35),
+          background: "rgba(0,0,0,0.35)",
+        }}
+      >
+        <span
+          className="font-black uppercase italic text-white/85"
+          style={{ fontFamily: "var(--font-barlow)", fontSize: u(84) }}
+        >
+          {initials}
+        </span>
+      </span>
+      <span
+        className="font-bold uppercase"
+        style={{ fontSize: u(24), letterSpacing: "0.22em", color: withAlpha(finish.metalHighlight, 0.5) }}
+      >
+        Photo pending
+      </span>
+    </div>
+  );
+}
+
+
+// ------------------------------------------------------------ SMALL SIZES --
+//
+// The compact row (leaderboard, coach roster) and the avatar (Team Circle,
+// header chip) wear their level's own art, cut from its plate by
+// scripts/card-art.ts (miniArt) — never CSS-drawn metal. General UI keeps
+// initials/photo fallbacks (Δ5 applies to full-card creation only).
+
+/** Finish + portrait context the small sizes derive from. */
+function useCardContext(player: CardPlayer, finishOverride?: FinishKey) {
+  const total = player.total ?? player.points;
+  const earned = starsForPoints(total);
+  const finish = finishOverride ? FINISHES[finishOverride] : finishForStars(earned);
+  const stars = finishOverride ? finish.stars : earned;
+  const meta = isPortraitMetaV2(player.photoMeta) ? player.photoMeta : null;
+  const cutout = player.cutoutUrl ?? null;
+  return { total, stars, finish, meta, cutout };
+}
+
+/** The row's face, cut to sit inside the mini frame's chamfered corners. */
+const ROW_FACE_CLIP =
+  "polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px)";
+
+// COMPACT: a slim card — the level's mini frame around its card face with a
+// faint slice of its energy, then avatar, name, number and position, points
+// and stars in the full card's colors.
+function CompactCard({ player, team, finishOverride }: { player: CardPlayer; team: CardTeam; finishOverride?: FinishKey }) {
+  // Tier from career points (total); the row shows the points it's ranked by,
+  // like the full card's POINTS panel.
+  const { stars, finish } = useCardContext(player, finishOverride);
+  const { palette } = finish;
+  const art = finishAssets(finish.key);
+  return (
+    <div className="relative h-[72px] w-full" data-finish={finish.key}>
+      <div
+        aria-hidden
+        className="absolute overflow-hidden"
+        style={{ inset: 3, clipPath: ROW_FACE_CLIP, background: `#040507 url(${art.plate.file}) 50% 30% / 140% auto` }}
+      >
+        <span className="absolute inset-0" style={{ background: `url(${art.field.file}) 50% 38% / 120% auto`, opacity: 0.5 }} />
+        {/* text always sits on darkness */}
+        <span
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(90deg, rgba(0,0,0,.35), rgba(0,0,0,.1) 45%, rgba(0,0,0,.6))" }}
+        />
+      </div>
       <span
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            "linear-gradient(90deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.45))",
+          borderStyle: "solid",
+          borderWidth: 10,
+          borderColor: "transparent",
+          borderImageSource: `url(${miniArt(finish.key).frame})`,
+          borderImageSlice: FRAME_SLICE,
+          borderImageWidth: "10px",
+          borderImageRepeat: "stretch",
         }}
       />
 
-      <div className="relative z-10 ml-1">
-        <AvatarCard player={player} team={team} />
-      </div>
+      <div className="relative flex h-full items-center gap-3 pl-3.5 pr-4">
+        <AvatarCard player={player} team={team} finishOverride={finish.key} px={48} />
 
-      <div className="relative z-10 min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          {/* tiny tier color cue */}
-          <span
-            aria-hidden
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: tier.ring[Math.floor(tier.ring.length / 2)] }}
-            title={tier.label}
-          />
+        <div className="min-w-0 flex-1">
           <p
             className="truncate text-base font-black italic uppercase leading-none text-white"
             style={{ fontFamily: "var(--font-barlow)" }}
           >
             {player.name}
           </p>
-        </div>
-        <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
-          {player.jerseyNumber != null ? `#${player.jerseyNumber} · ` : ""}
-          {player.position ?? "Player"}
-        </p>
-      </div>
-
-      <div className="relative z-10 shrink-0 text-right">
-        {player.rank != null && (
-          <p
-            className="text-lg font-black leading-none tabular-nums text-white"
-            style={{ color: shade(accent, 0.3) }}
-          >
-            #{player.rank}
+          <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-white/75">
+            {player.jerseyNumber != null && (
+              <>
+                <span style={{ color: palette.accent }}>#{player.jerseyNumber}</span>
+                <span style={{ color: palette.separator }}> · </span>
+              </>
+            )}
+            {player.position ?? "Player"}
           </p>
-        )}
-        <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/70 tabular-nums">
-          {player.points} pts
-        </p>
-      </div>
+        </div>
 
-      <span aria-hidden className="hidden">
-        {initials}
-      </span>
+        <div className="shrink-0 text-right">
+          {player.rank != null && (
+            <p className="text-lg font-black leading-none tabular-nums" style={{ color: palette.statHeader }}>
+              #{player.rank}
+            </p>
+          )}
+          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/75 tabular-nums">
+            {player.points} pts
+          </p>
+          <span className="mt-1 flex justify-end">
+            <CardStars count={stars} finish={finish} sizePx={8} gapPx={2} />
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
 
-// --------------------------------------------------------------- AVATAR -----
+/** The avatar's round window onto the card, in card units: head, shoulders
+ * and the energy leaving them. */
+const AVATAR_VIEW = { x: 170, y: 260, size: 660 };
 
-function AvatarCard({ player, team }: { player: CardPlayer; team: CardTeam }) {
-  const gradient = cardGradient(team.primaryColor);
-  const accent = accentColor(team.primaryColor, team.secondaryColor);
+// AVATAR: a small round window onto the player's own card (owner review,
+// 2026-09-26: just the player "doesn't have the player card vibe"). The
+// level's energy, backlight and tier glow sit behind the cutout exactly where
+// the full card puts them, inside the level's ring — the frame's crystal band
+// bent into a circle. No jersey number: collapsed cards have no room to show
+// it well (owner, 2026-09-27); rows carry it as text. A photo without card
+// placement fills the disc; no photo shows initials on the tier's card.
+function AvatarCard({
+  player,
+  team,
+  finishOverride,
+  px = 40,
+}: {
+  player: CardPlayer;
+  team: CardTeam;
+  finishOverride?: FinishKey;
+  px?: number;
+}) {
+  const { finish, meta, cutout } = useCardContext(player, finishOverride);
   const initials = player.initials || makeInitials(player.name);
-  const base =
-    team.primaryColor && team.primaryColor.startsWith("#")
-      ? team.primaryColor
-      : accent;
+  const src = cutout ?? player.photoUrl ?? null;
+  const { ok: imageOk, attach, onError: onImageError } = useImageOk(src);
+  const placed = imageOk && cutout && meta ? meta : null;
+  const photo = imageOk && !placed ? src : null;
+  // ring.webp's band spans radii 78–95 of 96 px; the disc tucks just under it.
+  const inset = px * 0.09;
+  const disc = px - inset * 2;
+  const s = disc / AVATAR_VIEW.size; // px per card unit
 
   return (
     <div
-      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full"
-      style={{ background: `linear-gradient(140deg, ${accent}, ${shade(base, -0.4)})`, padding: 2 }}
+      className="relative inline-flex shrink-0"
+      style={{ width: px, height: px, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.45))" }}
     >
-      <div
-        className="flex h-full w-full items-center justify-center overflow-hidden rounded-full"
-        style={{ background: gradient }}
-      >
-        {player.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={player.photoUrl}
-            alt={player.name}
-            className="h-full w-full rounded-full object-cover"
-          />
-        ) : (
+      <div className="absolute flex items-center justify-center overflow-hidden rounded-full" style={{ inset, background: "#030406", isolation: "isolate" }}>
+        {/* The card itself, scaled so the window fills the disc. */}
+        <div
+          aria-hidden={!placed}
+          className="absolute"
+          style={{ left: -AVATAR_VIEW.x * s, top: -AVATAR_VIEW.y * s, width: 1000 * s, height: 1500 * s, "--u": `${s}px` } as CSSProperties}
+        >
+          {/* A touch brighter than on the full card, so the currents read this small. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={finishAssets(finish.key).field.file} alt="" className="absolute inset-0 h-full w-full" style={{ filter: "brightness(1.25)" }} />
+          <HoloShimmer finish={finish} isStatic />
+          <PlayerBacklight finish={finish} team={teamAccentFor(team)} />
+          {/* The level's glow behind the player: this small, the card's own
+              backlight is too faint to carry the tier's color on its own. */}
           <span
-            className="text-xs font-black uppercase text-white"
-            style={{ fontFamily: "var(--font-barlow)" }}
+            className="absolute"
+            style={{
+              left: u(120), top: u(380), width: u(760), height: u(640), mixBlendMode: "screen",
+              background: `radial-gradient(closest-side, ${withAlpha(finish.palette.energy.glow[2], 0.55)}, transparent)`,
+            }}
+          />
+          {placed && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img ref={attach} src={cutout!} alt={player.name} className="absolute" style={cutoutCss(placed)} onError={onImageError} />
+          )}
+        </div>
+        {photo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img ref={attach} src={photo} alt={player.name} onError={onImageError}
+            className={`absolute inset-0 h-full w-full object-cover${cutout ? " object-top" : ""}`} />
+        )}
+        {!imageOk && (
+          <span
+            className="relative font-black uppercase italic text-white"
+            style={{ fontFamily: "var(--font-barlow)", fontSize: disc * 0.36, textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}
           >
             {initials}
           </span>
         )}
       </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={miniArt(finish.key).ring} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" />
     </div>
   );
 }
 
-// --------------------------------------------------------------- SHARED -----
+// ---------------------------------------------------------------- MINI ------
 
-function LogoChip({ team, size }: { team: CardTeam; size: number }) {
-  if (team.logoUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={team.logoUrl}
-        alt={`${team.name} logo`}
-        style={{ width: size, height: size }}
-        className="shrink-0 object-contain drop-shadow-[0_2px_5px_rgba(0,0,0,0.5)]"
-      />
-    );
-  }
-  // No logo → a small team-initial chip.
-  return (
-    <span
-      className="flex shrink-0 items-center justify-center rounded-lg bg-black/40 font-black uppercase text-white ring-1 ring-white/15"
-      style={{ width: size, height: size, fontSize: size * 0.34 }}
-    >
-      {makeInitials(team.name)}
-    </span>
-  );
-}
+/** The mini card's window onto the full card, in card units (2:3): head,
+ * shoulders and the energy around them. */
+const MINI_VIEW = { x: 150, y: 250, w: 700 };
+/** Frame and face insets as a share of the mini card's width (the frame's
+ * nine-slice border is 1/16 of the width). */
+const MINI_BORDER = 6.25; // cqw
+const MINI_INSET = 2.8; // cqw
+/** The torso fades out towards the name, as on the full card. */
+const MINI_TORSO_MASK = `linear-gradient(180deg, #fff 0%, #fff ${fy(PORTRAIT.fadeStartY) * 100}%, transparent ${PORTRAIT_TARGETS.bottomY * 100}%)`;
 
-function PhotoDisc({
-  initials,
-  photoUrl,
-  accent,
-  size,
-}: {
-  initials: string;
-  photoUrl?: string | null;
-  accent: string;
-  size: number;
-}) {
+// MINI: a small portrait card (leaderboard podium, org tree) — the level's
+// frame around a window onto the player's own card (energy, backlight, tier
+// glow, cutout), then the name and stars. No jersey number: collapsed cards
+// have no room for it (owner, 2026-09-27). Fluid: it fills its container's
+// width at 2:3, and everything inside is sized in container units, so one
+// card works from a 320px phone's podium to a desktop tree.
+function MiniCard({ player, team, finishOverride }: { player: CardPlayer; team: CardTeam; finishOverride?: FinishKey }) {
+  const { stars, finish, meta, cutout } = useCardContext(player, finishOverride);
+  const initials = player.initials || makeInitials(player.name);
+  const src = cutout ?? player.photoUrl ?? null;
+  const { ok: imageOk, attach, onError: onImageError } = useImageOk(src);
+  const placed = imageOk && cutout && meta ? meta : null;
+  const photo = imageOk && !placed ? src : null;
+  const words = player.name.trim().split(/\s+/);
+  const surname = words.length > 1 ? words[words.length - 1] : words[0];
+  const firstName = words.length > 1 ? words.slice(0, -1).join(" ") : null;
+  const chamfer = `${MINI_INSET * 1.6}cqw`;
+
   return (
-    <div
-      className="relative flex items-center justify-center rounded-full"
-      style={{
-        width: size,
-        height: size,
-        boxShadow: `inset 0 0 0 2px ${withAlpha(accent, 0.85)}, inset 0 0 0 7px rgba(0,0,0,0.22), inset 0 8px 26px rgba(0,0,0,0.4)`,
-        background:
-          "radial-gradient(120% 120% at 50% 22%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.5) 100%)",
-      }}
-    >
-      {photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={photoUrl}
-          alt=""
-          className="h-full w-full rounded-full object-cover"
-        />
-      ) : (
-        <span
-          className="font-black uppercase italic text-white"
-          style={{
-            fontFamily: "var(--font-barlow)",
-            fontSize: size * 0.36,
-            textShadow: "0 2px 10px rgba(0,0,0,0.5)",
-          }}
+    <div className="relative w-full" style={{ aspectRatio: "2 / 3", containerType: "inline-size" }} data-finish={finish.key}>
+      <div
+        className="absolute overflow-hidden"
+        style={{
+          inset: `${MINI_INSET}cqw`,
+          clipPath: `polygon(${chamfer} 0, calc(100% - ${chamfer}) 0, 100% ${chamfer}, 100% calc(100% - ${chamfer}), calc(100% - ${chamfer}) 100%, ${chamfer} 100%, 0 calc(100% - ${chamfer}), 0 ${chamfer})`,
+          background: "#030406",
+          isolation: "isolate",
+          // Card units: the window's 700 units span the face.
+          "--u": `calc(${100 - MINI_INSET * 2}cqw / ${MINI_VIEW.w})`,
+        } as CSSProperties}
+      >
+        {/* The card itself, scaled so the window fills the face. */}
+        <div
+          aria-hidden
+          className="absolute"
+          style={{ left: u(-MINI_VIEW.x), top: u(-MINI_VIEW.y), width: u(1000), height: u(1500) }}
         >
-          {initials}
+          {/* A touch brighter than on the full card, so the currents read this small. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={finishAssets(finish.key).field.file} alt="" className="absolute inset-0 h-full w-full" style={{ filter: "brightness(1.2)" }} />
+          <HoloShimmer finish={finish} isStatic />
+          <PlayerBacklight finish={finish} team={teamAccentFor(team)} />
+          <span
+            className="absolute"
+            style={{
+              left: u(120), top: u(380), width: u(760), height: u(640), mixBlendMode: "screen",
+              background: `radial-gradient(closest-side, ${withAlpha(finish.palette.energy.glow[2], 0.55)}, transparent)`,
+            }}
+          />
+          {placed && (
+            <span className="absolute inset-0" style={{ WebkitMaskImage: MINI_TORSO_MASK, maskImage: MINI_TORSO_MASK }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img ref={attach} src={cutout!} alt="" className="absolute" style={cutoutCss(placed)} onError={onImageError} />
+            </span>
+          )}
+        </div>
+        {photo && (
+          // A photo not yet cut out for the card fills the face.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img ref={attach} src={photo} alt="" onError={onImageError}
+            className={`absolute inset-0 h-full w-full object-cover${cutout ? " object-top" : ""}`} />
+        )}
+        {!imageOk && (
+          <span className="absolute inset-x-0 top-[18%] flex justify-center">
+            <span className="font-black uppercase italic text-white/90" style={{ fontFamily: "var(--font-barlow)", fontSize: "30cqw", textShadow: "0 2px 6px rgba(0,0,0,.8)" }}>
+              {initials}
+            </span>
+          </span>
+        )}
+        {/* Name and stars on darkness at the foot of the card. */}
+        <span
+          className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center"
+          style={{ padding: "0 5cqw 9cqw", background: "linear-gradient(transparent, rgba(0,0,0,.72) 30%, #000)" }}
+        >
+          {firstName && (
+            <span className="block w-full truncate font-bold uppercase leading-none" style={{ marginTop: "12cqw", fontSize: "9.4cqw", letterSpacing: "0.14em", color: finish.palette.accent }}>
+              {firstName}
+            </span>
+          )}
+          <span className="block w-full truncate font-black uppercase italic leading-none text-white" style={{ marginTop: firstName ? "1.5cqw" : "12cqw", fontSize: "13.5cqw", fontFamily: "var(--font-barlow)" }}>
+            {surname}
+          </span>
+          <span className="flex justify-center" style={{ marginTop: "3.5cqw", "--u": "1cqw" } as CSSProperties}>
+            <CardStars count={stars} finish={finish} sizeUnits={7} gapUnits={1} />
+          </span>
         </span>
-      )}
+      </div>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          borderStyle: "solid",
+          borderWidth: `${MINI_BORDER}cqw`,
+          borderColor: "transparent",
+          borderImageSource: `url(${miniArt(finish.key).frame})`,
+          borderImageSlice: FRAME_SLICE,
+          borderImageWidth: `${MINI_BORDER}cqw`,
+          borderImageRepeat: "stretch",
+        }}
+      />
     </div>
   );
 }
-
-// Keyframes for the diagonal light sweep. Namespaced pc-* and injected inline so
-// globals.css is never touched. Reduced motion halts the sweep entirely — the
-// metal border stays its static gradient (no movement).
-const PC_STYLE = `
-@keyframes pc-sweep { 0% { transform: translateX(-150%); } 100% { transform: translateX(150%); } }
-@media (prefers-reduced-motion: reduce) {
-  .pc-sweep-band { animation: none !important; opacity: 0 !important; }
-}
-`;

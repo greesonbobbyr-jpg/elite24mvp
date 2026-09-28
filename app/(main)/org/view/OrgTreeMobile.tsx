@@ -102,7 +102,7 @@ export function OrgTreeMobile({
       <div className="flex flex-col items-center gap-2">
         {data.owner && (
           <PlayerCard
-            size="wide"
+            size="compact"
             player={{
               name: data.owner.name,
               points: 0,

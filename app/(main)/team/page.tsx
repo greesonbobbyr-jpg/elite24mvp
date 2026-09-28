@@ -6,6 +6,7 @@ import { JoinCodeCard } from "./JoinCodeCard";
 import { TeamSettingsForm } from "./TeamSettingsForm";
 import { RosterManager } from "./RosterManager";
 import { StartSeasonForm } from "./StartSeasonForm";
+import { LoginUsernameForm } from "./LoginUsernameForm";
 
 // Staff team page (4e: matrix-gated per section). ALL staff see the roster
 // (view_roster); the join code, team settings, and password resets are
@@ -60,7 +61,7 @@ export default async function TeamSettingsPage() {
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
       <header>
         <p className="e24-eyebrow">Team Settings</p>
-        <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">
+        <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-ink">
           {team.name}
         </h1>
       </header>
@@ -96,9 +97,17 @@ export default async function TeamSettingsPage() {
               checkInReminderHour: team.checkInReminderHour,
             }}
             coachPhotoUrl={user.photoUrl}
+            coachCutoutUrl={user.photoCutoutUrl}
+            coachPhotoMeta={user.photoMeta ? JSON.stringify(user.photoMeta) : null}
           />
         </section>
       )}
+
+      {/* Every staffer's own login (not team-wide, so no matrix gate). */}
+      <section>
+        <p className="e24-eyebrow mb-2">Your login</p>
+        <LoginUsernameForm email={user.email} username={user.username} />
+      </section>
     </main>
   );
 }

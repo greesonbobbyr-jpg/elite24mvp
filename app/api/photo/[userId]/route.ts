@@ -28,10 +28,15 @@ export async function GET(
   }
   const { target } = resolved;
 
+  // ?cut=1 serves the card-portrait CUTOUT (photo pipeline A) instead of the
+  // original — same auth/org-bounding, different stored column.
+  const wantCutout = request.nextUrl.searchParams.get("cut") === "1";
   const stored =
     target.role === "PLAYER"
-      ? (target.profile?.photoUrl ?? null)
-      : target.photoUrl;
+      ? ((wantCutout ? target.profile?.photoCutoutUrl : target.profile?.photoUrl) ?? null)
+      : wantCutout
+        ? target.photoCutoutUrl
+        : target.photoUrl;
   if (!stored) return new NextResponse("No photo", { status: 404 });
 
   // Pass-through for non-data values (pasted URL / public path).

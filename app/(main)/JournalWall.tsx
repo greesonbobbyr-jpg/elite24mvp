@@ -23,10 +23,10 @@ export function JournalWall({
       <section className="e24-surface rounded-2xl border border-red-600/30 p-6">
         <div className="relative z-10">
           <p className="e24-eyebrow">Your Journal</p>
-          <p className="mt-2 text-lg font-semibold text-white">
+          <p className="mt-2 text-lg font-semibold text-ink">
             Your story starts with today&apos;s check-in.
           </p>
-          <p className="mt-1 text-sm text-zinc-400">
+          <p className="mt-1 text-sm text-muted">
             Every day you log becomes a tile on your wall.
           </p>
         </div>
@@ -43,14 +43,14 @@ export function JournalWall({
           <button
             type="button"
             onClick={() => setOpenId(null)}
-            className="text-sm font-medium text-red-500 transition hover:text-red-400 active:scale-95"
+            className="text-sm font-medium text-brand transition hover:text-brand-2 active:scale-95"
           >
             ← Back to all days
           </button>
-          <h2 className="mt-4 text-xl font-bold text-white">
+          <h2 className="mt-4 text-xl font-bold text-ink">
             {formatDayKey(open.day)}
           </h2>
-          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-200">
+          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-soft">
             {open.reflection}
           </p>
         </div>
@@ -84,7 +84,7 @@ export function JournalWall({
                   </span>
                 )}
               </span>
-              <span className="relative z-10 mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-zinc-300">
+              <span className="relative z-10 mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-ink-mid">
                 {entry.reflection}
               </span>
             </button>

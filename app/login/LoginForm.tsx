@@ -5,7 +5,7 @@ import { login, type LoginState } from "./actions";
 
 const initialState: LoginState = {};
 const field =
-  "w-full rounded-lg border border-red-600/25 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
+  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-red-500";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(login, initialState);
@@ -13,7 +13,7 @@ export function LoginForm() {
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <div>
-        <label htmlFor="identifier" className="mb-1 block text-xs font-medium text-zinc-400">
+        <label htmlFor="identifier" className="mb-1 block text-xs font-medium text-muted">
           Email or username
         </label>
         <input
@@ -22,12 +22,14 @@ export function LoginForm() {
           type="text"
           autoComplete="username"
           autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           required
           className={field}
         />
       </div>
       <div>
-        <label htmlFor="password" className="mb-1 block text-xs font-medium text-zinc-400">
+        <label htmlFor="password" className="mb-1 block text-xs font-medium text-muted">
           Password
         </label>
         <input
@@ -40,7 +42,7 @@ export function LoginForm() {
         />
       </div>
 
-      {state.error && <p className="text-sm text-red-500">{state.error}</p>}
+      {state.error && <p className="text-sm text-brand">{state.error}</p>}
 
       <button
         type="submit"

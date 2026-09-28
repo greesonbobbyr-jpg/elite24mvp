@@ -28,9 +28,9 @@ export function AdjustPointsForm({ playerId }: { playerId: number }) {
   // to the amount box, pushing it off the right edge of the card — invisible on
   // a phone, so a coach couldn't type the reason a removal requires.)
   const field =
-    "rounded-lg border border-red-600/25 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-red-500";
+    "rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500";
   const label =
-    "mb-1 block text-[10px] font-bold uppercase tracking-wide text-zinc-500";
+    "mb-1 block text-[10px] font-bold uppercase tracking-wide text-subtle";
 
   return (
     <form action={formAction} className="mt-4 flex flex-col gap-2">
@@ -47,9 +47,9 @@ export function AdjustPointsForm({ playerId }: { playerId: number }) {
             className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition active:scale-95 ${
               direction === d
                 ? d === "add"
-                  ? "border-green-500 bg-green-600/20 text-green-300"
-                  : "border-red-500 bg-red-600/20 text-red-300"
-                : "border-white/15 text-zinc-400 hover:border-white/30"
+                  ? "border-green-500 bg-green-600/20 text-good-2"
+                  : "border-red-500 bg-red-600/20 text-brand-3"
+                : "border-ink/15 text-muted hover:border-ink/30"
             }`}
           >
             {d === "add" ? "Add" : "Remove"}
@@ -81,9 +81,9 @@ export function AdjustPointsForm({ playerId }: { playerId: number }) {
         <label htmlFor="adj-reason" className={label}>
           Reason{" "}
           {removing ? (
-            <span className="text-red-400">(required)</span>
+            <span className="text-brand-2">(required)</span>
           ) : (
-            <span className="text-zinc-600">(optional)</span>
+            <span className="text-subtle">(optional)</span>
           )}
         </label>
         <input
@@ -101,8 +101,8 @@ export function AdjustPointsForm({ playerId }: { playerId: number }) {
         />
       </div>
 
-      {state.error && <p className="text-sm text-red-500">{state.error}</p>}
-      {state.ok && <p className="text-sm text-green-400">Points updated.</p>}
+      {state.error && <p className="text-sm text-brand">{state.error}</p>}
+      {state.ok && <p className="text-sm text-good">Points updated.</p>}
 
       <Button
         type="submit"

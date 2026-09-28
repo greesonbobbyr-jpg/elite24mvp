@@ -24,3 +24,14 @@ export function photoSrc(
   if (!photoUrl.startsWith("data:")) return photoUrl; // real URL already
   return `/api/photo/${userId}?v=${fnv1a(photoUrl)}`;
 }
+
+// The card-portrait CUTOUT (photo pipeline A): same routing rules as photoSrc,
+// but data: values serve via /api/photo/[userId]?cut=1.
+export function cutoutSrc(
+  userId: number,
+  photoCutoutUrl: string | null | undefined,
+): string | null {
+  if (!photoCutoutUrl) return null;
+  if (!photoCutoutUrl.startsWith("data:")) return photoCutoutUrl;
+  return `/api/photo/${userId}?cut=1&v=${fnv1a(photoCutoutUrl)}`;
+}

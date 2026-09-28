@@ -127,6 +127,15 @@ export function actingScope(
   return { organizationId: ctx.team.organizationId, teamId: ctx.membership.teamId };
 }
 
+// The team a person is acting for on team surfaces: the acting membership's
+// team, or the legacy anchor for pre-backfill logins (dies at Stage 6). Every
+// read AND write on one surface must use this same team — mixing it with
+// user.teamId is what stranded a two-team athlete behind a TIME OUT they
+// couldn't acknowledge.
+export function actingTeamId(ctx: Pick<Ctx, "membership" | "user">): number {
+  return ctx.membership?.teamId ?? ctx.user.teamId;
+}
+
 // Display-role snapshot stamped onto posts (Notification / TeamMessage): the
 // acting membership's role, or ORG_ADMIN for an admin with no membership.
 // Stored at write time so display stays stable if roles later change.

@@ -22,6 +22,11 @@ export type RosterRow = {
   position: string | null;
   jerseyNumber: number | null;
   photoUrl: string | null;
+  /** Card cutout + its placement: the avatar sits on the card like the full card. */
+  photoCutoutUrl: string | null;
+  photoMeta: unknown;
+  /** Career points: the card tier (the roster ranks by team points). */
+  careerPoints: number;
   points: number;
   rank: number;
   checkedInAt: Date | null;
@@ -54,6 +59,9 @@ async function activeRoster(teamId: number) {
           position: true,
           jerseyNumber: true,
           photoUrl: true,
+          photoCutoutUrl: true,
+          photoMeta: true,
+          careerPoints: true,
           currentStreak: true,
         },
       },
@@ -68,6 +76,9 @@ async function activeRoster(teamId: number) {
         position: m.profile.position,
         jerseyNumber: m.jerseyNumber ?? m.profile.jerseyNumber,
         photoUrl: m.profile.photoUrl,
+        photoCutoutUrl: m.profile.photoCutoutUrl,
+        photoMeta: m.profile.photoMeta,
+        careerPoints: m.profile.careerPoints,
         points: m.points,
         currentStreak: m.profile.currentStreak,
       }));
@@ -86,6 +97,8 @@ async function activeRoster(teamId: number) {
           position: true,
           jerseyNumber: true,
           photoUrl: true,
+          photoCutoutUrl: true,
+          photoMeta: true,
           currentStreak: true,
         },
       },
@@ -97,6 +110,9 @@ async function activeRoster(teamId: number) {
     position: p.profile?.position ?? null,
     jerseyNumber: p.profile?.jerseyNumber ?? null,
     photoUrl: p.profile?.photoUrl ?? null,
+    photoCutoutUrl: p.profile?.photoCutoutUrl ?? null,
+    photoMeta: p.profile?.photoMeta ?? null,
+    careerPoints: p.profile?.points ?? 0,
     points: p.profile?.points ?? 0,
     currentStreak: p.profile?.currentStreak ?? 0,
   }));
@@ -145,6 +161,9 @@ export type PlayerCoachView = {
   position: string | null;
   jerseyNumber: number | null;
   photoUrl: string | null;
+  // Card portrait (card redesign): cutout + normalization meta for the hero.
+  photoCutoutUrl: string | null;
+  photoMeta: unknown;
   heightInches: number | null;
   pointsPerGame: number | null;
   reboundsPerGame: number | null;
@@ -233,6 +252,8 @@ export async function getPlayerCoachView(
     position: p.position,
     jerseyNumber: p.jerseyNumber,
     photoUrl: p.photoUrl,
+    photoCutoutUrl: p.photoCutoutUrl,
+    photoMeta: p.photoMeta,
     heightInches: p.heightInches,
     pointsPerGame: p.pointsPerGame,
     reboundsPerGame: p.reboundsPerGame,

@@ -1,38 +1,93 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { resizeToDataUrl } from "@/lib/clientImage";
+import {
+  processPortrait,
+  PORTRAIT_REJECT_MESSAGE,
+  type PortraitPhase,
+} from "@/lib/portrait/process";
 
-// Owner-only player-photo uploader (Brand page). Drag-drop / click-to-browse →
-// the image is resized in-browser to a size-capped `data:` URL (lib/clientImage,
-// same machinery as the team logo) and written to a hidden `photoUrl` input the
-// server re-validates. Round preview; "Remove" clears it → initials fallback.
+// Card-portrait uploader (photo pipeline A) — Brand page (players) and Team
+// Settings (coaches). A chosen photo runs the ON-DEVICE pipeline: capped
+// original + background-removed cutout + metadata, written to three hidden
+// fields the server re-validates. FAILURE REJECTS (Δ5): on any pipeline
+// failure nothing changes — the previous photo (or none) stays, with the §16
+// re-upload message. "Re-cut" re-processes the stored original.
 export function PhotoUploadField({
   defaultPhotoUrl = null,
+  defaultCutoutUrl = null,
+  defaultMeta = null,
 }: {
   defaultPhotoUrl?: string | null;
+  defaultCutoutUrl?: string | null;
+  /** JSON-serialized stored photoMeta, passed back through unchanged. */
+  defaultMeta?: string | null;
 }) {
   const [photo, setPhoto] = useState<string | null>(defaultPhotoUrl);
+  const [cutout, setCutout] = useState<string | null>(defaultCutoutUrl);
+  const [meta, setMeta] = useState<string | null>(defaultMeta);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [busy, setBusy] = useState<null | { phase: PortraitPhase; pct: number }>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFile(file: File | undefined | null) {
+  async function runPipeline(source: Blob) {
     setError(null);
-    if (!file) return;
-    const res = await resizeToDataUrl(file);
-    if ("error" in res) {
-      setError(res.error);
-      return;
+    setWarnings([]);
+    setBusy({ phase: "reading", pct: 0 });
+    try {
+      const res = await processPortrait(source, (phase, fraction) =>
+        setBusy({ phase, pct: Math.round(fraction * 100) }),
+      );
+      if ("error" in res) {
+        setError(res.error); // previous photo/cutout stay untouched (Δ5)
+        return;
+      }
+      setPhoto(res.originalUrl);
+      setCutout(res.cutoutUrl);
+      setMeta(JSON.stringify(res.meta));
+      setWarnings(res.warnings); // soft signals only (Δ12) — notes, not gates
+    } finally {
+      setBusy(null);
     }
-    setPhoto(res.url);
   }
+
+  async function handleFile(file: File | undefined | null) {
+    if (!file) return;
+    await runPipeline(file);
+  }
+
+  // Re-process the STORED original (data:, /api/photo path, or https URL).
+  async function recut() {
+    if (!photo) return;
+    setError(null);
+    try {
+      const blob = await (await fetch(photo)).blob();
+      await runPipeline(blob);
+    } catch {
+      setError(PORTRAIT_REJECT_MESSAGE);
+    }
+  }
+
+  const phaseLabel =
+    busy?.phase === "removing"
+      ? `Removing background… ${busy.pct}%`
+      : busy?.phase === "analyzing"
+        ? "Placing your portrait…"
+        : busy?.phase === "finishing"
+          ? "Finishing…"
+          : "Reading photo…";
+
+  const preview = cutout ?? photo;
 
   return (
     <div>
       <input type="hidden" name="photoUrl" value={photo ?? ""} />
-      <p className="mb-1 block text-xs font-medium text-zinc-400">
-        Your photo <span className="text-zinc-600">(optional)</span>
+      <input type="hidden" name="photoCutoutUrl" value={cutout ?? ""} />
+      <input type="hidden" name="photoMeta" value={meta ?? ""} />
+      <p className="mb-1 block text-xs font-medium text-muted">
+        Your photo <span className="text-subtle">(optional)</span>
       </p>
       <div className="flex items-center gap-3">
         <div
@@ -46,50 +101,81 @@ export function PhotoUploadField({
             setDragging(false);
             void handleFile(e.dataTransfer.files?.[0]);
           }}
-          onClick={() => inputRef.current?.click()}
+          onClick={() => !busy && inputRef.current?.click()}
           className={`flex flex-1 cursor-pointer items-center gap-3 rounded-full border border-dashed py-2 pl-2 pr-4 text-sm transition ${
             dragging
               ? "border-red-500 bg-red-600/10"
-              : "border-red-600/30 bg-black/40 hover:border-red-500"
-          }`}
+              : "border-red-600/30 bg-field hover:border-red-500"
+          } ${busy ? "pointer-events-none opacity-70" : ""}`}
         >
-          {photo ? (
+          {preview ? (
+            // Cutouts sit on a dark disc so the removed background reads.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={photo}
+              src={preview}
               alt="Photo preview"
-              className="h-14 w-14 shrink-0 rounded-full object-cover"
+              className="h-14 w-14 shrink-0 rounded-full bg-zinc-800 object-cover"
             />
           ) : (
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/5 text-2xl text-zinc-600">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink/5 text-2xl text-faint">
               +
             </div>
           )}
-          <span className="text-zinc-300">
-            {photo ? "Change photo" : "Drag & drop, or click to choose a file"}
+          <span className="text-ink-mid">
+            {busy
+              ? phaseLabel
+              : preview
+                ? "Change photo"
+                : "Upload a clear chest-up photo facing the camera. Make sure your head and shoulders are fully visible."}
           </span>
         </div>
-        {photo && (
-          <button
-            type="button"
-            onClick={() => {
-              setPhoto(null);
-              if (inputRef.current) inputRef.current.value = "";
-            }}
-            className="shrink-0 text-xs text-zinc-400 hover:text-red-400 hover:underline"
-          >
-            Remove
-          </button>
+        {photo && !busy && (
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={() => void recut()}
+              className="text-xs text-muted hover:text-brand-2 hover:underline"
+            >
+              Re-cut photo
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPhoto(null);
+                setCutout(null);
+                setMeta(null);
+                setError(null);
+                setWarnings([]);
+                if (inputRef.current) inputRef.current.value = "";
+              }}
+              className="text-xs text-muted hover:text-brand-2 hover:underline"
+            >
+              Remove
+            </button>
+          </div>
         )}
       </div>
       <input
         ref={inputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
+        accept="image/png,image/jpeg,image/webp"
         className="hidden"
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {busy && (
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-ink/10">
+          <div
+            className="h-full rounded-full bg-brand transition-[width] duration-200"
+            style={{ width: `${busy.phase === "removing" ? busy.pct : 5}%` }}
+          />
+        </div>
+      )}
+      {error && <p className="mt-1 text-xs text-brand">{error}</p>}
+      {warnings.map((warning) => (
+        <p key={warning} className="mt-1 text-xs text-warn">
+          {warning}
+        </p>
+      ))}
     </div>
   );
 }

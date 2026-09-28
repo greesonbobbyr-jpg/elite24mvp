@@ -51,7 +51,7 @@ export function AnimatedTotal({ value }: { value: number }) {
   return (
     <p
       ref={elRef}
-      className={`origin-left text-5xl font-black leading-none text-white transition-transform duration-300 ${
+      className={`origin-left text-5xl font-black leading-none text-ink transition-transform duration-300 ${
         pulsing ? "scale-110 drop-shadow-[0_0_16px_rgba(212,175,55,0.85)]" : ""
       }`}
     >

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCurrentContext } from "@/lib/context";
+import { actingScope, getCurrentContext } from "@/lib/context";
+import { can } from "@/lib/authz";
 import {
   listTeamMessages,
   BOARD_PAGE_SIZE,
@@ -15,7 +16,8 @@ import { ReplyProvider } from "./ReplyProvider";
 import { BoardScroller } from "./BoardScroller";
 import { getGif } from "@/lib/gifs";
 import { PlayerCard } from "@/app/components/PlayerCard";
-import { photoSrc } from "@/lib/photoUrl";
+import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
+import { StaffCard } from "@/app/components/StaffCard";
 
 // The team's message board — a Messenger-style chat. Team-private: only the
 // current user's own team is queried and posted to (CLAUDE.md section 3.2).
@@ -39,7 +41,7 @@ function snippetOf(body: string, gifId: string | null): string {
 // Muted, neutral section kicker — quieter than the red .e24-eyebrow so the
 // bubbles carry the color.
 const kicker =
-  "text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500";
+  "text-xs font-semibold uppercase tracking-[0.15em] text-subtle";
 
 export default async function BoardPage({
   searchParams,
@@ -68,33 +70,40 @@ export default async function BoardPage({
   );
   const messages = await listTeamMessages(user.teamId, limit);
   const hasEarlier = messages.length >= limit && limit < BOARD_MAX_LIMIT;
+  // Moderation (delete anyone's message) — the matrix check deleteMessage
+  // uses; legacy role check only for pre-backfill logins (dies at Stage 6).
+  const scope = actingScope(ctx);
+  const mayModerate = scope ? can(ctx, "moderate_board", scope) : user.role === "COACH";
   const logoUrl = user.team.logoUrl;
   const latestId = messages.length ? messages[messages.length - 1].id : 0;
 
   return (
     // Fixed chat shell: spans from under the app header to above the tab bar, so
     // only the message list scrolls — the header + composer stay put. The offsets
-    // are tuned to the current app-header (~64px) and player/coach tab-bar
-    // heights; z-0 keeps it under the tab bar (z-40) and TIME OUT takeover (z-50).
-    <main className="fixed inset-x-0 top-[69px] bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-0 flex justify-center">
+    // are tuned to the current app-header (~64px, plus the status-bar inset it
+    // grows by when installed to the home screen — 69px in a browser tab) and
+    // player/coach tab-bar heights; z-0 keeps it under the tab bar (z-40) and
+    // TIME OUT takeover (z-50).
+    <main className="fixed inset-x-0 top-[calc(59px+max(0.625rem,env(safe-area-inset-top)))] bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-0 flex justify-center">
       <ReplyProvider>
         <div className="flex h-full w-full max-w-2xl flex-col">
           {/* TOP — fixed board header */}
           <header className="flex shrink-0 items-start justify-between gap-4 px-6 pb-2 pt-4">
             <div className="min-w-0">
               <p className={kicker}>Team Circle</p>
-              <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">
+              <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-ink">
                 {user.team.name}
               </h1>
             </div>
             {logoUrl ? (
               // Plain <img>: team-controlled arbitrary URL (avoid next/image
-              // domain allowlist). No logo → render nothing.
+              // domain allowlist). No logo → render nothing. Black tile so
+              // logos drawn for the black brand still show in light mode.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
                 alt={`${user.team.name} logo`}
-                className="h-14 w-14 shrink-0 object-contain"
+                className="h-14 w-14 shrink-0 rounded-xl bg-black object-contain p-1"
               />
             ) : null}
           </header>
@@ -108,7 +117,7 @@ export default async function BoardPage({
               <section className="e24-surface rounded-2xl border border-red-600/25 p-6">
                 <div className="relative z-10">
                   <p className={kicker}>Team Circle</p>
-                  <p className="mt-2 text-sm text-zinc-400">
+                  <p className="mt-2 text-sm text-muted">
                     No messages yet. Start the conversation below.
                   </p>
                 </div>
@@ -119,7 +128,7 @@ export default async function BoardPage({
                 <div className="pb-2 text-center">
                   <Link
                     href={`/board?limit=${limit + BOARD_PAGE_SIZE}`}
-                    className="inline-block rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold text-zinc-400 transition hover:border-white/30 hover:text-zinc-200"
+                    className="inline-block rounded-full border border-ink/15 px-4 py-1.5 text-xs font-semibold text-muted transition hover:border-ink/30 hover:text-ink-soft"
                   >
                     Show earlier messages
                   </Link>
@@ -128,7 +137,10 @@ export default async function BoardPage({
               <ol className="flex flex-col">
             {messages.map((message, i) => {
               const isMine = message.author.id === user.id;
-              const canDelete = user.role === "COACH" || isMine;
+              // Same rule the server enforces (deleteMessage): your own
+              // message, or moderate_board (head coach / org admin — not
+              // assistants or GMs, who used to see a Delete that did nothing).
+              const canDelete = mayModerate || isMine;
               // Staff badge from the role SNAPSHOT taken at write time
               // ("Head Coach" stays "Head Coach" even after a role change);
               // legacy fallback for unstamped rows.
@@ -182,19 +194,41 @@ export default async function BoardPage({
                     {!isMine &&
                       (isFirstOfGroup ? (
                         <div className="mt-6 shrink-0" aria-hidden>
-                          <PlayerCard
-                            size="avatar"
-                            player={{
-                              name: authorName,
-                              photoUrl: photoSrc(
-                                message.author.id,
-                                message.authorProfile?.photoUrl ??
-                                  message.author.profile?.photoUrl,
-                              ),
-                              points: 0,
-                            }}
-                            team={user.team}
-                          />
+                          {authorBadge ? (
+                            <StaffCard
+                              size="avatar"
+                              person={{
+                                name: authorName,
+                                role: authorBadge,
+                                photoUrl: photoSrc(message.author.id, message.author.photoUrl ?? message.authorProfile?.photoUrl),
+                                cutoutUrl: cutoutSrc(
+                                  message.author.id,
+                                  message.author.photoCutoutUrl ?? message.authorProfile?.photoCutoutUrl,
+                                ),
+                                photoMeta: message.author.photoMeta ?? message.authorProfile?.photoMeta,
+                              }}
+                            />
+                          ) : (
+                            // The author's mini card: their level, number and cutout.
+                            <PlayerCard
+                              size="avatar"
+                              player={{
+                                name: authorName,
+                                photoUrl: photoSrc(
+                                  message.author.id,
+                                  message.authorProfile?.photoUrl ?? message.author.profile?.photoUrl,
+                                ),
+                                cutoutUrl: cutoutSrc(
+                                  message.author.id,
+                                  message.authorProfile?.photoCutoutUrl ?? message.author.profile?.photoCutoutUrl,
+                                ),
+                                photoMeta: message.authorProfile?.photoMeta ?? message.author.profile?.photoMeta,
+                                jerseyNumber: message.authorProfile?.jerseyNumber ?? message.author.profile?.jerseyNumber ?? null,
+                                points: message.authorProfile?.careerPoints ?? message.author.profile?.points ?? 0,
+                              }}
+                              team={user.team}
+                            />
+                          )}
                         </div>
                       ) : (
                         <span className="w-10 shrink-0" aria-hidden />
@@ -208,11 +242,11 @@ export default async function BoardPage({
                       {/* name + staff tag — OTHERS, once per group */}
                       {!isMine && isFirstOfGroup && (
                         <div className="mb-1 flex items-center gap-1.5 px-1">
-                          <span className="text-xs font-semibold text-zinc-300">
+                          <span className="text-xs font-semibold text-ink-mid">
                             {authorName}
                           </span>
                           {authorBadge && (
-                            <span className="rounded bg-red-600/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-400">
+                            <span className="rounded bg-red-600/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-2">
                               {authorBadge}
                             </span>
                           )}
@@ -244,10 +278,10 @@ export default async function BoardPage({
                           data-msg-bubble
                           className={`relative z-10 rounded-2xl px-3.5 py-2.5 ${
                             isMine
-                              ? `bg-white text-zinc-900 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.5)] ${
+                              ? `bg-bubble-mine text-bubble-mine-ink shadow-[0_4px_14px_-6px_rgba(0,0,0,0.5)] ${
                                   isLastOfGroup ? "rounded-br-md" : ""
                                 }`
-                              : `e24-bubble text-white ${
+                              : `e24-bubble text-bubble-ink ${
                                   isLastOfGroup ? "rounded-bl-md" : ""
                                 }`
                           }`}
@@ -256,7 +290,7 @@ export default async function BoardPage({
                             {message.body.trim() !== "" && (
                               <p
                                 className={`whitespace-pre-wrap text-sm ${
-                                  isMine ? "text-zinc-900" : "text-white"
+                                  isMine ? "text-bubble-mine-ink" : "text-bubble-ink"
                                 }`}
                               >
                                 {message.body}
@@ -291,7 +325,7 @@ export default async function BoardPage({
                           />
                           <button
                             type="submit"
-                            className="text-[10px] text-zinc-600 transition hover:text-red-500 hover:underline"
+                            className="text-[10px] text-subtle transition hover:text-brand hover:underline"
                           >
                             Delete
                           </button>
@@ -308,7 +342,7 @@ export default async function BoardPage({
           </BoardScroller>
 
           {/* BOTTOM — pinned composer (always visible) */}
-          <div className="shrink-0 border-t border-red-600/20 bg-black/40 px-6 py-3">
+          <div className="shrink-0 border-t border-red-600/20 bg-field px-6 py-3">
             <MessageComposer
               initialBody={spotlightDraft ?? undefined}
               initialType={spotlightDraft ? "SPOTLIGHT" : undefined}

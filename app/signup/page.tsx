@@ -13,12 +13,14 @@ export default async function SignupPage() {
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-6 py-12">
       <div className="text-center">
         <span
-          className="text-2xl font-black italic tracking-tight text-white"
+          role="img"
+          aria-label="Elite24MVP"
+          className="text-2xl font-black italic tracking-tight text-ink"
           style={{ fontFamily: "var(--font-barlow)" }}
         >
           Elite<span style={{ color: "#e1102a" }}>24</span>MVP
         </span>
-        <p className="mt-2 text-sm text-zinc-500">Create your team</p>
+        <p className="mt-2 text-sm text-subtle">Create your team</p>
       </div>
 
       <section className="e24-surface rounded-2xl border border-red-600/30 p-6">
@@ -27,16 +29,16 @@ export default async function SignupPage() {
         </div>
       </section>
 
-      <div className="flex flex-col gap-2 text-center text-sm text-zinc-500">
+      <div className="flex flex-col gap-2 text-center text-sm text-subtle">
         <p>
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-red-500 hover:underline">
+          <Link href="/login" className="font-medium text-brand hover:underline">
             Log in
           </Link>
         </p>
         <p>
           A player?{" "}
-          <Link href="/join" className="font-medium text-red-500 hover:underline">
+          <Link href="/join" className="font-medium text-brand hover:underline">
             Join with a code
           </Link>
         </p>

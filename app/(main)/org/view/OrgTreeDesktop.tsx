@@ -29,7 +29,7 @@ export function OrgTreeDesktop({
         {data.owner && (
           <div className="flex flex-col items-center">
             <PlayerCard
-              size="wide"
+              size="compact"
               player={{
                 name: data.owner.name,
                 points: 0,

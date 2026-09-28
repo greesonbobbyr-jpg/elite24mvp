@@ -9,6 +9,11 @@ export type RankedPlayer = {
   jerseyNumber: number | null;
   position: string | null;
   photoUrl: string | null;
+  /** Card cutout + its placement: the avatar sits on the card like the full card. */
+  photoCutoutUrl: string | null;
+  photoMeta: unknown;
+  /** Career points: the card tier (the board ranks by team points). */
+  careerPoints: number;
 };
 
 // The team's ACTIVE PLAYER memberships in the current season — the board
@@ -26,6 +31,9 @@ async function activePlayerMemberships(teamId: number) {
           jerseyNumber: true,
           position: true,
           photoUrl: true,
+          photoCutoutUrl: true,
+          photoMeta: true,
+          careerPoints: true,
         },
       },
     },
@@ -69,6 +77,9 @@ export async function getTeamRanking(teamId: number): Promise<RankedPlayer[]> {
         jerseyNumber: m.jerseyNumber ?? m.profile.jerseyNumber,
         position: m.profile.position,
         photoUrl: m.profile.photoUrl,
+        photoCutoutUrl: m.profile.photoCutoutUrl,
+        photoMeta: m.profile.photoMeta,
+        careerPoints: m.profile.careerPoints,
       }))
       .sort((a, b) => b.points - a.points);
     return rank1224(sorted);
@@ -80,7 +91,7 @@ export async function getTeamRanking(teamId: number): Promise<RankedPlayer[]> {
     where: { teamId, role: "PLAYER" },
     include: {
       profile: {
-        select: { points: true, jerseyNumber: true, position: true, photoUrl: true },
+        select: { points: true, jerseyNumber: true, position: true, photoUrl: true, photoCutoutUrl: true, photoMeta: true },
       },
     },
   });
@@ -92,6 +103,9 @@ export async function getTeamRanking(teamId: number): Promise<RankedPlayer[]> {
       jerseyNumber: p.profile?.jerseyNumber ?? null,
       position: p.profile?.position ?? null,
       photoUrl: p.profile?.photoUrl ?? null,
+      photoCutoutUrl: p.profile?.photoCutoutUrl ?? null,
+      photoMeta: p.profile?.photoMeta ?? null,
+      careerPoints: p.profile?.points ?? 0,
     }))
     .sort((a, b) => b.points - a.points);
   return rank1224(sorted);
@@ -101,6 +115,11 @@ export type WeeklyRankedPlayer = {
   id: number;
   name: string;
   photoUrl: string | null;
+  /** The avatar's mini card: cutout, placement, number and tier. */
+  photoCutoutUrl: string | null;
+  photoMeta: unknown;
+  jerseyNumber: number | null;
+  careerPoints: number;
   weekPoints: number;
   lastWeekPoints: number;
   delta: number; // weekPoints - lastWeekPoints ("most improved" = max positive)
@@ -151,6 +170,10 @@ export async function getWeeklyRanking(
           id: m.profile.userId!,
           name: m.profile.name,
           photoUrl: m.profile.photoUrl,
+          photoCutoutUrl: m.profile.photoCutoutUrl,
+          photoMeta: m.profile.photoMeta,
+          jerseyNumber: m.jerseyNumber ?? m.profile.jerseyNumber,
+          careerPoints: m.profile.careerPoints,
           weekPoints,
           lastWeekPoints,
           delta: weekPoints - lastWeekPoints,
@@ -166,7 +189,11 @@ export async function getWeeklyRanking(
   const [players, thisWeek, lastWeek] = await Promise.all([
     prisma.user.findMany({
       where: { teamId, role: "PLAYER" },
-      select: { id: true, name: true, profile: { select: { photoUrl: true } } },
+      select: {
+        id: true,
+        name: true,
+        profile: { select: { photoUrl: true, photoCutoutUrl: true, photoMeta: true, jerseyNumber: true, points: true } },
+      },
     }),
     prisma.pointsLedger.groupBy({
       by: ["userId"],
@@ -192,6 +219,10 @@ export async function getWeeklyRanking(
         id: p.id,
         name: p.name,
         photoUrl: p.profile?.photoUrl ?? null,
+        photoCutoutUrl: p.profile?.photoCutoutUrl ?? null,
+        photoMeta: p.profile?.photoMeta ?? null,
+        jerseyNumber: p.profile?.jerseyNumber ?? null,
+        careerPoints: p.profile?.points ?? 0,
         weekPoints,
         lastWeekPoints,
         delta: weekPoints - lastWeekPoints,

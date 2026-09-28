@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentContext } from "@/lib/context";
 import { isSetUp } from "@/lib/onboarding";
+import { parseHeight } from "@/lib/height";
 
 export type OnboardingState = { error?: string };
 
@@ -34,12 +35,14 @@ export async function completeOnboarding(
   if (dream === "") {
     return { error: "Please write your dream — it's the most important part." };
   }
+  const height = parseHeight(formData.get("heightFt"), formData.get("heightIn"));
+  if (!height.ok) return { error: height.error };
 
   const fields = {
     dream,
     position: optionalString(formData.get("position")),
     jerseyNumber: optionalInt(formData.get("jerseyNumber")),
-    heightInches: optionalInt(formData.get("heightInches")),
+    heightInches: height.inches,
     favoritePlayer: optionalString(formData.get("favoritePlayer")),
     favoriteTeam: optionalString(formData.get("favoriteTeam")),
     onboardedAt: new Date(),

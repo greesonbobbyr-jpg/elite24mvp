@@ -10,7 +10,7 @@ const PdfViewer = dynamic(
   {
     ssr: false,
     loading: () => (
-      <p className="p-6 text-sm text-zinc-400">Loading viewer…</p>
+      <p className="p-6 text-sm text-muted">Loading viewer…</p>
     ),
   },
 );

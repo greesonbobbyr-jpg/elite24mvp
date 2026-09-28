@@ -69,25 +69,25 @@ export function MessageComposer({
       <input type="hidden" name="replyToId" value={replyingTo?.id ?? ""} />
       {initialType && <input type="hidden" name="type" value={initialType} />}
       {initialType === "SPOTLIGHT" && (
-        <p className="rounded-full bg-red-500/15 px-3 py-1 text-center text-[10px] font-bold uppercase tracking-wide text-red-400">
+        <p className="rounded-full bg-red-500/15 px-3 py-1 text-center text-[10px] font-bold uppercase tracking-wide text-brand-2">
           Coach&apos;s Spotlight draft — edit it, then send
         </p>
       )}
 
       {/* Reply preview — who/what you're replying to, with a cancel. */}
       {replyingTo && (
-        <div className="e24-reveal flex items-center gap-2 rounded-lg border-l-2 border-red-500 bg-black/40 py-1.5 pl-2 pr-2">
+        <div className="e24-reveal flex items-center gap-2 rounded-lg border-l-2 border-red-500 bg-field py-1.5 pl-2 pr-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold text-red-400">
+            <p className="text-[10px] font-semibold text-brand-2">
               Replying to {replyingTo.authorName}
             </p>
-            <p className="truncate text-xs text-zinc-400">{replyingTo.snippet}</p>
+            <p className="truncate text-xs text-muted">{replyingTo.snippet}</p>
           </div>
           <button
             type="button"
             onClick={clear}
             aria-label="Cancel reply"
-            className="shrink-0 text-zinc-500 hover:text-red-500"
+            className="shrink-0 text-subtle hover:text-brand"
           >
             ✕
           </button>
@@ -96,18 +96,18 @@ export function MessageComposer({
 
       {/* Selected-GIF chip (above the bar). */}
       {selectedGif && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-600/25 bg-black/40 p-2">
+        <div className="flex items-center gap-2 rounded-lg border border-red-600/25 bg-field p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selectedGif.file}
             alt={selectedGif.label}
             className="h-12 w-12 rounded object-cover"
           />
-          <span className="text-xs text-zinc-400">{selectedGif.label}</span>
+          <span className="text-xs text-muted">{selectedGif.label}</span>
           <button
             type="button"
             onClick={() => setGifId(null)}
-            className="ml-auto text-xs text-zinc-500 hover:text-red-500"
+            className="ml-auto text-xs text-subtle hover:text-brand"
           >
             ✕ remove
           </button>
@@ -116,14 +116,14 @@ export function MessageComposer({
 
       {/* Emoji tray — revealed only after tapping 😊. */}
       {showEmoji && (
-        <div className="e24-reveal flex flex-wrap items-center gap-1 rounded-lg border border-red-600/20 bg-black/40 p-2">
+        <div className="e24-reveal flex flex-wrap items-center gap-1 rounded-lg border border-red-600/20 bg-field p-2">
           {TRAY_EMOJIS.map((e) => (
             <button
               key={e.char}
               type="button"
               aria-label={`Add ${e.char}`}
               onClick={() => setBody((b) => b + e.char)}
-              className="rounded-md p-1 leading-none hover:bg-white/10"
+              className="rounded-md p-1 leading-none hover:bg-ink/10"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={e.svg} alt={e.char} className="h-6 w-6" />
@@ -134,9 +134,9 @@ export function MessageComposer({
 
       {/* Curated GIF picker (above the bar) — registry only, no search/upload. */}
       {showGifPicker && (
-        <div className="e24-reveal rounded-lg border border-red-600/20 bg-black/40 p-3">
+        <div className="e24-reveal rounded-lg border border-red-600/20 bg-field p-3">
           {GIFS.length === 0 ? (
-            <p className="text-xs text-zinc-500">No GIFs available yet.</p>
+            <p className="text-xs text-subtle">No GIFs available yet.</p>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {GIFS.map((gif) => {
@@ -149,7 +149,7 @@ export function MessageComposer({
                     className={`flex flex-col items-center gap-1 rounded-lg border p-1.5 ${
                       active
                         ? "border-red-500 bg-red-600/10"
-                        : "border-white/15 hover:border-white/30"
+                        : "border-ink/15 hover:border-ink/30"
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -158,7 +158,7 @@ export function MessageComposer({
                       alt={gif.label}
                       className="h-16 w-full rounded object-cover"
                     />
-                    <span className="w-full truncate text-center text-[10px] text-zinc-400">
+                    <span className="w-full truncate text-center text-[10px] text-muted">
                       {gif.label}
                     </span>
                   </button>
@@ -169,10 +169,10 @@ export function MessageComposer({
         </div>
       )}
 
-      {state.error && <p className="text-sm text-red-500">{state.error}</p>}
+      {state.error && <p className="text-sm text-brand">{state.error}</p>}
 
       {/* The slender bar */}
-      <div className="flex items-end gap-1 rounded-2xl border border-red-600/25 bg-black/40 px-2 py-1.5">
+      <div className="flex items-end gap-1 rounded-2xl border border-red-600/25 bg-field px-2 py-1.5">
         {/* emoji toggle */}
         <button
           type="button"
@@ -181,8 +181,8 @@ export function MessageComposer({
           onClick={() => setShowEmoji((s) => !s)}
           className={`${iconBtn} text-base leading-none ${
             showEmoji
-              ? "border-red-500 text-red-400"
-              : "border-transparent text-zinc-400 hover:text-zinc-200"
+              ? "border-red-500 text-brand-2"
+              : "border-transparent text-muted hover:text-ink-soft"
           }`}
         >
           😊
@@ -196,8 +196,8 @@ export function MessageComposer({
           onClick={() => setShowGifPicker((s) => !s)}
           className={`${iconBtn} text-[10px] font-bold ${
             showGifPicker
-              ? "border-red-500 text-red-400"
-              : "border-transparent text-zinc-400 hover:text-zinc-200"
+              ? "border-red-500 text-brand-2"
+              : "border-transparent text-muted hover:text-ink-soft"
           }`}
         >
           GIF
@@ -209,7 +209,7 @@ export function MessageComposer({
           disabled
           aria-disabled="true"
           title="Photo — coming soon"
-          className={`${iconBtn} cursor-not-allowed border-transparent text-zinc-600 opacity-60`}
+          className={`${iconBtn} cursor-not-allowed border-transparent text-faint opacity-60`}
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
             <path d="M4,4H7L9,2H15L17,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9Z" />
@@ -224,7 +224,7 @@ export function MessageComposer({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Message your team…"
-          className="max-h-32 min-w-0 flex-1 resize-none self-center bg-transparent px-2 py-1.5 text-sm text-white placeholder:text-zinc-500 outline-none [field-sizing:content]"
+          className="max-h-32 min-w-0 flex-1 resize-none self-center bg-transparent px-2 py-1.5 text-sm text-ink outline-none [field-sizing:content]"
         />
 
         {/* compact send button */}

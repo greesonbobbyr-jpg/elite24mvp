@@ -45,3 +45,10 @@ next-env.d.ts
 
 # one-time secret outputs (rotate-passwords etc.) — never committed
 *.local.txt
+
+# Self-hosted segmentation model assets (copied on postinstall from
+# @imgly/background-removal-data; see scripts/copy-bg-removal-assets.mjs)
+/public/bg-removal/
+
+# MediaPipe vision wasm runtime (postinstall copy; model .tflite IS committed)
+/public/face/wasm/

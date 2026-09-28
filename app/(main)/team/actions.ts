@@ -7,9 +7,16 @@ import { actingScope, getCurrentContext, type Ctx } from "@/lib/context";
 import { can, type Action } from "@/lib/authz";
 import { endMembershipForUser } from "@/lib/data/memberships";
 import { uniqueJoinCode } from "@/lib/joincode";
-import { readBranding, validateImageDataUrl } from "@/lib/branding";
+import {
+  readBranding,
+  validateImageDataUrl,
+  validateCutoutDataUrl,
+  parsePhotoMeta,
+} from "@/lib/branding";
 import { hashPassword } from "@/lib/password";
 import { storeImage } from "@/lib/photoStore";
+import { Prisma } from "@prisma/client";
+import { claimUsername } from "@/lib/login";
 
 export type TeamSettingsState = { error?: string; ok?: boolean };
 
@@ -55,6 +62,10 @@ export async function updateTeam(
     "photo",
   );
   if ("error" in photoRes) return { error: photoRes.error };
+  // Card-portrait cutout + metadata (photo pipeline A; see brand/actions.ts).
+  const cutoutRes = validateCutoutDataUrl(String(formData.get("photoCutoutUrl") ?? ""));
+  if ("error" in cutoutRes) return { error: cutoutRes.error };
+  const photoMeta = parsePhotoMeta(String(formData.get("photoMeta") ?? ""));
 
   // Daily check-in reminder hour (team-local; "" = off). Whitelisted range.
   const rawHour = String(formData.get("reminderHour") ?? "").trim();
@@ -71,6 +82,16 @@ export async function updateTeam(
   const storedPhoto = photoRes.url
     ? await storeImage(photoRes.url, `coaches/${user.id}`)
     : null;
+  const storedCutout =
+    photoRes.url && cutoutRes.url
+      ? await storeImage(cutoutRes.url, `coaches/${user.id}-cutout`)
+      : null;
+  const photoFields = {
+    photoUrl: storedPhoto,
+    photoCutoutUrl: storedCutout,
+    photoMeta:
+      storedCutout && photoMeta ? (photoMeta as Prisma.InputJsonValue) : Prisma.DbNull,
+  };
 
   await prisma.team.update({
     where: { id: user.teamId },
@@ -84,17 +105,34 @@ export async function updateTeam(
   });
   await prisma.user.update({
     where: { id: user.id },
-    data: { photoUrl: storedPhoto },
+    data: photoFields,
   });
   // Dual-write: the coach's photo lives on the permanent Profile too.
   if (ctx.profile) {
     await prisma.profile.update({
       where: { id: ctx.profile.id },
-      data: { photoUrl: storedPhoto },
+      data: photoFields,
     });
   }
   revalidatePath("/team");
   revalidatePath("/"); // team name + coach photo show on the dashboard/header
+  return { ok: true };
+}
+
+export type UsernameState = { error?: string; ok?: boolean };
+
+// Any staffer sets a login username for their OWN account (staff sign up with
+// an email only, so without this "log in with your username" can't work for
+// them). Always the session's user — never a client-supplied id.
+export async function setMyUsername(
+  _prev: UsernameState,
+  formData: FormData,
+): Promise<UsernameState> {
+  const ctx = await getCurrentContext();
+  if (!ctx || ctx.user.role !== "COACH") return { error: "Staff only." };
+  const result = await claimUsername(ctx.user.id, String(formData.get("username") ?? ""));
+  if (!result.ok) return { error: result.error };
+  revalidatePath("/team");
   return { ok: true };
 }
 

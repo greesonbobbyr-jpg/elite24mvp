@@ -24,7 +24,7 @@ export default async function QuestsPage() {
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
         <h1 className="e24-eyebrow">Daily Quests</h1>
         <Card variant="material">
-          <p className="relative z-10 text-sm text-zinc-300">
+          <p className="relative z-10 text-sm text-ink-mid">
             Daily quests are part of the player loop.
           </p>
         </Card>
@@ -71,7 +71,7 @@ export default async function QuestsPage() {
             <p className="e24-eyebrow mt-2">Total Points</p>
           </div>
           {pointsToday > 0 && (
-            <span className="shrink-0 text-sm font-bold text-amber-400">
+            <span className="shrink-0 text-sm font-bold text-warn">
               +{pointsToday} today
             </span>
           )}
@@ -82,13 +82,13 @@ export default async function QuestsPage() {
       <div>
         <div className="flex items-baseline justify-between">
           <span className="e24-eyebrow uppercase">{tier.label}</span>
-          <span className="text-xs font-semibold text-zinc-400">
+          <span className="text-xs font-semibold text-muted">
             {nextTier
               ? `${nextTier.min - points} PTS TO ${nextTier.label.toUpperCase()}`
               : "TOP TIER"}
           </span>
         </div>
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-raised-2">
           <div
             className="h-full rounded-full bg-gradient-to-r from-[#d4af37] to-[#e8c766] transition-[width]"
             style={{ width: `${tierPct}%` }}
@@ -101,11 +101,11 @@ export default async function QuestsPage() {
         <div>
           <div className="flex items-baseline justify-between">
             <span className="e24-eyebrow">Today&apos;s Progress</span>
-            <span className="text-xs font-semibold text-zinc-400">
+            <span className="text-xs font-semibold text-muted">
               {doneCount} / {totalCount} DONE
             </span>
           </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-raised-2">
             <div
               className="h-full rounded-full bg-gradient-to-r from-red-500 to-red-600 transition-[width]"
               style={{ width: `${pct}%` }}

@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Roboto, Barlow_Semi_Condensed } from "next/font/google";
+import localFont from "next/font/local";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
+import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { getCurrentUserId } from "@/lib/session";
 import { roleLabel } from "@/lib/format";
 import {
@@ -12,22 +14,25 @@ import { HomeFooter } from "@/app/components/HomeFooter";
 import { InstallBanner } from "@/app/components/InstallBanner";
 
 // App-wide type: Roboto (self-hosted by next/font — no external request).
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "900"],
-  variable: "--font-roboto",
-  display: "swap",
-});
+const roboto = localFont({ src: "../public/fonts/Roboto-Variable.ttf", variable: "--font-roboto", display: "swap" });
 
-// Wordmark type: Barlow Semi Condensed Black Italic — used only for the header
-// "Elite24MVP" wordmark (loads just the one 900-italic face, so it's light).
-const barlow = Barlow_Semi_Condensed({
-  subsets: ["latin"],
-  weight: ["900"],
-  style: ["italic"],
+// Display type: Barlow Semi Condensed — the header wordmark (900 italic) and
+// the PROVISIONAL card face (Δ1: working typography for the Player/Staff card
+// system, validated against the approved reference during the visual loop —
+// swapped out if it can't reproduce the reference; geometry never bends to it).
+const barlow = localFont({
+  src: [
+    { path: "../public/fonts/BarlowSemiCondensed-Black.ttf", weight: "900", style: "normal" },
+    { path: "../public/fonts/BarlowSemiCondensed-BlackItalic.ttf", weight: "900", style: "italic" },
+    { path: "../public/fonts/BarlowSemiCondensed-SemiBold.ttf", weight: "600", style: "normal" },
+  ],
   variable: "--font-barlow",
   display: "swap",
 });
+
+const cardDisplay = localFont({ src: "../public/fonts/Rajdhani-Bold.ttf", weight: "700", variable: "--font-card-display", display: "swap" });
+
+
 
 export const metadata: Metadata = {
   title: "Elite24MVP",
@@ -44,6 +49,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#000000",
+  // Edge to edge on notched iPhones, so the env(safe-area-inset-*) padding
+  // used by the header and bottom tab bars takes effect (it's always 0
+  // without this). Pairs with statusBarStyle "black-translucent" above.
+  viewportFit: "cover",
 };
 
 // Renders the dev-only user switcher, grouped ORG → TEAM → MEMBER (Stage 5).
@@ -105,16 +114,20 @@ async function DevSwitcherSlot() {
   }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // `dark` forces the brand's black theme app-wide (CLAUDE.md section 9).
+  // Light/dark (CLAUDE.md §9): no data-theme = follow the phone's setting;
+  // "light"/"dark" = the person's pinned choice from the ☰ menu. Rendered
+  // server-side so the first paint is already in the right mode.
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
     <html
       lang="en"
-      className={`${roboto.variable} ${barlow.variable} dark h-full antialiased`}
+      data-theme={theme === "system" ? undefined : theme}
+      className={`${roboto.variable} ${barlow.variable} ${cardDisplay.variable} h-full antialiased`}
     >
       {/* pb-16 reserves space so the global footer + page content clear the
           player bottom tab bar (rendered in the (main) layout). */}
@@ -129,3 +142,8 @@ export default function RootLayout({
     </html>
   );
 }
+
+
+
+
+
