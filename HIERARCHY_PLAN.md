@@ -413,8 +413,9 @@ Deploy runbook (owner-gated): migrate deploy → backfill execute+verify → pus
 tabs). **Rebuilt 2026-09-28 as the org tree** to the owner's sketch
 (`design/reference/org-tree-sketch.jpg`) after the owner approved the `org-tree-mockup`
 branch ("That is way better"): search → Org Owner card → division badges (12U…17U) →
-each team as its head coach's card ("No head coach yet" when empty) → that team's player
-mini cards (tier frame + energy, no jersey number) with AC/GM chips; one open branch per
+each team as its head coach's card ("No head coach yet" when empty) → that team's players,
+each as their own card at a smaller size (the full layout, as on their Brand page — owner,
+2026-09-28) with AC/GM chips; one open branch per
 level, the open path lit red; connector lines measured from the nodes, so they follow
 rows that scroll sideways on a phone; a player's card opens their Brand page. The open
 branch lives in the URL (`?at=d12&team=45`), so Back returns to it.
@@ -425,8 +426,8 @@ branch lives in the URL (`?at=d12&team=45`), so Back returns to it.
   (`tests/orgtree.test.ts`): a layer with one entry appears nowhere — not as a row, not
   in search (a one-team club goes Owner → head coach, never "Main"); teams not in a
   division yet join the top grouping row as "Other teams", or the coaches row.
-- Nodes are the card family's mini sizes: `PlayerCard size="mini"`, `StaffCard
-  size="mini"` (both on `app/components/card/MiniFrame`).
+- Nodes are the card family's mini sizes: `PlayerCard size="mini"` (the full card, held
+  still) and `StaffCard size="mini"` (on `app/components/card/MiniFrame`).
 - Seed: Mustang is a 12U–17U club (Varsity = 17U, JV = 16U, plus 12 generated teams,
   86 players, 19 coaches; "earlier seasons" ledger rows spread the card levels).
 tests/authz.test.ts untouched. Both chunks branch-only — deploy runbook in
