@@ -37,15 +37,15 @@ export function QuotedMessage({
       onClick={jump}
       disabled={removed}
       title={removed ? undefined : "Jump to the original message"}
-      className={`-mb-2 block max-w-[15rem] text-left opacity-60 transition ${
+      className={`-mb-2 block max-w-[15rem] text-left opacity-80 transition ${
         align === "right" ? "self-end" : "self-start"
       } ${removed ? "cursor-default" : "hover:opacity-90"}`}
     >
-      <div className="rounded-xl border border-white/10 bg-black/40 px-2.5 pb-3 pt-1">
-        <p className="truncate text-[10px] font-semibold text-zinc-300">
+      <div className="rounded-xl border border-ink/10 bg-field px-2.5 pb-3 pt-1">
+        <p className="truncate text-[10px] font-semibold text-ink-mid">
           {authorName}
         </p>
-        <p className="truncate text-[11px] text-zinc-400">{snippet}</p>
+        <p className="truncate text-[11px] text-muted">{snippet}</p>
       </div>
     </button>
   );

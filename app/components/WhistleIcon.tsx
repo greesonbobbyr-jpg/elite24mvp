@@ -5,7 +5,7 @@
 // user-facing attribution credit is required.
 //
 // Uses `currentColor`, so it tints to whatever text color it sits in (set
-// `text-white` / `text-red-500` on the usage).
+// `text-ink` / `text-brand` on the usage).
 export function WhistleIcon({ className }: { className?: string }) {
   return (
     <svg

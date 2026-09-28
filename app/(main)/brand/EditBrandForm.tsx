@@ -5,11 +5,12 @@ import { updateBrand, type BrandState } from "./actions";
 import { Button } from "@/app/components/ui/Button";
 import { cardDefault } from "@/app/components/ui/Card";
 import { PhotoUploadField } from "@/app/components/PhotoUploadField";
+import { HeightFields } from "@/app/components/HeightFields";
 
 const initialState: BrandState = {};
 const fieldClass =
-  "w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-red-500";
-const labelClass = "mb-1 block text-xs font-medium text-zinc-400";
+  "w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm outline-none focus:border-red-500";
+const labelClass = "mb-1 block text-xs font-medium text-muted";
 
 type EditableProfile = {
   heightInches: number | null;
@@ -34,7 +35,7 @@ export function EditBrandForm({ profile }: { profile: EditableProfile }) {
 
   return (
     <details className={cardDefault}>
-      <summary className="cursor-pointer select-none text-sm font-semibold text-red-500">
+      <summary className="cursor-pointer select-none text-sm font-semibold text-brand">
         Edit my brand
       </summary>
       <form action={formAction} className="mt-4 flex flex-col gap-4">
@@ -53,10 +54,11 @@ export function EditBrandForm({ profile }: { profile: EditableProfile }) {
             <label className={labelClass}>Jersey #</label>
             <input name="jerseyNumber" type="number" min={0} defaultValue={profile.jerseyNumber ?? ""} className={fieldClass} />
           </div>
-          <div>
-            <label className={labelClass}>Height (in)</label>
-            <input name="heightInches" type="number" min={0} defaultValue={profile.heightInches ?? ""} className={fieldClass} />
-          </div>
+          <HeightFields
+            defaultInches={profile.heightInches}
+            inputClass={fieldClass}
+            labelClass={labelClass}
+          />
           <div>
             <label className={labelClass}>PPG</label>
             <input name="pointsPerGame" type="number" step="0.1" min={0} defaultValue={profile.pointsPerGame ?? ""} className={fieldClass} />

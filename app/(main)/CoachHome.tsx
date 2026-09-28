@@ -42,7 +42,7 @@ export async function CoachHome({
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
       <header>
         <p className="e24-eyebrow">Team Dashboard</p>
-        <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">
+        <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-ink">
           {user.team.name}
         </h1>
       </header>
@@ -56,7 +56,7 @@ export async function CoachHome({
               cy="36"
               r={R}
               fill="none"
-              stroke="rgba(255,255,255,0.12)"
+              className="stroke-ink/12"
               strokeWidth="8"
             />
             <circle
@@ -76,17 +76,17 @@ export async function CoachHome({
               y="36"
               textAnchor="middle"
               dominantBaseline="central"
-              className="fill-white text-[15px] font-black"
+              className="fill-ink text-[15px] font-black"
             >
               {checkedInToday}/{totalPlayers}
             </text>
           </svg>
           <div className="min-w-0">
             <p className="e24-eyebrow">Today</p>
-            <p className="mt-0.5 text-lg font-bold text-white">
+            <p className="mt-0.5 text-lg font-bold text-ink">
               {checkedInToday} of {totalPlayers} checked in
             </p>
-            <p className="mt-0.5 text-sm text-zinc-400">
+            <p className="mt-0.5 text-sm text-muted">
               {remaining} still to check in · {questsDoneToday} quests done today
             </p>
           </div>
@@ -96,7 +96,7 @@ export async function CoachHome({
         {remaining > 0 && (
           <form
             action={sendCheckInReminder}
-            className="relative z-10 mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-3"
+            className="relative z-10 mt-4 flex flex-wrap items-center gap-3 border-t border-ink/10 pt-3"
           >
             <button
               type="submit"
@@ -105,7 +105,7 @@ export async function CoachHome({
               Send check-in reminder
             </button>
             {canSendTimeout && (
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-zinc-400">
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted">
                 <input
                   type="checkbox"
                   name="isTimeout"
@@ -127,20 +127,20 @@ export async function CoachHome({
           .sort((a, b) => b.currentStreak - a.currentStreak);
         if (hot.length === 0) return null;
         return (
-          <section className="rounded-2xl border border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-zinc-950 p-5">
+          <section className="rounded-2xl border border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-canvas p-5">
             <p className="e24-eyebrow">Streak milestones</p>
             <ul className="mt-2 flex flex-col gap-2">
               {hot.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate text-sm font-semibold text-white">
+                  <span className="min-w-0 truncate text-sm font-semibold text-ink">
                     🔥 {r.name}
-                    <span className="ml-2 text-xs font-bold text-[#e8c766]">
+                    <span className="ml-2 text-xs font-bold text-gold">
                       {r.currentStreak}-day streak
                     </span>
                   </span>
                   <Link
                     href={`/board?spotlight=${encodeURIComponent(r.name.split(" ")[0])}&days=${r.currentStreak}`}
-                    className="shrink-0 text-xs font-bold uppercase tracking-wide text-red-500 transition hover:text-red-400"
+                    className="shrink-0 text-xs font-bold uppercase tracking-wide text-brand transition hover:text-brand-2"
                   >
                     Give a shoutout →
                   </Link>
@@ -155,7 +155,7 @@ export async function CoachHome({
       <section>
         <p className="e24-eyebrow mb-2">Roster · {totalPlayers}</p>
         {roster.length === 0 ? (
-          <p className="text-sm text-zinc-500">No players on this team yet.</p>
+          <p className="text-sm text-subtle">No players on this team yet.</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {roster.map((r) => (
@@ -181,7 +181,7 @@ export async function CoachHome({
                   />
                   <p
                     className={`mt-1 px-1 text-[11px] font-medium ${
-                      r.checkedInAt ? "text-green-400" : "text-amber-400"
+                      r.checkedInAt ? "text-good" : "text-warn"
                     }`}
                   >
                     {r.checkedInAt

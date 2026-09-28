@@ -72,7 +72,7 @@ export function InstallBanner() {
 
   return (
     <div className="fixed bottom-20 left-1/2 z-[45] w-[min(92vw,420px)] -translate-x-1/2">
-      <div className="flex items-center gap-3 rounded-2xl border border-red-600/40 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur">
+      <div className="flex items-center gap-3 rounded-2xl border border-red-600/40 bg-canvas/95 p-3 shadow-2xl backdrop-blur">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/logo.png"
@@ -80,10 +80,10 @@ export function InstallBanner() {
           className="h-10 w-10 shrink-0 rounded-lg"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">
+          <p className="text-sm font-semibold text-ink">
             Add Elite24 to your home screen
           </p>
-          <p className="mt-0.5 text-xs text-zinc-400">
+          <p className="mt-0.5 text-xs text-muted">
             {isIOS
               ? "Tap the Share icon, then “Add to Home Screen”."
               : "Install the app for full-screen, one-tap access."}
@@ -102,7 +102,7 @@ export function InstallBanner() {
           type="button"
           onClick={dismiss}
           aria-label="Dismiss"
-          className="shrink-0 rounded-full px-2 py-1 text-lg leading-none text-zinc-500 transition hover:text-zinc-300"
+          className="shrink-0 rounded-full px-2 py-1 text-lg leading-none text-subtle transition hover:text-ink-mid"
         >
           ×
         </button>

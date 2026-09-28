@@ -75,11 +75,16 @@ export function CardCompositor({
     setVars(0, 0, 1, 50, 32, false);
   };
 
-  // `--u`: master unit in CSS px. A numeric width gives an exact px unit (SSR
-  // safe, no measurement); a string width (e.g. "100%") falls back to
-  // container-query units so the card scales with its container.
+  // `--u`: master unit in CSS px, pure CSS (SSR safe, no measurement). A
+  // numeric width is the card's size but shrinks to fit a narrow phone
+  // (max-width 100%; a 340px card on a 320px phone made the page zoomable
+  // sideways): the unit is that exact px value, or the rendered width's
+  // (container-query units) once shrunk. A string width (e.g. "100%") always
+  // scales with the container.
   const unit =
-    typeof width === "number" ? `${width / MASTER_W}px` : `calc(100cqw / ${MASTER_W})`;
+    typeof width === "number"
+      ? `min(${width / MASTER_W}px, calc(100cqw / ${MASTER_W}))`
+      : `calc(100cqw / ${MASTER_W})`;
 
   return (
     <div
@@ -96,10 +101,18 @@ export function CardCompositor({
       className={`pc-stage relative${staticRender ? " pc-static" : ""}${className ? ` ${className}` : ""}`}
       style={{
         width,
+        maxWidth: "100%",
         aspectRatio: `${CARD_ASPECT}`,
-        containerType: typeof width === "number" ? undefined : "inline-size",
+        containerType: "inline-size",
+        // The cutout and its lighting are positioned past the card's edges
+        // (each layer is clipped to the card when painted); without this they
+        // still widened the page, letting it open zoomed-in on a phone.
+        // "clip", not "hidden": no scroll container, and the 3D tilt holds.
+        overflow: "clip",
         isolation: "isolate",
-        touchAction: "pan-y",
+        // Vertical scroll and pinch-zoom still work when a gesture starts on
+        // the card; sideways drags drive the tilt.
+        touchAction: "pan-y pinch-zoom",
         transformStyle: "preserve-3d",
         willChange: staticRender ? undefined : "transform",
         transition: staticRender ? undefined : "transform 220ms cubic-bezier(.2,.7,.2,1)",

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { dayKeyInTz } from "@/lib/daykey";
 import { pushToUser } from "@/lib/push";
+import { reminderRecipientIds } from "@/lib/reminders";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,8 @@ export async function GET(request: NextRequest) {
 
   let teamsMatched = 0;
   let playersPinged = 0;
+  // A two-team athlete whose teams share a reminder hour gets one ping.
+  const pinged = new Set<number>();
 
   for (const team of teams) {
     // Current hour in the team's timezone.
@@ -39,18 +42,10 @@ export async function GET(request: NextRequest) {
     teamsMatched++;
 
     const today = dayKeyInTz(now, team.timezone);
-    const players = await prisma.user.findMany({
-      where: {
-        teamId: team.id,
-        role: "PLAYER",
-        pushSubscriptions: { some: {} },
-        journalEntries: { none: { day: today } },
-      },
-      select: { id: true },
-    });
-
-    for (const p of players) {
-      const sent = await pushToUser(p.id, {
+    for (const userId of await reminderRecipientIds(team.id, today)) {
+      if (pinged.has(userId)) continue;
+      pinged.add(userId);
+      const sent = await pushToUser(userId, {
         title: "Elite24MVP",
         body: "Time to check in 🏀 Your streak is waiting.",
         url: "/",

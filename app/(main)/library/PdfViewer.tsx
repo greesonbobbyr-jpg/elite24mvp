@@ -108,9 +108,9 @@ export function PdfViewer({ src }: { src: string }) {
       {numPages > 0 && (
         <form
           onSubmit={jumpToPage}
-          className="sticky top-0 z-10 flex items-center gap-2 rounded-lg border border-zinc-800 bg-black/80 px-3 py-2 text-xs backdrop-blur"
+          className="sticky top-0 z-10 flex items-center gap-2 rounded-lg border border-line bg-canvas/80 px-3 py-2 text-xs backdrop-blur"
         >
-          <span className="text-zinc-400">Jump to page</span>
+          <span className="text-muted">Jump to page</span>
           <input
             type="number"
             min={1}
@@ -118,9 +118,9 @@ export function PdfViewer({ src }: { src: string }) {
             value={pageInput}
             onChange={(e) => setPageInput(e.target.value)}
             placeholder="1"
-            className="w-16 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100 outline-none focus:border-red-500"
+            className="w-16 rounded border border-line-strong bg-raised px-2 py-1 text-ink outline-none focus:border-red-500"
           />
-          <span className="text-zinc-500">of {numPages}</span>
+          <span className="text-subtle">of {numPages}</span>
           <button
             type="submit"
             className="rounded-full bg-red-600 px-3 py-1 font-semibold text-white hover:bg-red-700"
@@ -133,9 +133,9 @@ export function PdfViewer({ src }: { src: string }) {
       <Document
         file={src}
         onLoadSuccess={onLoad}
-        loading={<p className="p-6 text-sm text-zinc-400">Loading playbook…</p>}
+        loading={<p className="p-6 text-sm text-muted">Loading playbook…</p>}
         error={
-          <p className="p-6 text-sm text-zinc-400">
+          <p className="p-6 text-sm text-muted">
             Couldn&apos;t load the playbook.
           </p>
         }

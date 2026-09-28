@@ -38,7 +38,7 @@ dbDescribe("Stage 4c board + notifications", () => {
     return { team, season: team.organization!.seasons[0] };
   }
 
-  it("receipts: Y == the team's ACTIVE current-season player memberships", async () => {
+  it("receipts: Y == ACTIVE current-season player memberships that had started when it was sent", async () => {
     const { prisma } = await import("../lib/prisma");
     const { getTeamReadStatus } = await import("../lib/notifications");
     const { team } = await teamA();
@@ -46,13 +46,15 @@ dbDescribe("Stage 4c board + notifications", () => {
     // (Seed v2 diverges from the legacy user roster BY DESIGN: an ended
     // membership stays a user on the team; a two-team athlete is one user
     // with two memberships. The membership roster is the truth.)
-    const activeMembers = await prisma.membership.count({
+    const active = await prisma.membership.findMany({
       where: { teamId: team.id, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
+      select: { startedAt: true },
     });
     const status = await getTeamReadStatus(team.id);
     expect(status.length).toBeGreaterThan(0);
     for (const n of status) {
-      expect(n.totalPlayers).toBe(activeMembers);
+      const onTeamWhenSent = active.filter((m) => m.startedAt <= n.createdAt).length;
+      expect(n.totalPlayers).toBe(onTeamWhenSent);
       expect(n.readCount + n.notYet.length).toBe(n.totalPlayers);
     }
   });
@@ -68,8 +70,15 @@ dbDescribe("Stage 4c board + notifications", () => {
       data: { name: "__tc_ghost__", role: "PLAYER", teamId: team.id },
     });
     const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
+    // Joined well before every seeded notification, so it's owed all of them.
     const membership = await prisma.membership.create({
-      data: { profileId: profile.id, teamId: team.id, seasonId: season.id, role: "PLAYER" },
+      data: {
+        profileId: profile.id,
+        teamId: team.id,
+        seasonId: season.id,
+        role: "PLAYER",
+        startedAt: new Date(Date.now() - 60 * 86_400_000),
+      },
     });
     try {
       // Active → counted, listed under Waiting.
@@ -143,6 +152,110 @@ dbDescribe("Stage 4c board + notifications", () => {
       await prisma.user.delete({ where: { id: user.id } });
       await prisma.profile.delete({ where: { id: profile.id } });
     }
+  });
+
+  it("a player who joins late isn't handed old alerts: no TIME OUT, nothing unread, not 'waiting'", async () => {
+    const { prisma } = await import("../lib/prisma");
+    const {
+      getActiveTimeout,
+      countUnreadForPlayer,
+      listPlayerNotifications,
+      getTeamReadStatus,
+    } = await import("../lib/notifications");
+    const { team, season } = await teamA();
+    const coach = await prisma.user.findFirstOrThrow({ where: { teamId: team.id, role: "COACH" } });
+
+    // An unacknowledged TIME OUT sent an hour ago, BEFORE the player joins.
+    const oldTimeout = await prisma.notification.create({
+      data: {
+        teamId: team.id, authorId: coach.id, isTimeout: true,
+        title: "__tc_old_timeout__", body: "b",
+        createdAt: new Date(Date.now() - 3_600_000),
+      },
+    });
+    const user = await prisma.user.create({
+      data: { name: "__tc_late__", role: "PLAYER", teamId: team.id },
+    });
+    const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
+    const membership = await prisma.membership.create({
+      data: { profileId: profile.id, teamId: team.id, seasonId: season.id, role: "PLAYER" },
+    });
+    const joinedAt = membership.startedAt;
+    let newTimeoutId: number | null = null;
+    try {
+      expect(await getActiveTimeout(user.id, team.id, joinedAt)).toBeNull();
+      expect(await countUnreadForPlayer(user.id, team.id, joinedAt)).toBe(0);
+      const feed = await listPlayerNotifications(user.id, team.id, joinedAt);
+      expect(feed.unread).toHaveLength(0);
+      const receipts = await getTeamReadStatus(team.id);
+      expect(receipts.find((n) => n.id === oldTimeout.id)?.notYet).not.toContain(user.name);
+
+      // Anything sent AFTER joining reaches them as usual.
+      const fresh = await prisma.notification.create({
+        data: {
+          teamId: team.id, authorId: coach.id, isTimeout: true,
+          title: "__tc_new_timeout__", body: "b",
+          createdAt: new Date(joinedAt.getTime() + 1_000),
+        },
+      });
+      newTimeoutId = fresh.id;
+      expect((await getActiveTimeout(user.id, team.id, joinedAt))?.id).toBe(fresh.id);
+      expect(await countUnreadForPlayer(user.id, team.id, joinedAt)).toBe(1);
+    } finally {
+      await prisma.notification.deleteMany({
+        where: { id: { in: [oldTimeout.id, ...(newTimeoutId ? [newTimeoutId] : [])] } },
+      });
+      await prisma.membership.delete({ where: { id: membership.id } });
+      await prisma.user.delete({ where: { id: user.id } });
+      await prisma.profile.delete({ where: { id: profile.id } });
+    }
+  });
+
+  it("every unread alert is listed (even past 50), so the badge can always reach 0", async () => {
+    const { prisma } = await import("../lib/prisma");
+    const { countUnreadForPlayer, listPlayerNotifications } = await import("../lib/notifications");
+
+    const org = await prisma.organization.create({ data: { name: "__tc_many_org__" } });
+    const team = await prisma.team.create({
+      data: { name: "__tc_many_team__", organizationId: org.id, joinCode: "TCMANY" },
+    });
+    const coach = await prisma.user.create({
+      data: { name: "__tc_many_coach__", role: "COACH", teamId: team.id },
+    });
+    const player = await prisma.user.create({
+      data: { name: "__tc_many_player__", role: "PLAYER", teamId: team.id },
+    });
+    try {
+      const since = new Date(Date.now() - 86_400_000);
+      await prisma.notification.createMany({
+        data: Array.from({ length: 55 }, (_, i) => ({
+          teamId: team.id, authorId: coach.id, title: `__tc_many_${i}__`, body: "b",
+          createdAt: new Date(since.getTime() + (i + 1) * 60_000),
+        })),
+      });
+      expect(await countUnreadForPlayer(player.id, team.id, since)).toBe(55);
+      const feed = await listPlayerNotifications(player.id, team.id, since);
+      expect(feed.unread).toHaveLength(55);
+
+      // Confirm everything the list offers → the badge is clear.
+      await prisma.notificationRead.createMany({
+        data: feed.unread.map((n) => ({ notificationId: n.id, userId: player.id })),
+      });
+      expect(await countUnreadForPlayer(player.id, team.id, since)).toBe(0);
+    } finally {
+      await prisma.notification.deleteMany({ where: { teamId: team.id } });
+      await prisma.user.deleteMany({ where: { id: { in: [coach.id, player.id] } } });
+      await prisma.team.delete({ where: { id: team.id } });
+      await prisma.organization.delete({ where: { id: org.id } });
+    }
+  });
+
+  it("actingTeamId: the acting membership's team, else the legacy anchor", async () => {
+    const { actingTeamId } = await import("../lib/context");
+    const user = { teamId: 1 } as Parameters<typeof actingTeamId>[0]["user"];
+    const membership = { teamId: 2 } as NonNullable<Parameters<typeof actingTeamId>[0]["membership"]>;
+    expect(actingTeamId({ user, membership })).toBe(2);
+    expect(actingTeamId({ user, membership: null })).toBe(1);
   });
 
   it("author role snapshot survives promotion (Assistant Coach stays Assistant Coach)", async () => {

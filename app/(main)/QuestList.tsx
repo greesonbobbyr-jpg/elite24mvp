@@ -74,8 +74,8 @@ export function QuestList({
             key={quest.id}
             className={`rounded-xl border p-4 transition ${
               completed
-                ? "border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-zinc-950"
-                : "border-zinc-800 bg-zinc-950/40"
+                ? "border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-canvas"
+                : "border-line bg-panel"
             }`}
           >
             <div className="flex items-start gap-3">
@@ -83,8 +83,8 @@ export function QuestList({
               <span
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ring-1 ${
                   completed
-                    ? "bg-[#d4af37]/15 text-[#d4af37] ring-[#d4af37]/40"
-                    : "bg-red-600/15 text-red-500 ring-red-600/30"
+                    ? "bg-[#d4af37]/15 text-gold-2 ring-[#d4af37]/40"
+                    : "bg-red-600/15 text-brand ring-red-600/30"
                 }`}
               >
                 {completed ? (
@@ -96,14 +96,14 @@ export function QuestList({
 
               {/* title + description — full text, wrapping */}
               <div className="min-w-0 flex-1">
-                <p className="break-words text-sm font-semibold text-white">
+                <p className="break-words text-sm font-semibold text-ink">
                   {quest.title}
                 </p>
-                <p className="mt-0.5 break-words text-xs leading-relaxed text-zinc-500">
+                <p className="mt-0.5 break-words text-xs leading-relaxed text-subtle">
                   {quest.description}
                 </p>
                 {completed && measurable && log?.actual != null && (
-                  <p className="mt-1 text-xs font-semibold text-[#e8c766]">
+                  <p className="mt-1 text-xs font-semibold text-gold">
                     made {log.actual} / {quest.targetCount}
                   </p>
                 )}
@@ -119,9 +119,9 @@ export function QuestList({
                     type="submit"
                     title="Tap to undo"
                     aria-label={`Undo ${quest.title}`}
-                    className="relative flex h-12 w-24 flex-col items-center justify-center rounded-xl border border-[#d4af37]/40 bg-[#d4af37]/15 text-[#e8c766] shadow-[0_0_12px_rgba(212,175,55,0.5)] transition hover:bg-[#d4af37]/25 active:scale-[0.97]"
+                    className="relative flex h-12 w-24 flex-col items-center justify-center rounded-xl border border-[#d4af37]/40 bg-[#d4af37]/15 text-gold shadow-[0_0_12px_rgba(212,175,55,0.5)] transition hover:bg-[#d4af37]/25 active:scale-[0.97]"
                   >
-                    <IconUndo className="absolute right-1.5 top-1.5 h-3 w-3 text-[#d4af37]/70" />
+                    <IconUndo className="absolute right-1.5 top-1.5 h-3 w-3 text-gold-2/70" />
                     <span className="text-xs font-bold uppercase tracking-wide leading-none">
                       Done
                     </span>

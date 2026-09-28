@@ -86,8 +86,8 @@ export function PhotoUploadField({
       <input type="hidden" name="photoUrl" value={photo ?? ""} />
       <input type="hidden" name="photoCutoutUrl" value={cutout ?? ""} />
       <input type="hidden" name="photoMeta" value={meta ?? ""} />
-      <p className="mb-1 block text-xs font-medium text-zinc-400">
-        Your photo <span className="text-zinc-600">(optional)</span>
+      <p className="mb-1 block text-xs font-medium text-muted">
+        Your photo <span className="text-subtle">(optional)</span>
       </p>
       <div className="flex items-center gap-3">
         <div
@@ -105,7 +105,7 @@ export function PhotoUploadField({
           className={`flex flex-1 cursor-pointer items-center gap-3 rounded-full border border-dashed py-2 pl-2 pr-4 text-sm transition ${
             dragging
               ? "border-red-500 bg-red-600/10"
-              : "border-red-600/30 bg-black/40 hover:border-red-500"
+              : "border-red-600/30 bg-field hover:border-red-500"
           } ${busy ? "pointer-events-none opacity-70" : ""}`}
         >
           {preview ? (
@@ -117,11 +117,11 @@ export function PhotoUploadField({
               className="h-14 w-14 shrink-0 rounded-full bg-zinc-800 object-cover"
             />
           ) : (
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/5 text-2xl text-zinc-600">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink/5 text-2xl text-faint">
               +
             </div>
           )}
-          <span className="text-zinc-300">
+          <span className="text-ink-mid">
             {busy
               ? phaseLabel
               : preview
@@ -134,7 +134,7 @@ export function PhotoUploadField({
             <button
               type="button"
               onClick={() => void recut()}
-              className="text-xs text-zinc-400 hover:text-red-400 hover:underline"
+              className="text-xs text-muted hover:text-brand-2 hover:underline"
             >
               Re-cut photo
             </button>
@@ -148,7 +148,7 @@ export function PhotoUploadField({
                 setWarnings([]);
                 if (inputRef.current) inputRef.current.value = "";
               }}
-              className="text-xs text-zinc-400 hover:text-red-400 hover:underline"
+              className="text-xs text-muted hover:text-brand-2 hover:underline"
             >
               Remove
             </button>
@@ -163,16 +163,16 @@ export function PhotoUploadField({
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />
       {busy && (
-        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-ink/10">
           <div
-            className="h-full rounded-full bg-red-500 transition-[width] duration-200"
+            className="h-full rounded-full bg-brand transition-[width] duration-200"
             style={{ width: `${busy.phase === "removing" ? busy.pct : 5}%` }}
           />
         </div>
       )}
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {error && <p className="mt-1 text-xs text-brand">{error}</p>}
       {warnings.map((warning) => (
-        <p key={warning} className="mt-1 text-xs text-amber-400">
+        <p key={warning} className="mt-1 text-xs text-warn">
           {warning}
         </p>
       ))}

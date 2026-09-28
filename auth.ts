@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
+import { parseLoginIdentifier } from "@/lib/login";
 import authConfig from "./auth.config";
 
 // Real auth (Auth.js / NextAuth v5). Credentials + JWT session so our existing
@@ -17,15 +18,13 @@ const providers = [
     id: "credentials",
     credentials: { identifier: {}, password: {} },
     authorize: async (creds) => {
-      const identifier = String(creds?.identifier ?? "").trim().toLowerCase();
+      const lookup = parseLoginIdentifier(String(creds?.identifier ?? ""));
       const password = String(creds?.password ?? "");
-      if (!identifier || !password) return null;
-      // One login for both roles: coaches by email (has "@"), players by
-      // username. No account, or a credential-less account, fails the same way
-      // (no enumeration). Never return the hash.
-      const user = identifier.includes("@")
-        ? await prisma.user.findUnique({ where: { email: identifier } })
-        : await prisma.user.findUnique({ where: { username: identifier } });
+      if (!lookup || !password) return null;
+      // One login for everyone: an email or a username (see lib/login). No
+      // account, or a credential-less account, fails the same way (no
+      // enumeration). Never return the hash.
+      const user = await prisma.user.findUnique({ where: lookup });
       if (!user?.passwordHash) return null;
       const ok = await verifyPassword(password, user.passwordHash);
       return ok ? { id: String(user.id) } : null;

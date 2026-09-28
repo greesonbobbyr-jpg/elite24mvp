@@ -7,6 +7,7 @@ import { uniqueJoinCode } from "@/lib/joincode";
 import { readBranding } from "@/lib/branding";
 import { signIn } from "@/auth";
 import { rateLimit, clientIp, RATE_LIMITED_MESSAGE } from "@/lib/ratelimit";
+import { USERNAME_RE, USERNAME_RULES, normalizeUsername } from "@/lib/login";
 
 export type SignupState = { error?: string };
 
@@ -24,6 +25,8 @@ export async function signup(
 
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  // Optional: staff can log in with a username too (blank = email only).
+  const username = normalizeUsername(String(formData.get("username") ?? "")) || null;
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
   const teamName = String(formData.get("teamName") ?? "").trim();
@@ -31,6 +34,7 @@ export async function signup(
   if (!name || !email || !teamName) {
     return { error: "Fill in your name, email, and team name." };
   }
+  if (username && !USERNAME_RE.test(username)) return { error: USERNAME_RULES };
   if (password.length < 8) {
     return { error: "Password must be at least 8 characters." };
   }
@@ -45,6 +49,9 @@ export async function signup(
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { error: "That email is already in use." };
+  }
+  if (username && (await prisma.user.findUnique({ where: { username } }))) {
+    return { error: "That username is taken — try another." };
   }
 
   const joinCode = await uniqueJoinCode();
@@ -75,7 +82,7 @@ export async function signup(
         },
       });
       const coach = await tx.user.create({
-        data: { name, email, role: "COACH", teamId: team.id, passwordHash },
+        data: { name, email, username, role: "COACH", teamId: team.id, passwordHash },
       });
       const profile = await tx.profile.create({
         data: { userId: coach.id, name, setupCompletedAt: new Date() },

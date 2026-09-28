@@ -87,7 +87,7 @@ export function MessageReactions({
     >
       {/* timestamp — revealed above the message on tap (Messenger-style) */}
       {showTime && (
-        <div className="e24-reveal mb-1 px-1 text-center text-[10px] font-medium text-zinc-500">
+        <div className="e24-reveal mb-1 px-1 text-center text-[10px] font-medium text-subtle">
           {time}
         </div>
       )}
@@ -108,7 +108,7 @@ export function MessageReactions({
 
       {/* reaction badge — always the bottom-RIGHT corner */}
       {existing.length > 0 && (
-        <div className="absolute -bottom-3 right-2 z-20 flex items-center gap-1 rounded-full bg-zinc-800/95 px-1.5 py-0.5 shadow-md ring-1 ring-black/40">
+        <div className="absolute -bottom-3 right-2 z-20 flex items-center gap-1 rounded-full bg-raised-2/95 px-1.5 py-0.5 shadow-md ring-1 ring-line-strong">
           <span className="flex items-center gap-0.5">
             {existing.map((f) => (
               // eslint-disable-next-line @next/next/no-img-element
@@ -116,7 +116,7 @@ export function MessageReactions({
             ))}
           </span>
           {total > 1 && (
-            <span className="px-0.5 text-xs font-semibold tabular-nums text-zinc-100">
+            <span className="px-0.5 text-xs font-semibold tabular-nums text-ink">
               {total}
             </span>
           )}
@@ -125,7 +125,7 @@ export function MessageReactions({
 
       {/* the 6-face picker + Reply (hover / long-press), anchored right */}
       {open && (
-        <div className="e24-reveal absolute bottom-full right-0 z-30 mb-1.5 flex items-center gap-0.5 rounded-full border border-red-600/30 bg-zinc-950/95 p-1 shadow-xl shadow-black/50 backdrop-blur">
+        <div className="e24-reveal absolute bottom-full right-0 z-30 mb-1.5 flex items-center gap-0.5 rounded-full border border-red-600/30 bg-canvas/95 p-1 shadow-xl shadow-black/50 backdrop-blur">
           {REACTION_FACES.map((f) => (
             <form
               action={toggleReaction}
@@ -138,7 +138,7 @@ export function MessageReactions({
                 type="submit"
                 aria-label={f.type}
                 className={`flex h-8 w-8 items-center justify-center rounded-full transition hover:scale-110 active:scale-95 ${
-                  myType === f.type ? "bg-white/15" : "hover:bg-white/10"
+                  myType === f.type ? "bg-ink/15" : "hover:bg-ink/10"
                 }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -147,7 +147,7 @@ export function MessageReactions({
             </form>
           ))}
 
-          <span className="mx-0.5 w-px self-stretch bg-white/10" />
+          <span className="mx-0.5 w-px self-stretch bg-ink/10" />
           <button
             type="button"
             aria-label="Reply"
@@ -155,7 +155,7 @@ export function MessageReactions({
               setReplyingTo({ id: messageId, authorName, snippet });
               setOpen(false);
             }}
-            className="flex h-8 items-center gap-1 rounded-full px-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/10"
+            className="flex h-8 items-center gap-1 rounded-full px-2 text-xs font-semibold text-ink-mid transition hover:bg-ink/10"
           >
             ↩ Reply
           </button>

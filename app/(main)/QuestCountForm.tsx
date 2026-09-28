@@ -22,7 +22,7 @@ export function QuestCountForm({
   return (
     <form action={completeQuest} className="flex shrink-0 flex-col items-end gap-1">
       <input type="hidden" name="questId" value={questId} />
-      <label className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+      <label className="text-[10px] font-bold uppercase tracking-wide text-subtle">
         How many made?
       </label>
       <div className="flex items-center gap-1.5">
@@ -34,9 +34,9 @@ export function QuestCountForm({
           onChange={(e) => setValue(e.target.value.replace(/[^0-9]/g, ""))}
           placeholder="?"
           aria-label={`How many made out of ${targetCount}`}
-          className="w-16 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-center text-sm text-white outline-none transition focus:border-red-500"
+          className="w-16 rounded-lg border border-line-strong bg-raised px-2 py-1.5 text-center text-sm text-ink outline-none transition focus:border-red-500"
         />
-        <span className="text-xs text-zinc-500">/ {targetCount}</span>
+        <span className="text-xs text-subtle">/ {targetCount}</span>
         <button
           ref={ref}
           type="submit"

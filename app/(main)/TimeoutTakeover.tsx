@@ -19,17 +19,18 @@ export function TimeoutTakeover({
   };
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm">
+    // theme-dark: an alarm looks like an alarm in both modes.
+    <div className="theme-dark fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm">
       <div className="w-[70%] max-w-lg rounded-2xl border-2 border-red-600 bg-black p-7 text-center shadow-2xl shadow-red-900/40">
-        <p className="flex items-center justify-center gap-2 text-3xl font-black uppercase tracking-tight text-red-500">
-          <WhistleIcon className="h-9 w-9 text-white" />
+        <p className="flex items-center justify-center gap-2 text-3xl font-black uppercase tracking-tight text-brand">
+          <WhistleIcon className="h-9 w-9 text-ink" />
           Time Out!
         </p>
-        <h2 className="mt-4 text-xl font-bold text-white">{notification.title}</h2>
-        <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-200">
+        <h2 className="mt-4 text-xl font-bold text-ink">{notification.title}</h2>
+        <p className="mt-3 whitespace-pre-wrap text-sm text-ink-soft">
           {notification.body}
         </p>
-        <p className="mt-4 text-xs text-zinc-500">
+        <p className="mt-4 text-xs text-subtle">
           From {notification.authorName}
           {notification.authorRoleLabel ? ` · ${notification.authorRoleLabel}` : ""}
         </p>
@@ -44,9 +45,9 @@ export function TimeoutTakeover({
           </button>
         </form>
 
-        <p className="mt-5 text-[10px] uppercase tracking-wide text-zinc-600">
+        <p className="mt-5 text-[10px] uppercase tracking-wide text-subtle">
           Powered by{" "}
-          <span className="font-semibold text-red-500">Elite 24 MVP</span>
+          <span className="font-semibold text-brand">Elite 24 MVP</span>
         </p>
       </div>
     </div>

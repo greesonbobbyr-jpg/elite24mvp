@@ -9,11 +9,13 @@
  *   npx tsx scripts/localpg.ts reset   → stop + wipe data dir
  */
 import { rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import EmbeddedPostgres from "embedded-postgres";
 
-const DATA_DIR = join(tmpdir(), "e24-localpg-data");
+// Not the OS temp dir: Windows' temp cleanup deleted most of the cluster's
+// files there (2026-09), leaving a data dir Postgres can't start from.
+const DATA_DIR = join(homedir(), ".e24-localpg");
 const PORT = 5433;
 const USER = "postgres";
 const PASSWORD = "localtest";

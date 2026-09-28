@@ -75,6 +75,35 @@ coaches and GMs, whose deletes the server refuses.
 Full plan (local to the new laptop; the essentials are above):
 `C:\Users\grees\.claude\plans\c-users-grees-claude-uploads-a1d7a349-e-harmonic-sparkle.md`
 
+### Pending deploy (2026-09-27): quick fixes + light/dark mode + the new cards
+
+`card-redesign` now contains all three: `theme-modes` (which includes `quick-fixes`) was
+merged into it, so `main` fast-forwards to it in one step. Verified on the merged branch:
+tsc, 225 tests, the five approved card baselines (0.00%), no page wider than a
+320/360/390px phone (Chromium and WebKit), WCAG AA contrast on every page in both modes.
+
+**The owner runs this** (auto mode blocks production deploys), in `C:\dev\elite24mvp`,
+whose `.env` points at the production database:
+
+1. `git fetch origin`
+2. `git switch main`
+3. `git merge --ff-only origin/card-redesign`
+4. `npx prisma migrate deploy`. This applies `20260814032118_card_photo_cutout`: six empty,
+   optional photo columns (`photoCutoutUrl`, `photoMeta` on User, Profile and PlayerProfile).
+   Run it BEFORE step 5: the new code reads those columns; the running old code ignores them.
+5. `git push origin main`. Vercel builds and deploys (`next build` does not migrate).
+
+After the deploy:
+
+- **Existing players' full cards show "Photo pending"** until each player opens Your Brand →
+  Edit my brand → **Re-cut photo** → Save, which makes the card portrait from the photo they
+  already have, on their phone (checked end to end). Circles and rows show their existing
+  photo meanwhile. Coaches' photos keep working as they are.
+- First deploy of the on-device photo tools: ~150 MB of model files are copied into
+  `public/bg-removal/` and `public/face/wasm/` at install (none over 12 MB). Watch that the
+  Vercel build finishes.
+- No new environment variables.
+
 ---
 
 ## 1. WHERE WE ARE (mid-motion, this second)
@@ -258,7 +287,9 @@ Pushed to GitHub as part of this handoff (they existed only on the wiped laptop)
   split because the two branches' migrations diverge and `prisma migrate deploy`
   would break crossing them. On a fresh machine the data dir is empty — just
   `npx tsx scripts/localpg.ts start e24cards` (keep the launcher process alive),
-  `prisma migrate deploy`, then seed.
+  `prisma migrate deploy`, then seed. The data dir is `~/.e24-localpg` (it was
+  in `%TEMP%` until 2026-09, where Windows' temp cleanup deleted the cluster).
+  `e24main` is the quick-fixes / light-dark database.
 - **`@imgly/background-removal` is PINNED to 1.4.5** — see §4. Model assets are
   copied into git-ignored `public/bg-removal/` + `public/face/wasm/` by the
   postinstall script; the tiny BlazeFace `.tflite` IS committed.
@@ -286,7 +317,7 @@ Pushed to GitHub as part of this handoff (they existed only on the wiped laptop)
    matches everything/nothing. Filter in JS. This bit us twice.
 4. **Starting embedded PG with `pg_ctl` directly** → "pre-existing shared memory
    block is still in use" wedges. Recovery that works:
-   `taskkill //F //IM postgres.exe //T`, delete `$TEMP/e24-localpg-data/postmaster.pid`,
+   `taskkill //F //IM postgres.exe //T`, delete `~/.e24-localpg/postmaster.pid`,
    then relaunch via `scripts/localpg.ts` (keep that launcher process running —
    it holds the daemon; killing it mid-startup wedges the cluster).
 5. **Detecting Vercel deploys by content-hashed chunk fingerprints** — false

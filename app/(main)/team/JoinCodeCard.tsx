@@ -23,31 +23,31 @@ export function JoinCodeCard({ code }: { code: string | null }) {
     <section className="e24-surface rounded-2xl border border-red-600/25 p-5">
       <div className="relative z-10">
         <p className="e24-eyebrow">Team join code</p>
-        <p className="mt-1 text-xs text-zinc-400">
+        <p className="mt-1 text-xs text-muted">
           Players use this code to join your team.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <span className="rounded-lg border border-white/15 bg-black/40 px-4 py-2 font-mono text-2xl font-black tracking-[0.2em] text-white">
+          <span className="rounded-lg border border-ink/15 bg-field px-4 py-2 font-mono text-2xl font-black tracking-[0.2em] text-ink">
             {code ?? "——————"}
           </span>
           <button
             type="button"
             onClick={copy}
             disabled={!code}
-            className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-white/30 active:scale-95 disabled:opacity-50"
+            className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-ink/30 active:scale-95 disabled:opacity-50"
           >
             {copied ? "Copied!" : "Copy"}
           </button>
           <form action={regenerateJoinCode}>
             <button
               type="submit"
-              className="rounded-full border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:border-red-500 active:scale-95"
+              className="rounded-full border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-brand-2 transition hover:border-red-500 active:scale-95"
             >
               Regenerate
             </button>
           </form>
         </div>
-        <p className="mt-2 text-[11px] text-zinc-500">
+        <p className="mt-2 text-[11px] text-subtle">
           Regenerating makes the old code stop working.
         </p>
       </div>

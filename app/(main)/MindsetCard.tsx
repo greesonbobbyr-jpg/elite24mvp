@@ -61,7 +61,7 @@ export function MindsetCard({
   // --- Collapsed teaser: slim one-line strip (title only, no spoilers) ---
   if (!expanded) {
     return (
-      <section className="rounded-xl border border-red-600/40 bg-gradient-to-r from-red-950/25 to-zinc-950/40 transition hover:-translate-y-0.5 hover:border-red-500/60 active:scale-[0.99]">
+      <section className="rounded-xl border border-red-600/40 bg-gradient-to-r from-red-600/[0.08] to-panel transition hover:-translate-y-0.5 hover:border-red-500/60 active:scale-[0.99]">
         <button
           type="button"
           onClick={() => setExpanded(true)}
@@ -72,11 +72,11 @@ export function MindsetCard({
             🏀
           </span>
           <span className="e24-eyebrow shrink-0">1-Minute Mindset</span>
-          <span className="min-w-0 flex-1 truncate font-semibold text-white">
+          <span className="min-w-0 flex-1 truncate font-semibold text-ink">
             {title}
           </span>
           <span
-            className="shrink-0 text-lg text-red-500/70 transition-transform group-hover:rotate-90"
+            className="shrink-0 text-lg text-brand/70 transition-transform group-hover:rotate-90"
             aria-hidden
           >
             ▸
@@ -90,7 +90,7 @@ export function MindsetCard({
   return (
     <section className={`${cardAccent} e24-reveal`}>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
+        <span className="text-xs font-semibold uppercase tracking-wide text-brand">
           1-Minute Mindset
         </span>
         <div className="flex shrink-0 items-center gap-2">
@@ -105,7 +105,7 @@ export function MindsetCard({
               {playing ? "■ Stop" : "▶ Listen"}
             </Button>
           ) : (
-            <span className="text-[10px] text-zinc-500">
+            <span className="text-[10px] text-subtle">
               Listen unavailable in this browser
             </span>
           )}
@@ -113,21 +113,21 @@ export function MindsetCard({
             type="button"
             onClick={collapse}
             aria-label="Collapse"
-            className="rounded-full px-1.5 py-1 text-sm text-zinc-500 transition hover:text-zinc-300 active:scale-95"
+            className="rounded-full px-1.5 py-1 text-sm text-subtle transition hover:text-ink-mid active:scale-95"
           >
             ▴
           </button>
         </div>
       </div>
 
-      <h2 className="mt-3 text-xl font-bold text-white">{title}</h2>
+      <h2 className="mt-3 text-xl font-bold text-ink">{title}</h2>
 
-      <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-200">
+      <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-soft">
         {body}
       </p>
 
       {/* Optional takeaway — a reflection only; it does not gate the check-in. */}
-      <form action={saveAction} className="mt-4 border-t border-white/10 pt-4">
+      <form action={saveAction} className="mt-4 border-t border-ink/10 pt-4">
         <label htmlFor="mindset-takeaway" className="e24-eyebrow">
           What&apos;d you take from this?
         </label>
@@ -139,9 +139,9 @@ export function MindsetCard({
           value={takeaway}
           onChange={(e) => setTakeaway(e.target.value)}
           placeholder="A few words on what stuck with you…"
-          className="mt-1.5 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
+          className="mt-1.5 w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
         />
-        {state.error && <p className="mt-1 text-sm text-red-500">{state.error}</p>}
+        {state.error && <p className="mt-1 text-sm text-brand">{state.error}</p>}
         <div className="mt-2 flex items-center gap-3">
           <Button type="submit" size="sm" disabled={saving}>
             {saving
@@ -151,7 +151,7 @@ export function MindsetCard({
                 : "Save takeaway"}
           </Button>
           {(state.ok || (savedTakeaway !== "" && !state.error)) && (
-            <span className="text-xs font-medium text-green-400">✓ Saved</span>
+            <span className="text-xs font-medium text-good">✓ Saved</span>
           )}
         </div>
       </form>

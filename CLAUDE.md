@@ -74,6 +74,7 @@ Everything else in the app is secondary to this loop working smoothly across mul
 - **State/data:** Server components + server actions / route handlers where natural. Avoid unnecessary client-side complexity.
 - **Conventions:** Clear file and variable names over cleverness. Small, focused components. Comment the *why* when something isn't obvious. No dead code, no unused deferred-feature stubs left lying around.
 - **One repo, one command to run:** `npm run dev` should start everything. Document any other command in the README.
+- **Colors:** use the named color roles in `app/globals.css` (`text-ink`, `text-muted`, `bg-panel`, `bg-field`, `border-line`, `bg-ink/5` …), never raw white/black/zinc classes, so every screen works in light and dark mode. `npx tsx scripts/check-pages.ts --contrast` checks every page's text contrast in both modes.
 
 ---
 
@@ -104,12 +105,12 @@ If the owner asks for any of these later, treat it as a new project phase with i
 
 ## 9. Branding & Visual Identity
 
-- **Colors:** Black is the base/background. The accent is a bold **red / orange-red**. Primary text is **white**. Black theme throughout.
+- **Colors:** The accent is a bold **red / orange-red** in both modes. The app has **light and dark mode**: it follows the phone's setting by default, and the ☰ menu's Appearance switch (Auto / Light / Dark) can pin either. Dark mode is the original design (black base, white text); light mode is an off-white page with near-black text. The **brand frame stays black in both modes** — the top header bar and the bottom tab bars — and so do **Player Cards** (the collectible object) and the **TIME OUT** takeover. (Owner decision, 2026-09-26.)
 - **Master logo:** the **"E24 / MVP"** basketball mark (Elite 24, "Most Valuable Process").
 - **Tagline:** "Most Valuable Process."
 - **Mascot:** **"Prospect"** — a pit bull in a #24 basketball jersey. Brand character, used for personality/flavor.
 - **Always-present mark:** **"Powered by Elite 24 MVP"** should appear consistently (e.g. footer), on every team's pages.
-- **Frame vs. slot rule:** The Elite24 brand is the **fixed frame** and is never overridden. Each team gets a **bounded slot** they control: their team logo (top-center of dashboard) + their team name + optionally **ONE** accent color. Teams may **NOT** restyle the whole app, change fonts, recolor the black base, or move/hide the Elite24 marks. Every team's page must still clearly read as an Elite24 product.
+- **Frame vs. slot rule:** The Elite24 brand is the **fixed frame** and is never overridden. Each team gets a **bounded slot** they control: their team logo (top-center of dashboard) + their team name + optionally **ONE** accent color. Teams may **NOT** restyle the whole app, change fonts, recolor the app's base colors or the black brand frame, or move/hide the Elite24 marks. Every team's page must still clearly read as an Elite24 product.
 - **The E24P method** is a 4-part cycle: **Pro Plan → Pro Preview → Pro Perform → Pro Review** (mottos include "See It. Say It. Sketch It. Feel It." and ball-handling mantras like "Value the Ball"). Keep this in mind for the daily-loop design, but **do not build it speculatively.**
 
 > **Note:** This is the visual spec for later phases. No logo/mascot image files are added yet — those come when the visible branding/dashboard is built. The `logoUrl` and `accentColor` Team fields already exist as placeholders.

@@ -11,6 +11,7 @@ import {
 } from "@/lib/branding";
 import { storeImage } from "@/lib/photoStore";
 import { Prisma } from "@prisma/client";
+import { parseHeight } from "@/lib/height";
 
 export type BrandState = { error?: string };
 
@@ -76,6 +77,8 @@ export async function updateBrand(
   const cutoutRes = validateCutoutDataUrl(String(formData.get("photoCutoutUrl") ?? ""));
   if ("error" in cutoutRes) return { error: cutoutRes.error };
   const photoMeta = parsePhotoMeta(String(formData.get("photoMeta") ?? ""));
+  const height = parseHeight(formData.get("heightFt"), formData.get("heightIn"));
+  if (!height.ok) return { error: height.error };
   // Offload to Supabase Storage when configured (no-op passthrough otherwise).
   const storedPhoto = photoRes.url
     ? await storeImage(photoRes.url, `players/${user.id}`)
@@ -86,7 +89,7 @@ export async function updateBrand(
       : null;
 
   const brandFields = {
-    heightInches: optionalInt(formData.get("heightInches")),
+    heightInches: height.inches,
     position: optionalString(formData.get("position")),
     jerseyNumber: optionalInt(formData.get("jerseyNumber")),
     pointsPerGame: optionalFloat(formData.get("pointsPerGame")),

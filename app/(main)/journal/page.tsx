@@ -21,7 +21,7 @@ export default async function JournalPage() {
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
       <header>
         <h1 className="e24-eyebrow">Your Journal</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-subtle">
           {entries.length} day{entries.length === 1 ? "" : "s"} logged
         </p>
       </header>

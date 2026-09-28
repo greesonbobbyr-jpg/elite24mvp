@@ -11,7 +11,7 @@ export function HomeFooter() {
   if (pathname !== "/") return null;
 
   return (
-    <footer className="flex flex-col items-center gap-2 border-t border-zinc-900 py-5 text-center text-xs text-zinc-500">
+    <footer className="flex flex-col items-center gap-2 border-t border-line-faint py-5 text-center text-xs text-subtle">
       <Image
         src="/logo.png"
         alt="Elite 24 MVP"
@@ -21,7 +21,7 @@ export function HomeFooter() {
       />
       <span>
         Powered by{" "}
-        <span className="font-semibold text-red-500">Elite 24 MVP</span>
+        <span className="font-semibold text-brand">Elite 24 MVP</span>
       </span>
     </footer>
   );

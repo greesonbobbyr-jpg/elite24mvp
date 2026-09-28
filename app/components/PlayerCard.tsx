@@ -36,6 +36,7 @@ import { PortraitElectricity } from "@/app/components/card/PortraitElectricity";
 import { DepthShadow, RimLight } from "@/app/components/card/CutoutLighting";
 import { TeamLogoBadge, TopRightSlot } from "@/app/components/card/TeamLogoBadge";
 import { useImageOk } from "@/app/components/card/PortraitDisc";
+import { formatHeight } from "@/lib/height";
 
 // THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, three
 // sizes — full (the locked master), compact, avatar — each RECOMPOSED for its
@@ -84,10 +85,6 @@ function makeInitials(name: string): string {
   );
 }
 
-function formatHeight(inches?: number | null): string | null {
-  if (inches == null) return null;
-  return `${Math.floor(inches / 12)}'${inches % 12}"`;
-}
 
 export function PlayerCard({
   size,

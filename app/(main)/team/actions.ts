@@ -16,6 +16,7 @@ import {
 import { hashPassword } from "@/lib/password";
 import { storeImage } from "@/lib/photoStore";
 import { Prisma } from "@prisma/client";
+import { claimUsername } from "@/lib/login";
 
 export type TeamSettingsState = { error?: string; ok?: boolean };
 
@@ -115,6 +116,23 @@ export async function updateTeam(
   }
   revalidatePath("/team");
   revalidatePath("/"); // team name + coach photo show on the dashboard/header
+  return { ok: true };
+}
+
+export type UsernameState = { error?: string; ok?: boolean };
+
+// Any staffer sets a login username for their OWN account (staff sign up with
+// an email only, so without this "log in with your username" can't work for
+// them). Always the session's user — never a client-supplied id.
+export async function setMyUsername(
+  _prev: UsernameState,
+  formData: FormData,
+): Promise<UsernameState> {
+  const ctx = await getCurrentContext();
+  if (!ctx || ctx.user.role !== "COACH") return { error: "Staff only." };
+  const result = await claimUsername(ctx.user.id, String(formData.get("username") ?? ""));
+  if (!result.ok) return { error: result.error };
+  revalidatePath("/team");
   return { ok: true };
 }
 
