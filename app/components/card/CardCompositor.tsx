@@ -111,8 +111,9 @@ export function CardCompositor({
         overflow: "clip",
         isolation: "isolate",
         // Vertical scroll and pinch-zoom still work when a gesture starts on
-        // the card; sideways drags drive the tilt.
-        touchAction: "pan-y pinch-zoom",
+        // the card; sideways drags drive the tilt. A still card leaves touch
+        // alone, so it can sit in a row that scrolls sideways.
+        touchAction: staticRender ? undefined : "pan-y pinch-zoom",
         transformStyle: "preserve-3d",
         willChange: staticRender ? undefined : "transform",
         transition: staticRender ? undefined : "transform 220ms cubic-bezier(.2,.7,.2,1)",

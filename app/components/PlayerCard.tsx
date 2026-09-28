@@ -36,12 +36,12 @@ import { PortraitElectricity } from "@/app/components/card/PortraitElectricity";
 import { DepthShadow, RimLight } from "@/app/components/card/CutoutLighting";
 import { TeamLogoBadge, TopRightSlot } from "@/app/components/card/TeamLogoBadge";
 import { useImageOk } from "@/app/components/card/PortraitDisc";
-import { MINI_CARD, MiniBorder, MiniFace, MiniNameBand } from "@/app/components/card/MiniFrame";
 import { formatHeight } from "@/lib/height";
 
 // THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, four
-// sizes — full (the locked master), mini, compact, avatar — each RECOMPOSED
-// for its context, never scaled down (§44). Geometry lives in lib/cardGeometry (one
+// sizes — full (the locked master), mini, compact, avatar. Mini is the full
+// card at a smaller size (owner, 2026-09-28: "Full card layout at smaller
+// size"); compact and avatar are RECOMPOSED for their context (§44). Geometry lives in lib/cardGeometry (one
 // card, locked); material finishes in lib/cardTheme FINISHES and each level's
 // authored art (level changes swap tokens and art only — Δ4). The team is an
 // environmental accent (§51); readability is a hard rule: text always sits on
@@ -114,7 +114,10 @@ export function PlayerCard({
 }) {
   if (size === "avatar") return <AvatarCard player={player} team={team} finishOverride={finishOverride} px={avatarPx} />;
   if (size === "compact") return <CompactCard player={player} team={team} finishOverride={finishOverride} />;
-  if (size === "mini") return <MiniCard player={player} team={team} finishOverride={finishOverride} />;
+  // MINI (leaderboard podium, org tree): the full card filling its container,
+  // held still — no tilt or motion, so it never fights a row's sideways
+  // scroll and a row of them stays light.
+  if (size === "mini") return <FullCard player={player} team={team} finishOverride={finishOverride} staticRender width="100%" />;
   return (
     <FullCard
       player={player}
@@ -477,89 +480,6 @@ function AvatarCard({
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={miniArt(finish.key).ring} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- MINI ------
-
-/** The mini card's window onto the full card, in card units (2:3): head,
- * shoulders and the energy around them. */
-const MINI_VIEW = { x: 150, y: 250, w: 700 };
-/** The face's width in container units (the frame's inset on both sides). */
-const MINI_FACE_W = 94.4; // cqw
-/** The torso fades out towards the name, as on the full card. */
-const MINI_TORSO_MASK = `linear-gradient(180deg, #fff 0%, #fff ${fy(PORTRAIT.fadeStartY) * 100}%, transparent ${PORTRAIT_TARGETS.bottomY * 100}%)`;
-
-// MINI: a small portrait card (leaderboard podium, org tree) — the level's
-// frame around a window onto the player's own card (energy, backlight, tier
-// glow, cutout), then the name and stars. No jersey number: collapsed cards
-// have no room for it (owner, 2026-09-27). Fluid: it fills its container's
-// width at 2:3 (card/MiniFrame), so one card works from a 320px phone's
-// podium to a desktop tree.
-function MiniCard({ player, team, finishOverride }: { player: CardPlayer; team: CardTeam; finishOverride?: FinishKey }) {
-  const { stars, finish, meta, cutout } = useCardContext(player, finishOverride);
-  const initials = player.initials || makeInitials(player.name);
-  const src = cutout ?? player.photoUrl ?? null;
-  const { ok: imageOk, attach, onError: onImageError } = useImageOk(src);
-  const placed = imageOk && cutout && meta ? meta : null;
-  const photo = imageOk && !placed ? src : null;
-
-  return (
-    <div className="relative w-full" style={MINI_CARD} data-finish={finish.key}>
-      <MiniFace
-        style={{
-          background: "#030406",
-          isolation: "isolate",
-          // Card units: the window's 700 units span the face.
-          "--u": `calc(${MINI_FACE_W}cqw / ${MINI_VIEW.w})`,
-        } as CSSProperties}
-      >
-        {/* The card itself, scaled so the window fills the face. */}
-        <div
-          aria-hidden
-          className="absolute"
-          style={{ left: u(-MINI_VIEW.x), top: u(-MINI_VIEW.y), width: u(1000), height: u(1500) }}
-        >
-          {/* A touch brighter than on the full card, so the currents read this small. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={finishAssets(finish.key).field.file} alt="" className="absolute inset-0 h-full w-full" style={{ filter: "brightness(1.2)" }} />
-          <HoloShimmer finish={finish} isStatic />
-          <PlayerBacklight finish={finish} team={teamAccentFor(team)} />
-          <span
-            className="absolute"
-            style={{
-              left: u(120), top: u(380), width: u(760), height: u(640), mixBlendMode: "screen",
-              background: `radial-gradient(closest-side, ${withAlpha(finish.palette.energy.glow[2], 0.55)}, transparent)`,
-            }}
-          />
-          {placed && (
-            <span className="absolute inset-0" style={{ WebkitMaskImage: MINI_TORSO_MASK, maskImage: MINI_TORSO_MASK }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img ref={attach} src={cutout!} alt="" className="absolute" style={cutoutCss(placed)} onError={onImageError} />
-            </span>
-          )}
-        </div>
-        {photo && (
-          // A photo not yet cut out for the card fills the face.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img ref={attach} src={photo} alt="" onError={onImageError}
-            className={`absolute inset-0 h-full w-full object-cover${cutout ? " object-top" : ""}`} />
-        )}
-        {!imageOk && (
-          <span className="absolute inset-x-0 top-[18%] flex justify-center">
-            <span className="font-black uppercase italic text-white/90" style={{ fontFamily: "var(--font-barlow)", fontSize: "30cqw", textShadow: "0 2px 6px rgba(0,0,0,.8)" }}>
-              {initials}
-            </span>
-          </span>
-        )}
-        <MiniNameBand name={player.name} accent={finish.palette.accent}>
-          <span className="flex justify-center" style={{ marginTop: "3.5cqw", "--u": "1cqw" } as CSSProperties}>
-            <CardStars count={stars} finish={finish} sizeUnits={7} gapUnits={1} />
-          </span>
-        </MiniNameBand>
-      </MiniFace>
-      <MiniBorder frame={miniArt(finish.key).frame} />
     </div>
   );
 }
