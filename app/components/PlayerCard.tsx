@@ -38,16 +38,16 @@ import { TeamLogoBadge, TopRightSlot } from "@/app/components/card/TeamLogoBadge
 import { useImageOk } from "@/app/components/card/PortraitDisc";
 import { formatHeight } from "@/lib/height";
 
-// THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, three
-// sizes — full (the locked master), compact, avatar — each RECOMPOSED for its
-// context, never scaled down (§44). Geometry lives in lib/cardGeometry (one
+// THE PLAYER IDENTITY CARD FAMILY (card redesign). One design language, four
+// sizes — full (the locked master), mini, compact, avatar — each RECOMPOSED
+// for its context, never scaled down (§44). Geometry lives in lib/cardGeometry (one
 // card, locked); material finishes in lib/cardTheme FINISHES and each level's
 // authored art (level changes swap tokens and art only — Δ4). The team is an
 // environmental accent (§51); readability is a hard rule: text always sits on
 // darkness. Keyframes live in a component <style> so globals.css stays
 // untouched and the component is drop-in reusable.
 
-export type CardSize = "full" | "compact" | "avatar";
+export type CardSize = "full" | "mini" | "compact" | "avatar";
 
 export type CardPlayer = {
   name: string;
@@ -98,7 +98,8 @@ export function PlayerCard({
   size: CardSize;
   player: CardPlayer;
   team: CardTeam;
-  /** Full card only: rendered width in CSS px (or a CSS length like "100%"). */
+  /** Full card only: rendered width in CSS px (or a CSS length like "100%").
+   * The mini card always fills its container's width. */
   width?: number | string;
   /** Avatar only: diameter in CSS px (default 40). */
   avatarPx?: number;
@@ -112,6 +113,7 @@ export function PlayerCard({
 }) {
   if (size === "avatar") return <AvatarCard player={player} team={team} finishOverride={finishOverride} px={avatarPx} />;
   if (size === "compact") return <CompactCard player={player} team={team} finishOverride={finishOverride} />;
+  if (size === "mini") return <MiniCard player={player} team={team} finishOverride={finishOverride} />;
   return (
     <FullCard
       player={player}
@@ -474,6 +476,122 @@ function AvatarCard({
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={miniArt(finish.key).ring} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- MINI ------
+
+/** The mini card's window onto the full card, in card units (2:3): head,
+ * shoulders and the energy around them. */
+const MINI_VIEW = { x: 150, y: 250, w: 700 };
+/** Frame and face insets as a share of the mini card's width (the frame's
+ * nine-slice border is 1/16 of the width). */
+const MINI_BORDER = 6.25; // cqw
+const MINI_INSET = 2.8; // cqw
+/** The torso fades out towards the name, as on the full card. */
+const MINI_TORSO_MASK = `linear-gradient(180deg, #fff 0%, #fff ${fy(PORTRAIT.fadeStartY) * 100}%, transparent ${PORTRAIT_TARGETS.bottomY * 100}%)`;
+
+// MINI: a small portrait card (leaderboard podium, org tree) — the level's
+// frame around a window onto the player's own card (energy, backlight, tier
+// glow, cutout), then the name and stars. No jersey number: collapsed cards
+// have no room for it (owner, 2026-09-27). Fluid: it fills its container's
+// width at 2:3, and everything inside is sized in container units, so one
+// card works from a 320px phone's podium to a desktop tree.
+function MiniCard({ player, team, finishOverride }: { player: CardPlayer; team: CardTeam; finishOverride?: FinishKey }) {
+  const { stars, finish, meta, cutout } = useCardContext(player, finishOverride);
+  const initials = player.initials || makeInitials(player.name);
+  const src = cutout ?? player.photoUrl ?? null;
+  const { ok: imageOk, attach, onError: onImageError } = useImageOk(src);
+  const placed = imageOk && cutout && meta ? meta : null;
+  const photo = imageOk && !placed ? src : null;
+  const words = player.name.trim().split(/\s+/);
+  const surname = words.length > 1 ? words[words.length - 1] : words[0];
+  const firstName = words.length > 1 ? words.slice(0, -1).join(" ") : null;
+  const chamfer = `${MINI_INSET * 1.6}cqw`;
+
+  return (
+    <div className="relative w-full" style={{ aspectRatio: "2 / 3", containerType: "inline-size" }} data-finish={finish.key}>
+      <div
+        className="absolute overflow-hidden"
+        style={{
+          inset: `${MINI_INSET}cqw`,
+          clipPath: `polygon(${chamfer} 0, calc(100% - ${chamfer}) 0, 100% ${chamfer}, 100% calc(100% - ${chamfer}), calc(100% - ${chamfer}) 100%, ${chamfer} 100%, 0 calc(100% - ${chamfer}), 0 ${chamfer})`,
+          background: "#030406",
+          isolation: "isolate",
+          // Card units: the window's 700 units span the face.
+          "--u": `calc(${100 - MINI_INSET * 2}cqw / ${MINI_VIEW.w})`,
+        } as CSSProperties}
+      >
+        {/* The card itself, scaled so the window fills the face. */}
+        <div
+          aria-hidden
+          className="absolute"
+          style={{ left: u(-MINI_VIEW.x), top: u(-MINI_VIEW.y), width: u(1000), height: u(1500) }}
+        >
+          {/* A touch brighter than on the full card, so the currents read this small. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={finishAssets(finish.key).field.file} alt="" className="absolute inset-0 h-full w-full" style={{ filter: "brightness(1.2)" }} />
+          <HoloShimmer finish={finish} isStatic />
+          <PlayerBacklight finish={finish} team={teamAccentFor(team)} />
+          <span
+            className="absolute"
+            style={{
+              left: u(120), top: u(380), width: u(760), height: u(640), mixBlendMode: "screen",
+              background: `radial-gradient(closest-side, ${withAlpha(finish.palette.energy.glow[2], 0.55)}, transparent)`,
+            }}
+          />
+          {placed && (
+            <span className="absolute inset-0" style={{ WebkitMaskImage: MINI_TORSO_MASK, maskImage: MINI_TORSO_MASK }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img ref={attach} src={cutout!} alt="" className="absolute" style={cutoutCss(placed)} onError={onImageError} />
+            </span>
+          )}
+        </div>
+        {photo && (
+          // A photo not yet cut out for the card fills the face.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img ref={attach} src={photo} alt="" onError={onImageError}
+            className={`absolute inset-0 h-full w-full object-cover${cutout ? " object-top" : ""}`} />
+        )}
+        {!imageOk && (
+          <span className="absolute inset-x-0 top-[18%] flex justify-center">
+            <span className="font-black uppercase italic text-white/90" style={{ fontFamily: "var(--font-barlow)", fontSize: "30cqw", textShadow: "0 2px 6px rgba(0,0,0,.8)" }}>
+              {initials}
+            </span>
+          </span>
+        )}
+        {/* Name and stars on darkness at the foot of the card. */}
+        <span
+          className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center"
+          style={{ padding: "0 5cqw 9cqw", background: "linear-gradient(transparent, rgba(0,0,0,.72) 30%, #000)" }}
+        >
+          {firstName && (
+            <span className="block w-full truncate font-bold uppercase leading-none" style={{ marginTop: "12cqw", fontSize: "9.4cqw", letterSpacing: "0.14em", color: finish.palette.accent }}>
+              {firstName}
+            </span>
+          )}
+          <span className="block w-full truncate font-black uppercase italic leading-none text-white" style={{ marginTop: firstName ? "1.5cqw" : "12cqw", fontSize: "13.5cqw", fontFamily: "var(--font-barlow)" }}>
+            {surname}
+          </span>
+          <span className="flex justify-center" style={{ marginTop: "3.5cqw", "--u": "1cqw" } as CSSProperties}>
+            <CardStars count={stars} finish={finish} sizeUnits={7} gapUnits={1} />
+          </span>
+        </span>
+      </div>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          borderStyle: "solid",
+          borderWidth: `${MINI_BORDER}cqw`,
+          borderColor: "transparent",
+          borderImageSource: `url(${miniArt(finish.key).frame})`,
+          borderImageSlice: FRAME_SLICE,
+          borderImageWidth: `${MINI_BORDER}cqw`,
+          borderImageRepeat: "stretch",
+        }}
+      />
     </div>
   );
 }

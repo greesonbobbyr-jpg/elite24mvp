@@ -16,11 +16,8 @@ import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
 //
 // Layout: a spotlight PODIUM for the top 3 (rank 1 centered + larger, 2 left,
 // 3 right, with gold/silver/bronze medal glows) and a LIST of compact PlayerCards
-// for rank 4+. Every circle is the player's mini card in their tier.
-
-function firstName(name: string): string {
-  return name.trim().split(/\s+/)[0] ?? name;
-}
+// for rank 4+. The podium shows each player's mini card in their tier (owner,
+// 2026-09-28: big enough there for the card, not just a circle).
 
 // Medal look per podium SLOT (0 = 1st place, 1 = 2nd, 2 = 3rd). `order` places
 // the winner in the center with 2nd on the left and 3rd on the right.
@@ -56,19 +53,20 @@ function PodiumItem({
 }) {
   const medal = MEDALS[slot];
   const big = slot === 0;
-  const size = big ? 100 : 74;
   return (
-    <div className={`flex w-1/3 flex-col items-center ${medal.order} ${big ? "" : "pt-8"}`}>
+    // 1st place gets the wider column and stands taller; the cards fill their
+    // columns, so the podium fits from a 320px phone up.
+    <div className={`flex min-w-0 flex-col items-center ${medal.order} ${big ? "flex-[1.25_1_0%]" : "flex-1 pt-8"}`}>
       <Link
         href={`/brand/${player.id}`}
-        className="flex flex-col items-center transition active:scale-[0.97]"
+        aria-label={`#${player.rank} ${player.name}, ${player.points.toLocaleString()} points`}
+        className="flex w-full flex-col items-center transition active:scale-[0.97]"
       >
-        {/* The player's mini card (their tier's ring and card); the medal
-            glow and chip carry the podium place. */}
-        <span className="rounded-full" style={{ boxShadow: `0 0 26px ${medal.glow}` }}>
+        {/* The player's mini card in their tier; the medal glow and chip
+            carry the podium place. */}
+        <span className="block w-full" style={{ maxWidth: big ? 132 : 104, filter: `drop-shadow(0 0 14px ${medal.glow})` }}>
           <PlayerCard
-            size="avatar"
-            avatarPx={size}
+            size="mini"
             player={{
               name: player.name,
               jerseyNumber: player.jerseyNumber,
@@ -82,19 +80,12 @@ function PodiumItem({
           />
         </span>
         <span
-          className="mt-3 rounded-full px-2.5 py-0.5 text-xs font-black tabular-nums shadow-sm"
+          className="mt-2.5 rounded-full px-2.5 py-0.5 text-xs font-black tabular-nums shadow-sm"
           style={{ background: medal.chipBg, color: medal.chipText }}
         >
           #{player.rank}
         </span>
-        <span
-          className={`mt-2 max-w-full truncate font-black uppercase tracking-tight text-ink ${
-            big ? "text-lg" : "text-sm"
-          }`}
-        >
-          {firstName(player.name)}
-        </span>
-        <span className="mt-0.5 flex items-baseline gap-1">
+        <span className="mt-1 flex items-baseline gap-1">
           <span className="text-base font-black tabular-nums text-ink">
             {player.points.toLocaleString()}
           </span>
