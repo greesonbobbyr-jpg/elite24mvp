@@ -61,7 +61,7 @@ export function StaffCard({
 
 /** The staff portrait: photo (or initials) on the graphite card face, inside
  * the graphite ring cut from the staff plate. */
-function StaffPortrait({ person, px }: { person: StaffPerson; px: number }) {
+export function StaffPortrait({ person, px }: { person: StaffPerson; px: number }) {
   const meta = isPortraitMetaV2(person.photoMeta) ? person.photoMeta : null;
   const initials = person.initials || makeInitials(person.name);
   // ring.webp's band spans radii 78–95 of 96 px; the disc tucks just under it.
