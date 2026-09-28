@@ -398,17 +398,16 @@ function CompactCard({ player, team, finishOverride }: { player: CardPlayer; tea
 }
 
 /** The avatar's round window onto the card, in card units: head, shoulders
- * and the energy leaving them, with the number behind. */
+ * and the energy leaving them. */
 const AVATAR_VIEW = { x: 170, y: 260, size: 660 };
-/** With no photo, the window frames the glowing jersey number instead. */
-const NUMBER_VIEW = { x: 110, y: 160, size: 780 };
 
 // AVATAR: a small round window onto the player's own card (owner review,
 // 2026-09-26: just the player "doesn't have the player card vibe"). The
-// level's energy, backlight and jersey number sit behind the cutout exactly
-// where the full card puts them, inside the level's ring — the frame's
-// crystal band bent into a circle. A photo without card placement fills the
-// disc; no photo shows the glowing number (initials without one).
+// level's energy, backlight and tier glow sit behind the cutout exactly where
+// the full card puts them, inside the level's ring — the frame's crystal band
+// bent into a circle. No jersey number: collapsed cards have no room to show
+// it well (owner, 2026-09-27); rows carry it as text. A photo without card
+// placement fills the disc; no photo shows initials on the tier's card.
 function AvatarCard({
   player,
   team,
@@ -422,16 +421,14 @@ function AvatarCard({
 }) {
   const { finish, meta, cutout } = useCardContext(player, finishOverride);
   const initials = player.initials || makeInitials(player.name);
-  const bigNumber = giantNumber(player.jerseyNumber);
   const src = cutout ?? player.photoUrl ?? null;
   const { ok: imageOk, attach, onError: onImageError } = useImageOk(src);
   const placed = imageOk && cutout && meta ? meta : null;
   const photo = imageOk && !placed ? src : null;
-  const view = imageOk || !bigNumber ? AVATAR_VIEW : NUMBER_VIEW;
   // ring.webp's band spans radii 78–95 of 96 px; the disc tucks just under it.
   const inset = px * 0.09;
   const disc = px - inset * 2;
-  const s = disc / view.size; // px per card unit
+  const s = disc / AVATAR_VIEW.size; // px per card unit
 
   return (
     <div
@@ -443,12 +440,11 @@ function AvatarCard({
         <div
           aria-hidden={!placed}
           className="absolute"
-          style={{ left: -view.x * s, top: -view.y * s, width: 1000 * s, height: 1500 * s, "--u": `${s}px` } as CSSProperties}
+          style={{ left: -AVATAR_VIEW.x * s, top: -AVATAR_VIEW.y * s, width: 1000 * s, height: 1500 * s, "--u": `${s}px` } as CSSProperties}
         >
           {/* A touch brighter than on the full card, so the currents read this small. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={finishAssets(finish.key).field.file} alt="" className="absolute inset-0 h-full w-full" style={{ filter: "brightness(1.25)" }} />
-          <GiantNumber text={bigNumber} finish={finish} />
           <HoloShimmer finish={finish} isStatic />
           <PlayerBacklight finish={finish} team={teamAccentFor(team)} />
           {/* The level's glow behind the player: this small, the card's own
@@ -470,7 +466,7 @@ function AvatarCard({
           <img ref={attach} src={photo} alt={player.name} onError={onImageError}
             className={`absolute inset-0 h-full w-full object-cover${cutout ? " object-top" : ""}`} />
         )}
-        {!imageOk && !bigNumber && (
+        {!imageOk && (
           <span
             className="relative font-black uppercase italic text-white"
             style={{ fontFamily: "var(--font-barlow)", fontSize: disc * 0.36, textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}
