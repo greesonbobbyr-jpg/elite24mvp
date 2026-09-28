@@ -5,6 +5,7 @@ import { STAFF_FINISH } from "@/lib/cardTheme";
 import { FRAME_SLICE, STAFF_ART } from "@/lib/cardAssets";
 import { STAT_COLUMNS, STAT_PANELS, STAT_RAIL, u } from "@/lib/cardGeometry";
 import { PortraitDisc } from "@/app/components/card/PortraitDisc";
+import { MINI_CARD, MiniBorder, MiniFace, MiniNameBand } from "@/app/components/card/MiniFrame";
 import { CardCompositor } from "@/app/components/card/CardCompositor";
 import { AssetLayer } from "@/app/components/card/AssetLayer";
 import { FooterMark, NameBlock } from "@/app/components/card/DynamicLayers";
@@ -16,7 +17,7 @@ import { FooterMark, NameBlock } from "@/app/components/card/DynamicLayers";
 
 export type StaffPerson = {
   name: string;
-  /** Display role label ("Head Coach", "Organization Owner", …). */
+  /** Display role label ("Head Coach", "Org Owner", …). */
   role: string;
   teamName?: string | null;
   orgName?: string | null;
@@ -26,7 +27,7 @@ export type StaffPerson = {
   initials?: string | null;
 };
 
-export type StaffCardSize = "full" | "compact" | "avatar";
+export type StaffCardSize = "full" | "mini" | "compact" | "avatar";
 
 const FONT = "var(--font-barlow), sans-serif";
 /** The full staff card's width in CSS px (its layout is in card units). */
@@ -54,30 +55,30 @@ export function StaffCard({
   verified?: React.ReactNode;
 }) {
   void verified; // accepted, intentionally unrendered until the feature exists
-  if (size === "avatar") return <StaffPortrait person={person} px={40} />;
+  if (size === "avatar") return <StaffPortrait person={person} size={40} />;
   if (size === "compact") return <CompactStaff person={person} />;
+  if (size === "mini") return <MiniStaff person={person} />;
   return <FullStaff person={person} />;
 }
 
 /** The staff portrait: photo (or initials) on the graphite card face, inside
- * the graphite ring cut from the staff plate. */
-function StaffPortrait({ person, px }: { person: StaffPerson; px: number }) {
+ * the graphite ring cut from the staff plate. `size` is its diameter (px, or
+ * any CSS length); without it, it fills its parent's width. */
+export function StaffPortrait({ person, size }: { person: StaffPerson; size?: number | string }) {
   const meta = isPortraitMetaV2(person.photoMeta) ? person.photoMeta : null;
   const initials = person.initials || makeInitials(person.name);
-  // ring.webp's band spans radii 78–95 of 96 px; the disc tucks just under it.
-  const inset = px * 0.09;
-  const disc = px - inset * 2;
   return (
     <div
       className="relative inline-flex shrink-0"
-      style={{ width: px, height: px, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.5))" }}
+      style={{ width: size ?? "100%", aspectRatio: "1 / 1", containerType: "inline-size", filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.5))" }}
     >
+      {/* ring.webp's band spans radii 78–95 of 96 px; the disc tucks just under it. */}
       <div
         className="absolute flex items-center justify-center overflow-hidden rounded-full"
-        style={{ inset, background: `#050607 url(${STAFF_ART.plate.file}) 50% 32% / 600% auto` }}
+        style={{ inset: "9%", background: `#050607 url(${STAFF_ART.plate.file}) 50% 32% / 600% auto` }}
       >
         <PortraitDisc name={person.name} initials={initials} cutout={person.cutoutUrl ?? null} photo={person.photoUrl ?? null}
-          meta={meta} disc={disc} />
+          meta={meta} />
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={STAFF_ART.ring} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" />
@@ -137,7 +138,7 @@ function FullStaff({ person }: { person: StaffPerson }) {
     <CardCompositor width={FULL_WIDTH} data-staff style={{ filter: `drop-shadow(0 ${u(30)} ${u(40)} rgba(0,0,0,0.55))` }}>
       <AssetLayer spec={STAFF_ART.plate} />
       <div className="absolute flex justify-center" style={{ left: 0, right: 0, top: u(300) }}>
-        <StaffPortrait person={person} px={(portraitUnits * FULL_WIDTH) / 1000} />
+        <StaffPortrait person={person} size={u(portraitUnits)} />
       </div>
       <NameBlock firstName={firstName} surname={surname} finish={STAFF_FINISH} />
       <StaffRail person={person} />
@@ -175,7 +176,7 @@ function CompactStaff({ person }: { person: StaffPerson }) {
         }}
       />
       <div className="relative flex h-full items-center gap-3 pl-3.5 pr-4">
-        <StaffPortrait person={person} px={48} />
+        <StaffPortrait person={person} size={48} />
         <div className="min-w-0 flex-1">
           <p
             className="truncate text-sm font-black italic uppercase leading-none text-white"
@@ -189,6 +190,32 @@ function CompactStaff({ person }: { person: StaffPerson }) {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// MINI: a small portrait card (org tree) — the graphite frame around the ring
+// portrait, then name, role and team. Fluid like the player mini card: it
+// fills its container's width at 2:3 (card/MiniFrame).
+function MiniStaff({ person }: { person: StaffPerson }) {
+  return (
+    <div className="relative w-full" style={MINI_CARD} data-staff>
+      <MiniFace style={{ background: `#040506 url(${STAFF_ART.plate.file}) 50% 30% / 260% auto` }}>
+        <span className="absolute inset-x-0 flex justify-center" style={{ top: "11cqw" }}>
+          <StaffPortrait person={person} size="58cqw" />
+        </span>
+        <MiniNameBand name={person.name} accent={STAFF_FINISH.palette.accent}>
+          <span className="block w-full truncate font-bold uppercase leading-none text-white/85" style={{ marginTop: "3cqw", fontSize: "7.4cqw", letterSpacing: "0.12em" }}>
+            {person.role}
+          </span>
+          {person.teamName && (
+            <span className="block w-full truncate font-semibold uppercase leading-none text-white/60" style={{ marginTop: "1.8cqw", fontSize: "7cqw", letterSpacing: "0.08em" }}>
+              {person.teamName}
+            </span>
+          )}
+        </MiniNameBand>
+      </MiniFace>
+      <MiniBorder frame={STAFF_ART.frame} />
     </div>
   );
 }

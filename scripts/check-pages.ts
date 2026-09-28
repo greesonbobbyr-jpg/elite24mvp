@@ -50,7 +50,9 @@ const VISITS: { label: string; login?: string; start: string[] }[] = [
     login: "jordan",
     start: ["/", "/journal", "/leaderboard", "/notifications", "/library"],
   },
-  { label: "coach", login: "gary@elite24.demo", start: ["/", "/team"] },
+  // The org pages are listed: the page cap can end the crawl before the ☰
+  // menu's Organization link is followed.
+  { label: "coach", login: "gary@elite24.demo", start: ["/", "/team", "/org", "/org/view"] },
   { label: "new-player", login: "andre", start: ["/onboarding"] },
 ];
 

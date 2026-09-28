@@ -1,16 +1,20 @@
 import { afterAll, describe, expect, it } from "vitest";
 
-// GROUPING CHUNK 2 PROOFS — the read-only Org View loader:
-//   1. Staff ordered HC → AC → GM; empty roles simply absent; players carry
-//      membership (board) points.
+// GROUPING CHUNK 2 PROOFS — the read-only Org View loader + the org tree on
+// the seeded 12U–17U Mustang club:
+//   1. Staff ordered HC → AC → GM; empty roles simply absent; players ordered
+//      by card level (career points).
 //   2. Owner = the EARLIEST unrevoked ORG_ADMIN grant (seed: Gary), with the
 //      membership-less admin (Alex) listed too.
-//   3. Rollup counts match the seeded shape; the two-team athlete appears in
-//      the search index under BOTH teams.
-//   4. FIELD ALLOWLIST: the serialized payload contains card info only — no
-//      dream, reflections, contact, or guardian data, ever.
-//   5. Disclosure flags are passed through from lib/structure VERBATIM.
-//   6. The gate is the existing create_team tier (ORG_ADMIN yes, staff no) —
+//   3. Rollups match the seeded club; the two-team athlete counts once.
+//   4. The tree: divisions row, no program row; the team with no head coach;
+//      the two-team athlete findable under both teams; the hidden program
+//      never searchable.
+//   5. FIELD ALLOWLIST: the serialized payload contains card info only — no
+//      dream, reflections, contact, or guardian data, ever — and photos go
+//      out as /api/photo URLs, never inline data.
+//   6. Disclosure flags are passed through from lib/structure VERBATIM.
+//   7. The gate is the existing create_team tier (ORG_ADMIN yes, staff no) —
 //      lib/authz untouched (tests/authz.test.ts remains the standing proof).
 //
 // Same runner contract: localhost-only, self-skips without TEST_DATABASE_URL.
@@ -39,30 +43,22 @@ dbDescribe("Grouping Chunk 2 — Org View loader", () => {
     expect(org).toBeDefined();
     return getOrgViewData(org.id);
   }
+  type Data = Awaited<ReturnType<typeof mustangData>>;
+  const teamsOf = (data: Data) => data.programs.flatMap((p) => p.divisions).flatMap((d) => d.teams);
 
-  it("staff ordered HC → AC → GM, empty roles absent; players carry board points", async () => {
+  it("staff ordered HC → AC → GM, empty roles absent; players by card level", async () => {
     const data = await mustangData();
-    const varsity = data.programs
-      .flatMap((p) => p.divisions)
-      .flatMap((d) => d.teams)
-      .find((t) => t.name === "Mustang Broncos")!;
+    const varsity = teamsOf(data).find((t) => t.name === "Mustang Broncos")!;
     expect(varsity).toBeDefined();
-
-    const roles = varsity.staff.map((s) => s.role);
     // Seed: Gary (HC), Dana (AC), Morgan (GM) on Varsity — exactly this order.
-    expect(roles).toEqual(["HEAD_COACH", "ASSISTANT_COACH", "GENERAL_MANAGER"]);
-
-    const jv = data.programs
-      .flatMap((p) => p.divisions)
-      .flatMap((d) => d.teams)
-      .find((t) => t.name === "Mustang JV")!;
+    expect(varsity.staff.map((s) => s.role)).toEqual(["HEAD_COACH", "ASSISTANT_COACH", "GENERAL_MANAGER"]);
     // JV has only a head coach — no AC/GM entries at all.
+    const jv = teamsOf(data).find((t) => t.name === "Mustang JV")!;
     expect(jv.staff.map((s) => s.role)).toEqual(["HEAD_COACH"]);
 
-    // Players sorted by membership points desc, and points are the BOARD
-    // number (membership cache), not career.
-    const pts = varsity.players.map((p) => p.points);
-    expect([...pts].sort((a, b) => b - a)).toEqual(pts);
+    const career = varsity.players.map((p) => p.careerPoints);
+    expect([...career].sort((a, b) => b - a)).toEqual(career);
+    expect(career[0]).toBeGreaterThan(career[career.length - 1]); // the seed spreads the levels
   });
 
   it("owner = earliest ORG_ADMIN grant (Gary); membership-less admin listed", async () => {
@@ -71,35 +67,47 @@ dbDescribe("Grouping Chunk 2 — Org View loader", () => {
     expect(data.admins.map((a) => a.name)).toContain("Alex Vaughn");
   });
 
-  it("rollups match the seeded shape; two-team athlete indexed under both teams", async () => {
+  it("rollups match the seeded club; the two-team athlete counts once", async () => {
     const data = await mustangData();
-    expect(data.totals.teamCount).toBe(2); // Varsity + JV
     expect(data.programs).toHaveLength(1);
-    expect(data.programs[0].divisionCount).toBe(2);
-    const perDivisionPlayers = data.programs[0].divisions.map((d) => d.playerCount);
-    expect(data.programs[0].playerCount).toBe(perDivisionPlayers.reduce((a, b) => a + b, 0));
-
-    const caseyEntries = data.searchIndex.filter(
-      (e) => e.kind === "player" && e.name === "Casey Rivers",
-    );
-    expect(caseyEntries).toHaveLength(2); // Varsity AND JV contexts
-    expect(new Set(caseyEntries.map((e) => e.path.teamId)).size).toBe(2);
-
-    // Structure nodes are searchable too.
-    expect(data.searchIndex.some((e) => e.kind === "division" && e.name === "JV")).toBe(true);
-    expect(data.searchIndex.some((e) => e.kind === "team")).toBe(true);
+    expect(data.programs[0].divisions.map((d) => d.name)).toEqual(["12U", "13U", "14U", "15U", "16U", "17U"]);
+    expect(data.totals.teamCount).toBe(14); // Varsity + JV + 12 club teams
+    expect(data.programs[0].teamCount).toBe(14);
+    const memberships = teamsOf(data).reduce((sum, t) => sum + t.playerCount, 0);
+    expect(data.totals.playerCount).toBe(memberships - 1); // Casey: two teams, one player
   });
 
-  it("FIELD ALLOWLIST: card info only — no dream/reflection/contact keys anywhere", async () => {
+  it("the tree: divisions, no program row; an empty head-coach seat; search", async () => {
+    const { buildOrgTree, search, searchIndex } = await import("../lib/orgtree");
+    const data = await mustangData();
+    const root = buildOrgTree(data);
+    if (root.kind !== "groups") throw new Error("a divisions row expected");
+    expect(root.groups.map((g) => g.name)).toEqual(["12U", "13U", "14U", "15U", "16U", "17U"]);
+
+    const u14 = root.groups.find((g) => g.name === "14U")!.next;
+    if (u14.kind !== "teams") throw new Error("teams expected");
+    expect(u14.teams.map((t) => t.label)).toEqual(["Mustang Black", "Mustang Red", "Mustang White"]);
+    expect(u14.teams.find((t) => t.label === "Mustang White")!.headCoach).toBeNull();
+
+    const index = searchIndex(root, data.owner);
+    expect(search(index, "Casey Rivers").map((h) => h.sub).sort()).toEqual(["Mustang Broncos", "Mustang JV"]);
+    expect(search(index, "Boys Basketball")).toEqual([]); // the hidden program
+    expect(new Set(index.map((h) => h.key)).size).toBe(index.length);
+  });
+
+  it("FIELD ALLOWLIST: card info only; photos as /api/photo URLs", async () => {
     const data = await mustangData();
     const payload = JSON.stringify(data);
     for (const forbidden of [
       '"dream"', '"reflection"', '"learned"', '"noteToTomorrow"',
       '"guardian', '"phone"', '"email"', '"dob"', '"address',
-      '"pointsPerGame"', '"heightInches"',
+      '"pointsPerGame"', '"heightInches"', "data:image",
     ]) {
       expect(payload.includes(forbidden), `payload leaked ${forbidden}`).toBe(false);
     }
+    const photos = teamsOf(data).flatMap((t) => t.players).map((p) => p.photoCutoutUrl).filter(Boolean);
+    expect(photos.length).toBeGreaterThan(0); // the seed's sample portraits
+    for (const photo of photos) expect(photo).toMatch(/^\/api\/photo\/\d+\?cut=1&v=/);
   });
 
   it("disclosure flags pass through from lib/structure verbatim", async () => {

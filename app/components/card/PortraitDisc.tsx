@@ -17,35 +17,34 @@ export function useImageOk(src: string | null) {
 
 /** What fills a circular staff portrait: the cutout's head (face-box crop
  * when meta exists), else the photo, else initials — and initials again if
- * the image fails to load. */
+ * the image fails to load. Sized by the portrait around it: the crop is in
+ * percentages of the disc, the initials in its container units. */
 export function PortraitDisc({
   name,
   initials,
   cutout,
   photo,
   meta,
-  disc,
 }: {
   name: string;
   initials: string;
   cutout: string | null;
   photo: string | null;
   meta: PortraitMetaV2 | null;
-  /** Disc diameter in CSS px. */
-  disc: number;
 }) {
   const src = cutout ?? photo;
   const { ok, attach, onError } = useImageOk(src);
   if (!ok) {
+    // 0.34 of the disc, which spans 82% of the portrait.
     return (
-      <span className="font-black uppercase italic text-white/90" style={{ fontFamily: "var(--font-barlow)", fontSize: disc * 0.34 }}>
+      <span className="font-black uppercase italic text-white/90" style={{ fontFamily: "var(--font-barlow)", fontSize: "27.9cqw" }}>
         {initials}
       </span>
     );
   }
   return cutout && meta ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img ref={attach} src={cutout} alt={name} style={headCropStyle(meta, disc)} onError={onError} />
+    <img ref={attach} src={cutout} alt={name} style={headCropStyle(meta)} onError={onError} />
   ) : (
     // eslint-disable-next-line @next/next/no-img-element
     <img ref={attach} src={src ?? undefined} alt={name} className={`h-full w-full object-cover${cutout ? " object-top" : ""}`}

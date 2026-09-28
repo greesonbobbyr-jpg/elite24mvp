@@ -104,6 +104,34 @@ After the deploy:
   Vercel build finishes.
 - No new environment variables.
 
+### Then: the org tree (`grouping-layers`, 2026-09-28) — deploy AFTER the cards
+
+The owner approved the org tree mockup ("That is way better. That looks good.") and it is
+now built for real on `grouping-layers`, which contains `card-redesign` (merged in) plus
+the Program/Division grouping: `/org` (Manage) and the org tree at `/org/view` (Browse).
+Its migration `20260928120000_grouping_program_division` sorts after the card migration.
+Verified: tsc, all tests, no page wider than a 320/360/390px phone (Chromium and WebKit),
+WCAG AA contrast in both modes, the five card baselines.
+
+**The owner runs this**, once the cards deploy above is live, in `C:\dev\elite24mvp`:
+
+1. `git fetch origin`
+2. `git switch main`
+3. `git merge --ff-only origin/grouping-layers`
+4. `npx prisma migrate deploy` — adds the `Program` and `Division` tables and an optional
+   `Team.divisionId`. Nothing is removed.
+5. `npx tsx scripts/backfill-structure.ts` — a dry run: reports what it would create.
+6. `npx tsx scripts/backfill-structure.ts --execute` refuses and prints the database host;
+   then `$env:BACKFILL_CONFIRM = "<that host>"; npx tsx scripts/backfill-structure.ts --execute`
+   gives every org a hidden "Main" program and division and puts its teams in them.
+   Safe to re-run.
+7. `npx tsx scripts/backfill-structure.ts --verify` — every team in a division of its own org.
+8. `git push origin main`.
+
+After the deploy: an org admin opens ☰ → Organization. A one-team club sees nothing new
+in Browse beyond its tree (owner → head coach → players; the hidden "Main" layers never
+show). Divisions appear once an org adds a second one in Manage.
+
 ---
 
 ## 1. WHERE WE ARE (mid-motion, this second)
@@ -196,16 +224,12 @@ Pushed to GitHub as part of this handoff (they existed only on the wiped laptop)
   gone; the plan's operative content is encoded in `lib/cardAssets.ts`,
   `public/card/README.md`, the commit messages of this branch, and §3 below.
 
-- **`grouping-layers`** — ALIVE and COMPLETE, awaiting an owner-gated deploy.
-  Adds Program/Division grouping between Organization and Team (additive migration
-  `20260928120000_grouping_program_division`), an ORG_ADMIN structure-management
-  page (`/org`), and a read-only org browsing view (`/org/view`) with
-  progressive disclosure (single-entry layers hidden). 172 tests passed on it.
-  Deploy runbook (owner must approve each step): `prisma migrate deploy` against
-  prod → `npx tsx scripts/backfill-structure.ts` (creates Main/Main defaults,
-  idempotent, has `--verify`) → merge to `main` → push → verify. **Note:** its
-  migration and `card-redesign`'s migration are siblings from the same base;
-  whichever branch merges second must rebase/re-order migrations cleanly.
+- **`grouping-layers`** — ALIVE and COMPLETE, awaiting an owner-gated deploy after the
+  cards. Adds Program/Division grouping between Organization and Team (additive migration
+  `20260928120000_grouping_program_division`, re-dated to sort after the card migration),
+  an ORG_ADMIN structure-management page (`/org`), and the org tree (`/org/view`, rebuilt
+  2026-09-28 to the owner's sketch) with progressive disclosure (single-entry layers
+  hidden). Contains `card-redesign` (merged in). Deploy runbook: §0, "Then: the org tree".
 
 - **`hierarchy-rebuild`** — DEAD, fully merged into `main` via `aa00fb0`.
   Safe to delete after confirming `origin/main` contains it (it does).
@@ -392,8 +416,9 @@ Pushed to GitHub as part of this handoff (they existed only on the wiped laptop)
    overlay, `scripts/shoot-cards.ts --master`, present, iterate on his eye.
    Only his explicit approval = GEOMETRY LOCKED. Then derive the other four
    finishes (assets only), commit baselines, run the 8–12-photo stress test.
-3. **Deploy `grouping-layers`** (owner-gated runbook in §2). It's been sitting
-   finished since 2026-08-13; coordinate migration ordering with the card branch.
+3. **Deploy `grouping-layers`** (owner-gated runbook in §0, after the cards deploy). The
+   migration ordering with the card branch is resolved (re-dated; the branch contains
+   `card-redesign`).
 4. **Close the hierarchy soak → Stage 6 decommission.** Ask the owner to declare
    the soak done (it began 2026-08-12; it's long past), then delete every legacy
    path tagged "dies at Stage 6" (legacy quest globals, `user.teamId` fallbacks,

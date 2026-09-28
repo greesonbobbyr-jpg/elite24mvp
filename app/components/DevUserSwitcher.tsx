@@ -4,7 +4,8 @@ import { impersonate, stopImpersonating } from "@/app/dev/actions";
 // Grouped ORG → TEAM → MEMBER since Stage 5: each entry mints a REAL Auth.js
 // session via the dev-only "impersonate" provider AND sets the acting-
 // membership cookie, so a two-team athlete can be entered in either team
-// context. Org admins without a roster spot sit under the org header.
+// context. Org admins without a roster spot sit under the org header. A big
+// org's teams fold (the seeded Mustang club has 14); your own team stays open.
 export type SwitcherEntry = {
   userId: number;
   name: string;
@@ -82,10 +83,15 @@ export function DevUserSwitcher({
               />
             ))}
             {org.teams.map((team) => (
-              <div key={team.id} className="mt-1">
-                <p className="px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+              <details
+                key={team.id}
+                className="group mt-1"
+                open={org.teams.length <= 3 || team.members.some((m) => m.userId === currentUserId)}
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
                   {team.name}
-                </p>
+                  <span aria-hidden className="transition group-open:rotate-90">›</span>
+                </summary>
                 {team.members.map((entry) => (
                   <EntryButton
                     key={`${team.id}-${entry.userId}`}
@@ -93,7 +99,7 @@ export function DevUserSwitcher({
                     active={entry.userId === currentUserId}
                   />
                 ))}
-              </div>
+              </details>
             ))}
           </div>
         ))}

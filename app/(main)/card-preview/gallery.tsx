@@ -42,7 +42,7 @@ const SAMPLE_STAFF: { shot: string; name: string; role: string }[] = [
   { shot: "staff-hc", name: "Darnell Brooks", role: "Head Coach" },
   { shot: "staff-ac", name: "Maya Ortiz", role: "Assistant Coach" },
   { shot: "staff-gm", name: "Terrence Cole", role: "General Manager" },
-  { shot: "staff-owner", name: "Angela Whitfield", role: "Organization Owner" },
+  { shot: "staff-owner", name: "Angela Whitfield", role: "Org Owner" },
 ];
 
 const OPACITY_STOPS = [0, 25, 50, 75, 100];

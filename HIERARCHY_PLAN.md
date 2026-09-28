@@ -33,10 +33,10 @@ Roles: ORG_ADMIN | HEAD_COACH | ASSISTANT_COACH | GENERAL_MANAGER | PLAYER
 ```
 
 - **Development data attaches to PROFILE** so it follows the athlete across teams/seasons.
-- **Program → Division** are NOT built now. The design reserves their slot: authorization is
-  anchored on `organizationId` everywhere, so grouping levels can be inserted later as
-  optional FKs (`Team.divisionId → Division.programId → Program.organizationId`) without
-  touching a single permission check. Grouping is for display; the org id is for security.
+- **Program → Division** are built on branch `grouping-layers` (see §8, Grouping Chunks 1–2):
+  `Team.divisionId → Division.programId → Program.organizationId`, inserted without
+  touching a single permission check — authorization stays anchored on `organizationId`.
+  Grouping is for display; the org id is for security.
 - **Journals stay author-only, enforced at the data layer** (see §4).
 
 ---
@@ -409,13 +409,28 @@ permission check); join codes stay on the team. Additive migration
 (dry/execute/verify, idempotent, chain-consistency checks) + `/org` admin page
 (create/rename/reorder/assign/create-team; create_team tier; org-bounded data paths).
 Deploy runbook (owner-gated): migrate deploy → backfill execute+verify → push → verify.
-**Chunk 2 — ✅ BUILT (`c1fed06`): the read-only Org View** at `/org/view` (same gate;
-Manage|Browse tabs). One loader (`lib/orgview.ts`, card-info-only allowlist test-locked;
-disclosure flags passed through verbatim), everyone rendered via the existing PlayerCard
-with role labels, org-scoped search with jump+highlight, desktop rails with rollup
-counts, mobile focus-and-expand via the View Transitions API (URL/back-gesture state,
-reduced-motion instant). tests/authz.test.ts untouched. Both chunks branch-only —
-deploy runbook (migrate deploy → backfill-structure → push) awaits owner approval.
+**Chunk 2 — ✅ BUILT: the read-only Org View** at `/org/view` (same gate; Manage|Browse
+tabs). **Rebuilt 2026-09-28 as the org tree** to the owner's sketch
+(`design/reference/org-tree-sketch.jpg`) after the owner approved the `org-tree-mockup`
+branch ("That is way better"): search → Org Owner card → division badges (12U…17U) →
+each team as its head coach's card ("No head coach yet" when empty) → that team's player
+mini cards (tier frame + energy, no jersey number) with AC/GM chips; one open branch per
+level, the open path lit red; connector lines measured from the nodes, so they follow
+rows that scroll sideways on a phone; a player's card opens their Brand page. The open
+branch lives in the URL (`?at=d12&team=45`), so Back returns to it.
+- `lib/orgview.ts` — one loader, card info only (allowlist test-locked; photos leave as
+  `/api/photo` URLs, never inline), disclosure flags verbatim from `lib/structure`,
+  players ordered by card level, totals count a two-team player once.
+- `lib/orgtree.ts` — the tree's shape, selection and search, pure and unit-tested
+  (`tests/orgtree.test.ts`): a layer with one entry appears nowhere — not as a row, not
+  in search (a one-team club goes Owner → head coach, never "Main"); teams not in a
+  division yet join the top grouping row as "Other teams", or the coaches row.
+- Nodes are the card family's mini sizes: `PlayerCard size="mini"`, `StaffCard
+  size="mini"` (both on `app/components/card/MiniFrame`).
+- Seed: Mustang is a 12U–17U club (Varsity = 17U, JV = 16U, plus 12 generated teams,
+  86 players, 19 coaches; "earlier seasons" ledger rows spread the card levels).
+tests/authz.test.ts untouched. Both chunks branch-only — deploy runbook in
+MIGRATION-HANDOFF.md §0.
 
 ### POST-MERGE ROADMAP (owner-ruled 2026-08-12 — design as ONE phase, own plan)
 **"Person-first entry & org tier"** — the front door becomes a PERSON setting up a

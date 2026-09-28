@@ -13,7 +13,7 @@ import { Button } from "@/app/components/ui/Button";
 
 const initial: StructureState = {};
 const fieldClass =
-  "rounded-lg border border-red-600/25 bg-black/40 px-3 py-1.5 text-sm text-white placeholder:text-zinc-600 outline-none transition focus:border-red-500";
+  "rounded-lg border border-red-600/25 bg-field px-3 py-1.5 text-sm text-ink outline-none transition focus:border-red-500";
 
 // Quiet "+ Add …" affordance that expands into a one-field create form.
 export function AddForm({
@@ -35,7 +35,7 @@ export function AddForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-fit text-xs font-semibold text-zinc-500 transition hover:text-zinc-300"
+        className="w-fit text-xs font-semibold text-subtle transition hover:text-ink-mid"
       >
         + Add {kind}
       </button>
@@ -53,11 +53,11 @@ export function AddForm({
       <button
         type="button"
         onClick={() => setOpen(false)}
-        className="text-xs font-semibold text-zinc-500 hover:text-zinc-300"
+        className="text-xs font-semibold text-subtle hover:text-ink-mid"
       >
         Cancel
       </button>
-      {state.error && <p className="w-full text-xs text-red-500">{state.error}</p>}
+      {state.error && <p className="w-full text-xs text-brand">{state.error}</p>}
     </form>
   );
 }
@@ -84,7 +84,7 @@ export function RenameableName({
         type="button"
         onClick={() => setEditing(true)}
         title={`Rename ${kind}`}
-        className={`text-left transition hover:text-red-400 ${className ?? ""}`}
+        className={`text-left transition hover:text-brand-2 ${className ?? ""}`}
       >
         {name}
       </button>
@@ -100,11 +100,11 @@ export function RenameableName({
       <button
         type="button"
         onClick={() => setEditing(false)}
-        className="text-xs font-semibold text-zinc-500 hover:text-zinc-300"
+        className="text-xs font-semibold text-subtle hover:text-ink-mid"
       >
         Cancel
       </button>
-      {state.error && <p className="text-xs text-red-500">{state.error}</p>}
+      {state.error && <p className="text-xs text-brand">{state.error}</p>}
     </form>
   );
 }

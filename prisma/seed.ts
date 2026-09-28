@@ -6,8 +6,9 @@
  * the app runs on mid-migration. Exercises the WHOLE permission matrix and
  * the acting-membership switcher:
  *
- *   ORG "Mustang Broncos" — TWO teams (Varsity + JV), so org-wide staff
- *     access is real, not theoretical:
+ *   ORG "Mustang Broncos" — a 12U–17U club: Varsity (17U) and JV (16U) plus
+ *     12 generated teams (CLUB_TEAMS), so org-wide staff access is real and
+ *     the org tree (/org/view) has a full club to browse:
  *     - Coach Gary       HEAD_COACH (Varsity) + ORG_ADMIN
  *     - Coach Dana       ASSISTANT_COACH (Varsity)  — view-only roster
  *     - Morgan Reyes     GENERAL_MANAGER (Varsity)  — can end memberships
@@ -20,7 +21,9 @@
  * DailyReview rows are seeded (the long-standing gap), quests exist as the 6
  * ACTIVE globals + INACTIVE org clones (the production pre-converge state):
  * back-dated quest logs point at the org clones, today's at the globals.
- * Every ledger row is stamped (profileId + membershipId) and all three point
+ * Every ledger row is stamped (profileId + membershipId) — except one
+ * "earlier seasons" row per player, stamped to the profile only so it lifts
+ * the card level without touching any team board — and all three point
  * caches equal their ledger sums.
  *
  * Players log in by USERNAME, staff by EMAIL; one shared demo password.
@@ -94,6 +97,96 @@ const THUNDER_PLAYERS: PlayerSeed[] = [
 const CASEY: PlayerSeed = { name: "Casey Rivers", email: "casey.rivers@example.com", dream: "Play up a level and earn varsity minutes this year.", heightInches: 71, position: "Combo Guard", jerseyNumber: 3, ppg: 9.0, rpg: 3.2, apg: 4.0, favoritePlayer: "Tyrese Haliburton", favoriteTeam: "Indiana Pacers" };
 const DEVON: PlayerSeed = { name: "Devon Price", email: "devon.price@example.com", dream: "Get back on the roster and prove I belong.", heightInches: 74, position: "Forward", jerseyNumber: 32, ppg: 8.1, rpg: 5.5, apg: 1.6, favoritePlayer: "Paolo Banchero", favoriteTeam: "Orlando Magic" };
 const KAI: PlayerSeed = { name: "Kai Bennett", email: "kai.bennett@example.com", dream: "Earn real minutes as a freshman.", heightInches: 68, position: "Guard", jerseyNumber: 2, ppg: 4.5, rpg: 1.8, apg: 2.2, favoritePlayer: "Jalen Brunson", favoriteTeam: "New York Knicks" };
+
+// Career points from seasons before this one (see seedEarlierSeasons), so the
+// named players show a spread of card levels. Unlisted players start fresh.
+// OKC Thunder stays history-free: it's the clean, production-shaped team
+// whose membership board must equal the legacy board (tests/leaderboard).
+const EARLIER_SEASONS: Record<string, number> = {
+  "jordan.carter@example.com": 41_500,
+  "malik.johnson@example.com": 23_800,
+  "tyler.nguyen@example.com": 12_400,
+  "sam.okafor@example.com": 56_200,
+  "casey.rivers@example.com": 7_900,
+  "devon.price@example.com": 3_100,
+  "diego.ramirez@example.com": 9_600,
+  "chris.thompson@example.com": 2_400,
+};
+
+// THE MUSTANG CLUB LADDER (org tree demo): Mustang runs 12U–17U age groups.
+// Its Varsity and JV teams are the 17U and 16U teams; these generated teams
+// fill out the ladder so /org/view has a real club to browse. `assistant` and
+// `manager` add an AC / GM; `noHeadCoach` shows the tree's "No head coach
+// yet" node. Names, numbers and levels come from a fixed-seed generator, so
+// every reseed builds the same club.
+const CLUB_TEAMS: { age: number; color: string; players: number; assistant?: boolean; manager?: boolean; noHeadCoach?: boolean }[] = [
+  { age: 12, color: "Black", players: 8, assistant: true },
+  { age: 12, color: "Red", players: 7 },
+  { age: 12, color: "White", players: 6, manager: true },
+  { age: 13, color: "Black", players: 8, assistant: true },
+  { age: 13, color: "Red", players: 7 },
+  { age: 14, color: "Black", players: 8, assistant: true, manager: true },
+  { age: 14, color: "Red", players: 7 },
+  { age: 14, color: "White", players: 6, noHeadCoach: true },
+  { age: 15, color: "Black", players: 8, assistant: true },
+  { age: 15, color: "Red", players: 7 },
+  { age: 16, color: "Black", players: 7, assistant: true },
+  { age: 17, color: "Black", players: 7, manager: true },
+];
+const CLUB_SECONDARY: Record<string, string> = { Black: "#1f1f1f", Red: "#ffffff", White: "#e6e6e6" };
+
+// Kept apart from the named people's first names, so demo usernames and
+// staff emails never collide with theirs.
+const CLUB_FIRST = ["Elijah", "Jalen", "Cameron", "Aiden", "Micah", "Zion", "Derek", "Trey", "Mason", "Caleb", "Xavier", "Jayden", "Owen", "Adrian", "Julian", "Miles", "Dominic", "Ethan", "Gabriel", "Hunter", "Isaac", "Jace", "Landon", "Nate", "Parker", "Quentin", "Reggie", "Silas", "Theo", "Wyatt", "Evan", "Darius", "Jamal", "Bryce", "Josiah", "Marco", "Tobias", "Kendrick"];
+const CLUB_LAST = ["Alvarez", "Barnes", "Bishop", "Chambers", "Dawson", "Ellis", "Fleming", "Foster", "Gibson", "Grant", "Hayes", "Holloway", "Jenkins", "Kim", "Lawson", "Mendoza", "Mitchell", "Owens", "Palmer", "Porter", "Russo", "Sanders", "Simmons", "Tran", "Ward", "Webb", "Young", "Zamora"];
+const CLUB_COACHES = ["Darnell Hughes", "Rachel Alvarado", "Tanya Fields", "Keith Dawkins", "Monica Hill", "Priya Shah", "Dwayne Tate", "Carla Lin", "Victor Nash", "Janelle Watts", "Omar Hassan", "Brenda Kerr", "Glen Doyle", "Nadia Park", "Ray Mason", "Andrea Pruitt", "Terrell Gaines", "Lena Ortiz", "Curtis Boyd", "Hope Sinclair"];
+const CLUB_POSITIONS = ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center", "Combo Guard", "Wing", "Forward"];
+const CLUB_DREAMS = [
+  "Make my school team next year.",
+  "Hit 80% from the free-throw line this season.",
+  "Become a lockdown defender.",
+  "Play college basketball one day.",
+  "Be the hardest worker on my team every day.",
+  "Get my left hand as strong as my right.",
+  "Start every game this season.",
+  "Lead my team in assists.",
+];
+const CLUB_FAVORITES: [string, string][] = [
+  ["Stephen Curry", "Golden State Warriors"],
+  ["Shai Gilgeous-Alexander", "Oklahoma City Thunder"],
+  ["Luka Dončić", "Los Angeles Lakers"],
+  ["Jayson Tatum", "Boston Celtics"],
+  ["Anthony Edwards", "Minnesota Timberwolves"],
+  ["Nikola Jokić", "Denver Nuggets"],
+];
+
+/** Deterministic pseudo-random numbers (mulberry32): the same club every reseed. */
+function seededRandom(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Earlier-season career points by age group: older players have had more
+ * seasons, so the spread reaches higher levels (lib/cardTheme TIERS). */
+function earlierSeasonPoints(age: number, r: () => number): number {
+  const ceiling = { 12: 3_000, 13: 6_000, 14: 12_000, 15: 25_000, 16: 45_000, 17: 70_000 }[age] ?? 5_000;
+  return Math.round((r() ** 1.6 * ceiling) / 10) * 10;
+}
+
+/** A 6-letter join code in lib/joincode's unambiguous alphabet. */
+function seededJoinCode(r: () => number, taken: Set<string>): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  do {
+    code = Array.from({ length: 6 }, () => alphabet[Math.floor(r() * alphabet.length)]).join("");
+  } while (taken.has(code));
+  taken.add(code);
+  return code;
+}
 
 // PLACEHOLDER quests — Gary to replace (deliberately not E24P-cycle-specific).
 const QUESTS = [
@@ -317,9 +410,10 @@ async function createPlayer(
 // the sample photo and its card placement, so cards and avatars render exactly
 // as for a real upload; else sample-athlete-cutout.png (background removed, no
 // placement); else sample-athlete.* for BOTH original and cutout (un-cut).
-// The seed only ever runs against local/dev DBs (SEED_CONFIRM guard) — this
-// sample is never production data.
-async function seedSamplePortraits(): Promise<number> {
+// `withoutPhoto` (user ids) keeps some people photo-less, so the no-photo
+// cards show too. The seed only ever runs against local/dev DBs (SEED_CONFIRM
+// guard) — this sample is never production data.
+async function seedSamplePortraits(withoutPhoto: number[]): Promise<number> {
   const refDir = pathJoin(process.cwd(), "design", "reference");
   const read = (name: string): string | null => {
     for (const ext of ["png", "webp", "jpg", "jpeg"]) {
@@ -344,9 +438,9 @@ async function seedSamplePortraits(): Promise<number> {
     photoMeta,
   };
   const [players, users, profiles] = await Promise.all([
-    prisma.playerProfile.updateMany({ data: photoFields }),
-    prisma.user.updateMany({ data: photoFields }),
-    prisma.profile.updateMany({ data: photoFields }),
+    prisma.playerProfile.updateMany({ where: { userId: { notIn: withoutPhoto } }, data: photoFields }),
+    prisma.user.updateMany({ where: { id: { notIn: withoutPhoto } }, data: photoFields }),
+    prisma.profile.updateMany({ where: { userId: { notIn: withoutPhoto } }, data: photoFields }),
   ]);
   void users;
   void profiles;
@@ -391,6 +485,17 @@ async function seedCheckIns(email: string, count: number) {
     }
   }
   return { checkIns: offsets.length, reviews };
+}
+
+// Seasons before this one, as one ledger row per player. Stamped to the
+// profile only: career points (the card level) count it; no team board does,
+// since boards read membership-stamped rows.
+async function seedEarlierSeasons(email: string, amount: number) {
+  if (amount <= 0) return;
+  const p = personOf(email);
+  await prisma.pointsLedger.create({
+    data: { userId: p.userId, profileId: p.profileId, membershipId: null, amount, reason: "Earlier seasons (demo history)", source: PointsSource.COACH_ADJUSTMENT, createdAt: daysAgo(365) },
+  });
 }
 
 // Back-dated quest completions — pointed at the player's ORG CLONE (the
@@ -627,6 +732,8 @@ async function main() {
   await prisma.profile.deleteMany();
   await prisma.quest.deleteMany();
   await prisma.team.deleteMany();
+  await prisma.division.deleteMany();
+  await prisma.program.deleteMany();
   await prisma.season.deleteMany();
   await prisma.organization.deleteMany();
 
@@ -651,19 +758,21 @@ async function main() {
   });
 
   // Grouping structure (Chunk 1) — both disclosure shapes:
-  // Mustang: ONE program (hidden) with TWO divisions (shown), a team in each.
+  // Mustang: ONE program (hidden) with SIX age-group divisions (shown),
+  //   12U–17U; Varsity is its 17U team, JV its 16U team (CLUB_TEAMS).
   // Thunder: default Main/Main — all structure hidden (small-club shape).
   const mustangProgram = await prisma.program.create({
     data: { organizationId: mustangOrg.id, name: "Boys Basketball" },
   });
-  const varsityDivision = await prisma.division.create({
-    data: { programId: mustangProgram.id, name: "Varsity", sortOrder: 0 },
-  });
-  const jvDivision = await prisma.division.create({
-    data: { programId: mustangProgram.id, name: "JV", sortOrder: 1 },
-  });
-  await prisma.team.update({ where: { id: varsity.id }, data: { divisionId: varsityDivision.id } });
-  await prisma.team.update({ where: { id: jv.id }, data: { divisionId: jvDivision.id } });
+  const divisionByAge = new Map<number, number>();
+  for (const [sortOrder, age] of [12, 13, 14, 15, 16, 17].entries()) {
+    const division = await prisma.division.create({
+      data: { programId: mustangProgram.id, name: `${age}U`, sortOrder },
+    });
+    divisionByAge.set(age, division.id);
+  }
+  await prisma.team.update({ where: { id: varsity.id }, data: { divisionId: divisionByAge.get(17) } });
+  await prisma.team.update({ where: { id: jv.id }, data: { divisionId: divisionByAge.get(16) } });
   const thunderProgram = await prisma.program.create({
     data: { organizationId: thunderOrg.id, name: "Main" },
   });
@@ -671,6 +780,27 @@ async function main() {
     data: { programId: thunderProgram.id, name: "Main" },
   });
   await prisma.team.update({ where: { id: thunder.id }, data: { divisionId: thunderDivision.id } });
+
+  // The rest of the Mustang ladder (created after Thunder, so the named
+  // teams keep the lowest ids).
+  const club = seededRandom(2412);
+  const pick = <T>(list: T[]) => list[Math.floor(club() * list.length)];
+  const joinCodes = new Set(["MUSTNG", "MUSTJV", "THUNDR"]);
+  const clubTeams = [];
+  for (const spec of CLUB_TEAMS) {
+    const team = await prisma.team.create({
+      data: {
+        name: `${spec.age}U Mustang ${spec.color}`,
+        joinCode: seededJoinCode(club, joinCodes),
+        logoUrl: "/mustang-logo.png",
+        primaryColor: "#c8102e",
+        secondaryColor: CLUB_SECONDARY[spec.color],
+        organizationId: mustangOrg.id,
+        divisionId: divisionByAge.get(spec.age),
+      },
+    });
+    clubTeams.push({ spec, team });
+  }
 
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 12);
 
@@ -704,6 +834,58 @@ async function main() {
   // no inherited TIME OUT takeover, nothing unread, not counted in the
   // coach's read receipts for alerts sent before he joined.
   await createPlayer(KAI, varsity.id, mustangOrg.id, mustangSeason.id, passwordHash, new Date());
+
+  // ---- The club ladder's people (after the named ones, so their usernames
+  // stay plain) -------------------------------------------------------------
+  const coachNames = [...CLUB_COACHES];
+  const staffFor = async (teamId: number, role: Role) => {
+    const name = coachNames.shift()!;
+    const email = `${name.split(" ")[0].toLowerCase()}@elite24.demo`;
+    await createStaff({ name, email, teamId, membershipRole: role, orgAdmin: false, ...staffCommon });
+    return email;
+  };
+  const clubStaff: string[] = [];
+  const clubPlayers: { email: string; age: number }[] = [];
+  const usedNames = new Set<string>();
+  for (const { spec, team } of clubTeams) {
+    if (!spec.noHeadCoach) clubStaff.push(await staffFor(team.id, Role.HEAD_COACH));
+    if (spec.assistant) clubStaff.push(await staffFor(team.id, Role.ASSISTANT_COACH));
+    if (spec.manager) clubStaff.push(await staffFor(team.id, Role.GENERAL_MANAGER));
+    const jerseys = new Set<number>();
+    for (let i = 0; i < spec.players; i++) {
+      let name = "";
+      do name = `${pick(CLUB_FIRST)} ${pick(CLUB_LAST)}`;
+      while (usedNames.has(name));
+      usedNames.add(name);
+      let jerseyNumber = 0;
+      do jerseyNumber = Math.floor(club() * 55);
+      while (jerseys.has(jerseyNumber));
+      jerseys.add(jerseyNumber);
+      const [favoritePlayer, favoriteTeam] = pick(CLUB_FAVORITES);
+      const email = `${name.toLowerCase().replace(" ", ".")}@example.com`;
+      await createPlayer(
+        {
+          name,
+          email,
+          dream: pick(CLUB_DREAMS),
+          // Taller with age: about 4'10"–5'6" at 12U up to 5'8"–6'6" at 17U.
+          heightInches: 58 + (spec.age - 12) * 2 + Math.floor(club() * 9),
+          position: pick(CLUB_POSITIONS),
+          jerseyNumber,
+          ppg: Math.round((2 + club() * 14) * 10) / 10,
+          rpg: Math.round((1 + club() * 7) * 10) / 10,
+          apg: Math.round((0.5 + club() * 5) * 10) / 10,
+          favoritePlayer,
+          favoriteTeam,
+        },
+        team.id,
+        mustangOrg.id,
+        mustangSeason.id,
+        passwordHash,
+      );
+      clubPlayers.push({ email, age: spec.age });
+    }
+  }
 
   // ---- Quests: 6 ACTIVE globals + INACTIVE clones per org (pre-converge) --
   const globalQuests = [];
@@ -752,6 +934,16 @@ async function main() {
     3,
     { membershipId: caseyJv.id, teamId: jv.id, shift: 8 },
   );
+  // The club ladder: a lighter season so far, so every team's board has
+  // numbers; earlier seasons give each age group its spread of card levels.
+  for (const { email, age } of clubPlayers) {
+    const r = await seedCheckIns(email, Math.floor(club() * 6));
+    totalCheckIns += r.checkIns;
+    totalReviews += r.reviews;
+    totalQuestLogs += await seedQuestLogs(email, cloneQuestsByOrg, Math.floor(club() * 5));
+    await seedEarlierSeasons(email, earlierSeasonPoints(age, club));
+  }
+  for (const [email, amount] of Object.entries(EARLIER_SEASONS)) await seedEarlierSeasons(email, amount);
 
   const today = await seedTodayActivity(globalQuests);
   totalCheckIns += today.checkIns;
@@ -800,7 +992,11 @@ async function main() {
     await prisma.membership.update({ where: { id: m.id }, data: { points: sum._sum.amount ?? 0 } });
   }
 
-  const sampledPortraits = await seedSamplePortraits();
+  // Every fourth club player and every third club coach stays photo-less.
+  const sampledPortraits = await seedSamplePortraits([
+    ...clubPlayers.filter((_, i) => i % 4 === 3).map((p) => personOf(p.email).userId),
+    ...clubStaff.filter((_, i) => i % 3 === 2).map((email) => personOf(email).userId),
+  ]);
 
   // ---- Summary ------------------------------------------------------------
   const [orgCount, teamCount, profileCount, membershipCount, reviewCount] = await Promise.all([
@@ -825,7 +1021,7 @@ async function main() {
   console.log("");
   console.log(`=== DEMO LOGINS · password: "${DEV_PASSWORD}" ===`);
   console.log("");
-  console.log("MUSTANG BRONCOS ORG");
+  console.log("MUSTANG BRONCOS ORG   (a 12U–17U club: Varsity is its 17U team, JV its 16U team)");
   console.log("  Varsity (join code MUSTNG)");
   console.log("    Head coach:       gary@elite24.demo   (+ org admin)");
   console.log("    Assistant coach:  dana@elite24.demo   (view-only roster)");
@@ -836,6 +1032,9 @@ async function main() {
   console.log("  JV (join code MUSTJV)");
   console.log("    Head coach:       jamie@elite24.demo");
   console.log("    Players:          diego, chris, casey (two-team!)");
+  console.log(`  Club ladder:      ${clubTeams.length} more teams across 12U–17U · ${clubPlayers.length} players · ${clubStaff.length} coaches`);
+  console.log("    e.g. 12U Mustang Black: head coach darnell@elite24.demo; 14U Mustang White has no head coach yet");
+  console.log("    Browse the whole club: log in as gary → ☰ menu → Organization → Browse");
   console.log("  Org admin (no team): alex@elite24.demo — org authority without a roster spot");
   console.log("  Two-team athlete:    casey — switch teams via the header switcher / dev tool");
   console.log("  Removed player:      devon — logs in to the 'join a team' card (code MUSTNG restores)");

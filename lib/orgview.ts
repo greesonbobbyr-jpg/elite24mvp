@@ -1,16 +1,21 @@
-import type { Role } from "@prisma/client";
+import type { Prisma, Role } from "@prisma/client";
 import { prisma } from "./prisma";
+import { cutoutSrc, photoSrc } from "./photoUrl";
 import { getOrgStructure } from "./structure";
 
 // THE ORG VIEW loader (grouping Chunk 2) — READ-ONLY browsing data for the
-// whole organization. One fetch, one serializable view-model consumed by both
-// the desktop tree and the mobile focus-and-expand explorer.
+// whole organization. One fetch, one serializable view-model; lib/orgtree
+// shapes it into the org tree (/org/view).
 //
 // MATRIX RESPECT BY CONSTRUCTION: every select below carries CARD INFO ONLY —
-// name, photo, jersey, position, role, team points. No dream, no per-game
-// stats, no contact/guardian data, no takeaways; journals are structurally
-// unreachable (nothing outside lib/data/reflections.ts can query them — the
-// build gate enforces it). A test locks this allowlist.
+// name, photo + card placement, jersey, position, role, career points (the
+// card level). No dream, no per-game stats, no contact/guardian data, no
+// takeaways; journals are structurally unreachable (nothing outside
+// lib/data/reflections.ts can query them — the build gate enforces it). A
+// test locks this allowlist.
+//
+// Photos leave as /api/photo URLs (lib/photoUrl), never as the stored data:
+// URLs — a club's worth of inline photos would be megabytes of page.
 //
 // Progressive disclosure flags come from lib/structure.getOrgStructure and
 // are passed through VERBATIM — never recomputed here.
@@ -29,7 +34,17 @@ export type OrgPerson = {
   jerseyNumber: number | null;
   position: string | null;
   photoUrl: string | null;
-  points: number; // membership (team) points — the board number
+  photoCutoutUrl: string | null;
+  photoMeta: Prisma.JsonValue | null; // the cutout's card placement
+  careerPoints: number; // career total — the card level
+};
+
+export type OrgAdmin = {
+  userId: number;
+  name: string;
+  photoUrl: string | null;
+  photoCutoutUrl: string | null;
+  photoMeta: Prisma.JsonValue | null;
 };
 
 export type OrgViewTeam = {
@@ -49,7 +64,6 @@ export type OrgViewDivision = {
   name: string;
   teams: OrgViewTeam[];
   teamCount: number;
-  playerCount: number;
 };
 
 export type OrgViewProgram = {
@@ -59,19 +73,11 @@ export type OrgViewProgram = {
   divisions: OrgViewDivision[];
   divisionCount: number;
   teamCount: number;
-  playerCount: number;
-};
-
-export type SearchEntry = {
-  kind: "program" | "division" | "team" | "staff" | "player";
-  id: number;
-  name: string;
-  detail: string | null; // role label / parent name for the result row
-  path: { programId?: number; divisionId?: number; teamId?: number };
-  userId?: number;
 };
 
 export type OrgViewData = Awaited<ReturnType<typeof getOrgViewData>>;
+
+const PHOTO = { photoUrl: true, photoCutoutUrl: true, photoMeta: true } as const;
 
 export async function getOrgViewData(organizationId: number) {
   const [org, structure] = await Promise.all([
@@ -94,7 +100,6 @@ export async function getOrgViewData(organizationId: number) {
       select: {
         teamId: true,
         role: true,
-        points: true,
         jerseyNumber: true,
         profile: {
           select: {
@@ -102,7 +107,8 @@ export async function getOrgViewData(organizationId: number) {
             name: true,
             position: true,
             jerseyNumber: true,
-            photoUrl: true,
+            careerPoints: true,
+            ...PHOTO,
           },
         },
       },
@@ -112,13 +118,14 @@ export async function getOrgViewData(organizationId: number) {
       orderBy: { createdAt: "asc" },
       select: {
         profile: {
-          select: { userId: true, name: true, photoUrl: true },
+          select: { userId: true, name: true, ...PHOTO },
         },
       },
     }),
   ]);
 
-  // People per team, split STAFF (HC → AC → GM) / PLAYERS (points desc).
+  // People per team, split STAFF (HC → AC → GM) / PLAYERS (card level, then
+  // name — the row reads from the top level down).
   const peopleByTeam = new Map<number, { staff: OrgPerson[]; players: OrgPerson[] }>();
   for (const m of memberships) {
     if (m.profile.userId == null) continue;
@@ -129,8 +136,10 @@ export async function getOrgViewData(organizationId: number) {
       roleRank: STAFF_ORDER[m.role] ?? 99,
       jerseyNumber: m.jerseyNumber ?? m.profile.jerseyNumber,
       position: m.profile.position,
-      photoUrl: m.profile.photoUrl,
-      points: m.points,
+      photoUrl: photoSrc(m.profile.userId, m.profile.photoUrl),
+      photoCutoutUrl: cutoutSrc(m.profile.userId, m.profile.photoCutoutUrl),
+      photoMeta: m.profile.photoMeta,
+      careerPoints: m.profile.careerPoints,
     };
     const bucket = peopleByTeam.get(m.teamId) ?? { staff: [], players: [] };
     (m.role === "PLAYER" ? bucket.players : bucket.staff).push(person);
@@ -138,7 +147,7 @@ export async function getOrgViewData(organizationId: number) {
   }
   for (const bucket of peopleByTeam.values()) {
     bucket.staff.sort((a, b) => a.roleRank - b.roleRank || a.name.localeCompare(b.name));
-    bucket.players.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+    bucket.players.sort((a, b) => b.careerPoints - a.careerPoints || a.name.localeCompare(b.name));
   }
 
   const toViewTeam = (t: (typeof allTeams)[number]): OrgViewTeam => {
@@ -149,13 +158,7 @@ export async function getOrgViewData(organizationId: number) {
   const programs: OrgViewProgram[] = structure.programs.map((p) => {
     const divisions: OrgViewDivision[] = p.divisions.map((d) => {
       const teams = d.teams.map(toViewTeam);
-      return {
-        id: d.id,
-        name: d.name,
-        teams,
-        teamCount: teams.length,
-        playerCount: teams.reduce((sum, t) => sum + t.playerCount, 0),
-      };
+      return { id: d.id, name: d.name, teams, teamCount: teams.length };
     });
     return {
       id: p.id,
@@ -164,54 +167,29 @@ export async function getOrgViewData(organizationId: number) {
       divisions,
       divisionCount: divisions.length,
       teamCount: divisions.reduce((s, d) => s + d.teamCount, 0),
-      playerCount: divisions.reduce((s, d) => s + d.playerCount, 0),
     };
   });
   const unassignedTeams = structure.unassignedTeams.map(toViewTeam);
 
+  // A player on two teams is one player: count people, not memberships.
+  const playerIds = new Set(
+    memberships.filter((m) => m.role === "PLAYER" && m.profile.userId != null).map((m) => m.profile.userId),
+  );
   const totals = {
-    programCount: programs.length,
-    divisionCount: programs.reduce((s, p) => s + p.divisionCount, 0),
-    teamCount: programs.reduce((s, p) => s + p.teamCount, 0) + unassignedTeams.length,
-    playerCount:
-      programs.reduce((s, p) => s + p.playerCount, 0) +
-      unassignedTeams.reduce((s, t) => s + t.playerCount, 0),
+    teamCount: allTeams.length,
+    playerCount: playerIds.size,
   };
 
-  // Org admins; the EARLIEST unrevoked grant is displayed as the org owner.
-  const admins = adminGrants
+  // Org admins; the EARLIEST unrevoked grant is displayed as the Org Owner.
+  const admins: OrgAdmin[] = adminGrants
     .filter((g) => g.profile.userId != null)
     .map((g) => ({
       userId: g.profile.userId!,
       name: g.profile.name,
-      photoUrl: g.profile.photoUrl,
+      photoUrl: photoSrc(g.profile.userId!, g.profile.photoUrl),
+      photoCutoutUrl: cutoutSrc(g.profile.userId!, g.profile.photoCutoutUrl),
+      photoMeta: g.profile.photoMeta,
     }));
-
-  // Flat, org-scoped search index (client-side filtering; orgs are small).
-  const searchIndex: SearchEntry[] = [];
-  for (const p of programs) {
-    searchIndex.push({ kind: "program", id: p.id, name: p.name, detail: null, path: { programId: p.id } });
-    for (const d of p.divisions) {
-      searchIndex.push({
-        kind: "division", id: d.id, name: d.name, detail: p.name,
-        path: { programId: p.id, divisionId: d.id },
-      });
-      for (const t of d.teams) {
-        const path = { programId: p.id, divisionId: d.id, teamId: t.id };
-        searchIndex.push({ kind: "team", id: t.id, name: t.name, detail: d.name, path });
-        for (const person of [...t.staff, ...t.players]) {
-          searchIndex.push({
-            kind: person.role === "PLAYER" ? "player" : "staff",
-            id: person.userId,
-            name: person.name,
-            detail: `${t.name}`,
-            path,
-            userId: person.userId,
-          });
-        }
-      }
-    }
-  }
 
   return {
     org,
@@ -221,6 +199,5 @@ export async function getOrgViewData(organizationId: number) {
     unassignedTeams,
     showPrograms: structure.showPrograms, // verbatim from lib/structure
     totals,
-    searchIndex,
   };
 }
