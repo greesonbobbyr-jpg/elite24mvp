@@ -16,8 +16,8 @@ import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
 //
 // Layout: a spotlight PODIUM for the top 3 (rank 1 centered + larger, 2 left,
 // 3 right, with gold/silver/bronze medal glows) and a LIST of compact PlayerCards
-// for rank 4+. The podium shows each player's mini card in their tier (owner,
-// 2026-09-28: big enough there for the card, not just a circle).
+// for rank 4+. The podium shows each player's own card — the full layout at a
+// smaller size, as on their Brand page (owner, 2026-09-28).
 
 // Medal look per podium SLOT (0 = 1st place, 1 = 2nd, 2 = 3rd). `order` places
 // the winner in the center with 2nd on the left and 3rd on the right.
@@ -46,10 +46,12 @@ function PodiumItem({
   player,
   slot,
   team,
+  rosterSize,
 }: {
   player: Omit<RankedPlayer, "photoCutoutUrl"> & { cutoutUrl: string | null };
   slot: number;
   team: CardTeam;
+  rosterSize: number;
 }) {
   const medal = MEDALS[slot];
   const big = slot === 0;
@@ -62,15 +64,18 @@ function PodiumItem({
         aria-label={`#${player.rank} ${player.name}, ${player.points.toLocaleString()} points`}
         className="flex w-full flex-col items-center transition active:scale-[0.97]"
       >
-        {/* The player's mini card in their tier; the medal glow and chip
-            carry the podium place. */}
+        {/* The player's card, as on their Brand page; the medal glow and
+            chip carry the podium place. */}
         <span className="block w-full" style={{ maxWidth: big ? 132 : 104, filter: `drop-shadow(0 0 14px ${medal.glow})` }}>
           <PlayerCard
             size="mini"
             player={{
               name: player.name,
               jerseyNumber: player.jerseyNumber,
-              points: player.points,
+              position: player.position,
+              rank: player.rank,
+              rosterSize,
+              points: player.careerPoints,
               total: player.careerPoints,
               photoUrl: player.photoUrl,
               cutoutUrl: player.cutoutUrl,
@@ -257,7 +262,7 @@ export default async function LeaderboardPage({
         <section className="e24-surface rounded-2xl border border-red-600/25 px-4 py-6">
           <div className="relative z-10 flex items-end justify-center gap-2">
             {podium.map((player, i) => (
-              <PodiumItem key={player.id} player={player} slot={i} team={user.team} />
+              <PodiumItem key={player.id} player={player} slot={i} team={user.team} rosterSize={ranked.length} />
             ))}
           </div>
         </section>
