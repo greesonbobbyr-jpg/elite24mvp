@@ -198,7 +198,7 @@ Pushed to GitHub as part of this handoff (they existed only on the wiped laptop)
 
 - **`grouping-layers`** — ALIVE and COMPLETE, awaiting an owner-gated deploy.
   Adds Program/Division grouping between Organization and Team (additive migration
-  `20260813123937_grouping_program_division`), an ORG_ADMIN structure-management
+  `20260928120000_grouping_program_division`), an ORG_ADMIN structure-management
   page (`/org`), and a read-only org browsing view (`/org/view`) with
   progressive disclosure (single-entry layers hidden). 172 tests passed on it.
   Deploy runbook (owner must approve each step): `prisma migrate deploy` against
@@ -352,7 +352,7 @@ Pushed to GitHub as part of this handoff (they existed only on the wiped laptop)
 - **Migration `20260814032118_card_photo_cutout` is committed on `card-redesign`
   but has NEVER run against production** — it was applied only to the local
   `e24cards` DB. Production gets it via the card branch's own deploy runbook.
-  Similarly `20260813123937_grouping_program_division` (on `grouping-layers`)
+  Similarly `20260928120000_grouping_program_division` (on `grouping-layers`)
   is local-only (`e24local`).
 - **`/card-preview` 404s in production on purpose** (NODE_ENV gate). The
   `/api/dev/reference/*` route likewise. Not bugs.

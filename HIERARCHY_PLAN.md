@@ -405,7 +405,7 @@ they persist across seasons; progressive disclosure is a display rule (single-en
 layers hidden; defaults "Main"/"Main" provisioned at signup + backfill); **authz
 untouched** (tests/authz.test.ts passes with zero edits — grouping is never in a
 permission check); join codes stay on the team. Additive migration
-`20260813123937_grouping_program_division` + `scripts/backfill-structure.ts`
+`20260928120000_grouping_program_division` + `scripts/backfill-structure.ts`
 (dry/execute/verify, idempotent, chain-consistency checks) + `/org` admin page
 (create/rename/reorder/assign/create-team; create_team tier; org-bounded data paths).
 Deploy runbook (owner-gated): migrate deploy → backfill execute+verify → push → verify.
