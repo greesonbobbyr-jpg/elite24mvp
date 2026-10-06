@@ -13,7 +13,7 @@ import { Button } from "@/app/components/ui/Button";
 
 const initial: StructureState = {};
 const fieldClass =
-  "rounded-lg border border-red-600/25 bg-field px-3 py-1.5 text-sm text-ink outline-none transition focus:border-red-500";
+  "rounded-lg border border-field-line bg-field px-3 py-1.5 text-sm text-ink outline-none transition focus:border-accent-edge";
 
 // Quiet "+ Add …" affordance that expands into a one-field create form.
 export function AddForm({

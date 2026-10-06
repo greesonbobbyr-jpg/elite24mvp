@@ -7,7 +7,7 @@ import { PhotoUploadField } from "@/app/components/PhotoUploadField";
 
 const initialState: TeamSettingsState = {};
 const field =
-  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500";
+  "w-full rounded-lg border border-field-line bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-accent-edge";
 const label = "mb-1 block text-xs font-medium text-muted";
 
 // Any hour of the day, team-local (owner note: coaches set it at whatever time
@@ -53,7 +53,7 @@ export function TeamSettingsForm({
 
       {/* Daily check-in reminder (Web Push) — the coach controls the trigger.
           Players opt in on their Notifications page; nothing sends without both. */}
-      <div className="border-t border-ink/10 pt-4">
+      <div className="border-t border-line pt-4">
         <label htmlFor="reminderHour" className={label}>
           Daily check-in reminder{" "}
           <span className="text-subtle">(players who opted in, team time)</span>
@@ -74,7 +74,7 @@ export function TeamSettingsForm({
       </div>
 
       {/* The coach's OWN photo (shows in their header identity chip). */}
-      <div className="border-t border-ink/10 pt-4">
+      <div className="border-t border-line pt-4">
         <PhotoUploadField
           defaultPhotoUrl={coachPhotoUrl}
           defaultCutoutUrl={coachCutoutUrl}
@@ -88,7 +88,7 @@ export function TeamSettingsForm({
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 self-start rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-95 disabled:opacity-60"
+        className="mt-1 self-start rounded-full bg-accent px-5 py-2 text-sm font-semibold text-on-accent transition hover:bg-accent-hover active:scale-95 disabled:bg-raised-3 disabled:text-muted"
       >
         {pending ? "Saving…" : "Save changes"}
       </button>

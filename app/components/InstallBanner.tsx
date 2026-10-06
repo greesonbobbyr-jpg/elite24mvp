@@ -72,7 +72,7 @@ export function InstallBanner() {
 
   return (
     <div className="fixed bottom-20 left-1/2 z-[45] w-[min(92vw,420px)] -translate-x-1/2">
-      <div className="flex items-center gap-3 rounded-2xl border border-red-600/40 bg-canvas/95 p-3 shadow-2xl backdrop-blur">
+      <div className="flex items-center gap-3 rounded-2xl border border-line bg-panel p-3 shadow-2xl backdrop-blur">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/logo.png"
@@ -93,7 +93,7 @@ export function InstallBanner() {
           <button
             type="button"
             onClick={install}
-            className="shrink-0 rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-95"
+            className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-on-accent transition hover:bg-accent-hover active:scale-95"
           >
             Add
           </button>

@@ -134,7 +134,7 @@ export default async function OrgPage() {
                       </select>
                       <button
                         type="submit"
-                        className="ml-2 rounded-full border border-line-strong px-2.5 py-1 text-[11px] font-semibold text-ink-mid transition hover:border-ink/30"
+                        className="ml-2 rounded-full border border-line-strong px-2.5 py-1 text-[11px] font-semibold text-ink-mid transition hover:border-field-line"
                       >
                         Move
                       </button>
@@ -172,7 +172,7 @@ export default async function OrgPage() {
                 </select>
                 <button
                   type="submit"
-                  className="ml-2 rounded-full border border-line-strong px-2.5 py-1 text-[11px] font-semibold text-ink-mid transition hover:border-ink/30"
+                  className="ml-2 rounded-full border border-line-strong px-2.5 py-1 text-[11px] font-semibold text-ink-mid transition hover:border-field-line"
                 >
                   Assign
                 </button>
@@ -207,14 +207,14 @@ function ReorderButtons({
         <form action={action}>
           <input type="hidden" name={field} value={id} />
           <input type="hidden" name="direction" value="up" />
-          <button className="rounded border border-line-strong px-1.5 text-xs text-muted hover:border-ink/30" aria-label="Move up">▲</button>
+          <button className="rounded border border-line-strong px-1.5 text-xs text-muted hover:border-field-line" aria-label="Move up">▲</button>
         </form>
       )}
       {!last && (
         <form action={action}>
           <input type="hidden" name={field} value={id} />
           <input type="hidden" name="direction" value="down" />
-          <button className="rounded border border-line-strong px-1.5 text-xs text-muted hover:border-ink/30" aria-label="Move down">▼</button>
+          <button className="rounded border border-line-strong px-1.5 text-xs text-muted hover:border-field-line" aria-label="Move down">▼</button>
         </form>
       )}
     </div>

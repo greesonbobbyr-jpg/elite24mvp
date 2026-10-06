@@ -3,6 +3,9 @@
 import { useActionState, useState } from "react";
 import { submitReview, type ReviewState } from "./actions";
 import { Button } from "@/app/components/ui/Button";
+import { cardAccent, rowNested } from "@/app/components/ui/Card";
+import { fieldClass } from "@/app/components/ui/Field";
+import { chipClass } from "@/app/components/ui/Pill";
 
 const initialState: ReviewState = {};
 
@@ -48,10 +51,10 @@ export function ReviewCard({
   // Already reviewed — show the closed loop, not a form.
   if (savedReview) {
     return (
-      <section className="rounded-xl border border-red-600/40 bg-red-600/[0.04] p-5">
+      <section className={cardAccent}>
         <div className="flex items-center justify-between gap-3">
           <h2 className="e24-eyebrow">Pro Review</h2>
-          <span className="rounded-full bg-green-600/15 px-2.5 py-0.5 text-xs font-semibold text-good">
+          <span className={chipClass("good")}>
             ✓ Done · +5
           </span>
         </div>
@@ -74,7 +77,7 @@ export function ReviewCard({
   // "next". Tapping expands the full review form.
   if (!expanded) {
     return (
-      <section className="rounded-xl border border-line bg-canvas/60 transition hover:border-red-500/40">
+      <section className="rounded-xl border border-line bg-panel shadow-sm shadow-shade transition hover:border-accent-edge">
         <button
           type="button"
           onClick={() => setExpanded(true)}
@@ -89,7 +92,7 @@ export function ReviewCard({
             End your day — how did the plan go? · +5
           </span>
           <span
-            className="shrink-0 text-lg text-brand/70 transition-transform group-hover:rotate-90"
+            className="shrink-0 text-lg text-brand transition-transform group-hover:rotate-90"
             aria-hidden
           >
             ▸
@@ -100,7 +103,7 @@ export function ReviewCard({
   }
 
   return (
-    <section className="e24-reveal rounded-xl border border-red-600/40 bg-red-600/[0.04] p-5">
+    <section className={`${cardAccent} e24-reveal`}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="e24-eyebrow">Pro Review</h2>
         <button
@@ -117,7 +120,7 @@ export function ReviewCard({
       </p>
 
       {/* Plan vs action, side by side. */}
-      <div className="mt-3 rounded-lg border border-ink/10 bg-field p-3">
+      <div className={`${rowNested} mt-3 p-3`}>
         <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">
           You said
         </p>
@@ -134,7 +137,7 @@ export function ReviewCard({
             {loggedQuests.map((q) => (
               <span
                 key={q.title}
-                className="rounded-full bg-[#d4af37]/15 px-2.5 py-0.5 text-xs font-semibold text-gold"
+                className={chipClass("gold")}
               >
                 {q.title} +{q.points}
               </span>
@@ -153,8 +156,8 @@ export function ReviewCard({
               onClick={() => setOutcome(o.value)}
               className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wide transition active:scale-95 ${
                 outcome === o.value
-                  ? "border-red-500 bg-red-600/20 text-brand-3"
-                  : "border-ink/15 text-muted hover:border-ink/30"
+                  ? "border-accent-edge bg-accent text-on-accent"
+                  : "border-line-strong bg-panel text-ink-mid hover:border-field-line hover:text-ink"
               }`}
             >
               {o.label}
@@ -172,7 +175,7 @@ export function ReviewCard({
             required
             rows={2}
             placeholder="One honest thing about today's work…"
-            className="mt-1.5 w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
+            className={`${fieldClass} mt-1.5`}
           />
         </div>
 
@@ -184,7 +187,7 @@ export function ReviewCard({
             id="review-note"
             name="noteToTomorrow"
             placeholder="It shows up in tomorrow's check-in."
-            className="mt-1.5 w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
+            className={`${fieldClass} mt-1.5`}
           />
         </div>
 

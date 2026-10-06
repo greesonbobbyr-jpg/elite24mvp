@@ -21,7 +21,7 @@ export function OrgTabs({ current }: { current: "manage" | "browse" }) {
           <Link
             key={tab.key}
             href={tab.href}
-            className="rounded-full border border-line-strong px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted transition hover:border-ink/30"
+            className="rounded-full border border-line-strong px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted transition hover:border-field-line"
           >
             {tab.label}
           </Link>

@@ -22,7 +22,7 @@ export function StartSeasonForm({ currentSeason }: { currentSeason: string }) {
   }
 
   return (
-    <div className="rounded-xl border border-ink/5 bg-ink/[0.02] p-4">
+    <div className="rounded-xl border border-line bg-sunken p-4">
       <p className="text-sm text-muted">
         Current season: <span className="font-semibold text-ink">{currentSeason}</span>
       </p>
@@ -30,7 +30,7 @@ export function StartSeasonForm({ currentSeason }: { currentSeason: string }) {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="mt-2 rounded-full border border-ink/15 px-3 py-1 text-xs font-semibold text-ink-mid transition hover:border-ink/30 active:scale-95"
+          className="mt-2 rounded-full border border-line-strong px-3 py-1 text-xs font-semibold text-ink-mid transition hover:border-field-line active:scale-95"
         >
           Start a new season…
         </button>
@@ -45,7 +45,7 @@ export function StartSeasonForm({ currentSeason }: { currentSeason: string }) {
             <input
               name="seasonName"
               placeholder="e.g. 2027"
-              className="w-28 rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500"
+              className="w-28 rounded-lg border border-field-line bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-accent-edge"
             />
             <Button type="submit" disabled={pending} size="sm">
               {pending ? "Starting…" : "Start season"}

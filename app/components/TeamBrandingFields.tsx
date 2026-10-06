@@ -69,8 +69,8 @@ export function TeamBrandingFields({
           onClick={() => inputRef.current?.click()}
           className={`flex cursor-pointer items-center gap-3 rounded-lg border border-dashed px-3 py-4 text-sm transition ${
             dragging
-              ? "border-red-500 bg-red-600/10"
-              : "border-red-600/30 bg-field hover:border-red-500"
+              ? "border-accent-edge bg-red-600/10"
+              : "border-field-line bg-field hover:border-accent-edge"
           }`}
         >
           {logo ? (
@@ -81,7 +81,7 @@ export function TeamBrandingFields({
               className="h-14 w-14 shrink-0 rounded object-contain"
             />
           ) : (
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded bg-ink/5 text-2xl text-faint">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded bg-sunken text-2xl text-faint">
               +
             </div>
           )}

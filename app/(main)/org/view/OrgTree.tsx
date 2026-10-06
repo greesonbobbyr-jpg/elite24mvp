@@ -200,13 +200,13 @@ export function OrgTree({ data }: { data: OrgViewData }) {
           placeholder="Search a player, team or coach"
           autoComplete="off"
           spellCheck={false}
-          className="w-full rounded-full border border-line-strong bg-field px-5 py-2.5 text-sm text-ink outline-none focus:border-red-500"
+          className="w-full rounded-full border border-line-strong bg-field px-5 py-2.5 text-sm text-ink outline-none focus:border-accent-edge"
         />
         {results.length > 0 && (
           <ul className="absolute inset-x-4 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-line bg-raised shadow-lg sm:inset-x-0">
             {results.map((h) => (
               <li key={h.key}>
-                <button type="button" onClick={() => pick(h)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-ink/5">
+                <button type="button" onClick={() => pick(h)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-sunken">
                   <span className="w-20 shrink-0 text-[10px] font-bold uppercase tracking-wide text-brand">{h.kind}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-ink">{h.label}</span>

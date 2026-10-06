@@ -69,14 +69,14 @@ export function MessageComposer({
       <input type="hidden" name="replyToId" value={replyingTo?.id ?? ""} />
       {initialType && <input type="hidden" name="type" value={initialType} />}
       {initialType === "SPOTLIGHT" && (
-        <p className="rounded-full bg-red-500/15 px-3 py-1 text-center text-[10px] font-bold uppercase tracking-wide text-brand-2">
+        <p className="rounded-full bg-accent px-3 py-1 text-center text-[10px] font-bold uppercase tracking-wide text-on-accent">
           Coach&apos;s Spotlight draft — edit it, then send
         </p>
       )}
 
       {/* Reply preview — who/what you're replying to, with a cancel. */}
       {replyingTo && (
-        <div className="e24-reveal flex items-center gap-2 rounded-lg border-l-2 border-red-500 bg-field py-1.5 pl-2 pr-2">
+        <div className="e24-reveal flex items-center gap-2 rounded-lg border border-line border-l-4 border-l-accent bg-sunken py-1.5 pl-2 pr-2">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold text-brand-2">
               Replying to {replyingTo.authorName}
@@ -96,7 +96,7 @@ export function MessageComposer({
 
       {/* Selected-GIF chip (above the bar). */}
       {selectedGif && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-600/25 bg-field p-2">
+        <div className="flex items-center gap-2 rounded-lg border border-field-line bg-field p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selectedGif.file}
@@ -116,14 +116,14 @@ export function MessageComposer({
 
       {/* Emoji tray — revealed only after tapping 😊. */}
       {showEmoji && (
-        <div className="e24-reveal flex flex-wrap items-center gap-1 rounded-lg border border-red-600/20 bg-field p-2">
+        <div className="e24-reveal flex flex-wrap items-center gap-1 rounded-lg border border-line bg-panel p-2 shadow-sm shadow-shade">
           {TRAY_EMOJIS.map((e) => (
             <button
               key={e.char}
               type="button"
               aria-label={`Add ${e.char}`}
               onClick={() => setBody((b) => b + e.char)}
-              className="rounded-md p-1 leading-none hover:bg-ink/10"
+              className="rounded-md p-1 leading-none hover:bg-raised-2"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={e.svg} alt={e.char} className="h-6 w-6" />
@@ -134,7 +134,7 @@ export function MessageComposer({
 
       {/* Curated GIF picker (above the bar) — registry only, no search/upload. */}
       {showGifPicker && (
-        <div className="e24-reveal rounded-lg border border-red-600/20 bg-field p-3">
+        <div className="e24-reveal rounded-lg border border-line bg-panel p-3 shadow-sm shadow-shade">
           {GIFS.length === 0 ? (
             <p className="text-xs text-subtle">No GIFs available yet.</p>
           ) : (
@@ -148,8 +148,8 @@ export function MessageComposer({
                     onClick={() => setGifId(active ? null : gif.id)}
                     className={`flex flex-col items-center gap-1 rounded-lg border p-1.5 ${
                       active
-                        ? "border-red-500 bg-red-600/10"
-                        : "border-ink/15 hover:border-ink/30"
+                        ? "border-accent-edge ring-1 ring-accent-edge"
+                        : "border-line-strong hover:border-field-line"
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -172,7 +172,7 @@ export function MessageComposer({
       {state.error && <p className="text-sm text-brand">{state.error}</p>}
 
       {/* The slender bar */}
-      <div className="flex items-end gap-1 rounded-2xl border border-red-600/25 bg-field px-2 py-1.5">
+      <div className="flex items-end gap-1 rounded-2xl border border-field-line bg-field px-2 py-1.5">
         {/* emoji toggle */}
         <button
           type="button"
@@ -181,7 +181,7 @@ export function MessageComposer({
           onClick={() => setShowEmoji((s) => !s)}
           className={`${iconBtn} text-base leading-none ${
             showEmoji
-              ? "border-red-500 text-brand-2"
+              ? "border-accent-edge text-brand-2"
               : "border-transparent text-muted hover:text-ink-soft"
           }`}
         >
@@ -196,7 +196,7 @@ export function MessageComposer({
           onClick={() => setShowGifPicker((s) => !s)}
           className={`${iconBtn} text-[10px] font-bold ${
             showGifPicker
-              ? "border-red-500 text-brand-2"
+              ? "border-accent-edge text-brand-2"
               : "border-transparent text-muted hover:text-ink-soft"
           }`}
         >
@@ -232,7 +232,7 @@ export function MessageComposer({
           type="submit"
           disabled={pending}
           aria-label="Send"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-600 text-white shadow-sm transition hover:bg-red-500 active:scale-95 disabled:opacity-50"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent shadow-sm transition hover:bg-accent-hover active:scale-95 disabled:bg-raised-3 disabled:text-muted"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
             <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />

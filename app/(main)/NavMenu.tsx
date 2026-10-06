@@ -57,7 +57,7 @@ export function NavMenu({ links, loginName }: { links: NavLink[]; loginName?: st
         aria-label="Menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-black text-ink transition hover:border-red-500 hover:text-brand-2 active:scale-95"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-frame text-ink transition hover:border-accent-edge hover:text-brand-2 active:scale-95"
       >
         <svg
           width="18"
@@ -75,7 +75,7 @@ export function NavMenu({ links, loginName }: { links: NavLink[]; loginName?: st
       </button>
 
       {open && (
-        <nav className="e24-reveal absolute right-0 z-50 mt-2 w-52 origin-top-right overflow-hidden rounded-xl border border-line bg-black shadow-xl shadow-black/40">
+        <nav className="e24-reveal absolute right-0 z-50 mt-2 w-52 origin-top-right overflow-hidden rounded-xl border border-line bg-frame shadow-xl shadow-shade">
           {loginName && (
             <p className="border-b border-line px-4 py-2.5 text-xs text-subtle">
               Signed in as{" "}
@@ -87,7 +87,7 @@ export function NavMenu({ links, loginName }: { links: NavLink[]; loginName?: st
               key={link.href + link.label}
               href={link.href}
               onClick={() => setOpen(false)}
-              className="block px-4 py-3 text-sm font-medium text-ink transition hover:bg-red-600/20 hover:text-brand-2"
+              className="block px-4 py-3 text-sm font-medium text-ink transition hover:bg-raised hover:text-brand-2"
             >
               {link.label}
             </Link>
@@ -109,7 +109,7 @@ export function NavMenu({ links, loginName }: { links: NavLink[]; loginName?: st
                     setTheme(option.value);
                   }}
                   className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
-                    theme === option.value ? "bg-red-600 text-white" : "text-muted hover:text-ink"
+                    theme === option.value ? "bg-accent text-on-accent" : "text-muted hover:text-ink"
                   }`}
                 >
                   {option.label}
@@ -120,7 +120,7 @@ export function NavMenu({ links, loginName }: { links: NavLink[]; loginName?: st
           <form action={logout} className="border-t border-line">
             <button
               type="submit"
-              className="block w-full px-4 py-3 text-left text-sm font-medium text-muted transition hover:bg-red-600/20 hover:text-brand-2"
+              className="block w-full px-4 py-3 text-left text-sm font-medium text-muted transition hover:bg-raised hover:text-brand-2"
             >
               Log out
             </button>

@@ -35,8 +35,8 @@ export function TeamSwitcher({
             <input type="hidden" name="membershipId" value={m.id} />
             <button
               type="submit"
-              className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left transition hover:bg-ink/5 ${
-                m.id === actingMembershipId ? "bg-red-600/15 font-semibold" : ""
+              className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left transition hover:bg-sunken ${
+                m.id === actingMembershipId ? "bg-accent font-semibold text-on-accent hover:bg-accent-hover" : ""
               }`}
             >
               <span>{m.team.name}</span>

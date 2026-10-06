@@ -74,7 +74,7 @@ export function RosterManager({
           return (
             <li
               key={p.id}
-              className="rounded-xl border border-ink/5 bg-ink/[0.02] px-3 py-2.5"
+              className="rounded-xl border border-line bg-sunken px-3 py-2.5"
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
@@ -91,7 +91,7 @@ export function RosterManager({
                     <button
                       type="submit"
                       disabled={resetting}
-                      className="rounded-full border border-ink/15 px-3 py-1 text-xs font-semibold text-ink-mid transition hover:border-ink/30 active:scale-95 disabled:opacity-60"
+                      className="rounded-full border border-line-strong px-3 py-1 text-xs font-semibold text-ink-mid transition hover:border-field-line active:scale-95 disabled:opacity-60"
                     >
                       Reset password
                     </button>
@@ -101,7 +101,7 @@ export function RosterManager({
                   <button
                     type="button"
                     onClick={() => setConfirmingId(confirming ? null : p.id)}
-                    className="shrink-0 rounded-full border border-red-600/40 px-3 py-1 text-xs font-semibold text-brand-2 transition hover:border-red-500 active:scale-95"
+                    className="shrink-0 rounded-full border border-line px-3 py-1 text-xs font-semibold text-brand-2 transition hover:border-accent-edge active:scale-95"
                   >
                     {confirming ? "Cancel" : "Remove"}
                   </button>
@@ -109,7 +109,7 @@ export function RosterManager({
               </div>
 
               {confirming && (
-                <div className="mt-2 rounded-lg border border-red-600/40 bg-red-600/[0.07] p-3">
+                <div className="mt-2 rounded-lg border border-line bg-red-600/[0.07] p-3">
                   <p className="text-xs text-brand-3">
                     This removes {p.name.split(" ")[0]} from the roster and
                     leaderboards. Their account, journal, streak, and career
@@ -121,7 +121,7 @@ export function RosterManager({
                     <button
                       type="submit"
                       disabled={removing}
-                      className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-red-500 active:scale-95 disabled:opacity-60"
+                      className="rounded-full bg-accent px-4 py-1.5 text-xs font-bold text-on-accent transition hover:bg-accent-hover active:scale-95 disabled:bg-raised-3 disabled:text-muted"
                     >
                       {removing ? "Removing…" : `Yes, remove ${p.name.split(" ")[0]}`}
                     </button>

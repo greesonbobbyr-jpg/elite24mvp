@@ -104,8 +104,8 @@ export function PhotoUploadField({
           onClick={() => !busy && inputRef.current?.click()}
           className={`flex flex-1 cursor-pointer items-center gap-3 rounded-full border border-dashed py-2 pl-2 pr-4 text-sm transition ${
             dragging
-              ? "border-red-500 bg-red-600/10"
-              : "border-red-600/30 bg-field hover:border-red-500"
+              ? "border-accent-edge bg-red-600/10"
+              : "border-field-line bg-field hover:border-accent-edge"
           } ${busy ? "pointer-events-none opacity-70" : ""}`}
         >
           {preview ? (
@@ -117,7 +117,7 @@ export function PhotoUploadField({
               className="h-14 w-14 shrink-0 rounded-full bg-zinc-800 object-cover"
             />
           ) : (
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink/5 text-2xl text-faint">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sunken text-2xl text-faint">
               +
             </div>
           )}

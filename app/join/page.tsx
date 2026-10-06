@@ -23,7 +23,7 @@ export default async function JoinPage() {
         <p className="mt-2 text-sm text-subtle">Join your team</p>
       </div>
 
-      <section className="e24-surface rounded-2xl border border-red-600/30 p-6">
+      <section className="e24-surface rounded-2xl p-6">
         <div className="relative z-10">
           <JoinForm />
         </div>

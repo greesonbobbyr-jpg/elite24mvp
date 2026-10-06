@@ -34,7 +34,7 @@ export default async function LibraryPage() {
               href={entry.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-[0.97]"
+              className="rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-on-accent transition hover:bg-accent-hover active:scale-[0.97]"
             >
               Open in new tab
             </a>

@@ -6,7 +6,7 @@ import { TeamBrandingFields } from "@/app/components/TeamBrandingFields";
 
 const initialState: SignupState = {};
 const field =
-  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-red-500";
+  "w-full rounded-lg border border-field-line bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-accent-edge";
 const label = "mb-1 block text-xs font-medium text-muted";
 
 export function SignupForm() {
@@ -54,7 +54,7 @@ export function SignupForm() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-ink/10 pt-4">
+      <div className="flex flex-col gap-3 border-t border-line pt-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
           Your team
         </p>
@@ -70,7 +70,7 @@ export function SignupForm() {
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 w-full rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:opacity-60"
+        className="mt-1 w-full rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent transition hover:bg-accent-hover active:scale-[0.99] disabled:bg-raised-3 disabled:text-muted"
       >
         {pending ? "Creating your team…" : "Create team & sign in"}
       </button>

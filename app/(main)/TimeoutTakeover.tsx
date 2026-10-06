@@ -20,8 +20,8 @@ export function TimeoutTakeover({
 }) {
   return (
     // theme-dark: an alarm looks like an alarm in both modes.
-    <div className="theme-dark fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm">
-      <div className="w-[70%] max-w-lg rounded-2xl border-2 border-red-600 bg-black p-7 text-center shadow-2xl shadow-red-900/40">
+    <div className="theme-dark fixed inset-0 z-50 flex items-center justify-center bg-scrim p-6 backdrop-blur-sm">
+      <div className="w-[70%] max-w-lg rounded-2xl border-2 border-accent-edge bg-frame p-7 text-center shadow-2xl shadow-shade">
         <p className="flex items-center justify-center gap-2 text-3xl font-black uppercase tracking-tight text-brand">
           <WhistleIcon className="h-9 w-9 text-ink" />
           Time Out!
@@ -39,7 +39,7 @@ export function TimeoutTakeover({
           <input type="hidden" name="notificationId" value={notification.id} />
           <button
             type="submit"
-            className="w-full rounded-full bg-red-600 px-6 py-3 text-base font-bold text-white hover:bg-red-700"
+            className="w-full rounded-full bg-accent px-6 py-3 text-base font-bold text-on-accent hover:bg-accent-hover"
           >
             Got it — I&apos;ve read this
           </button>

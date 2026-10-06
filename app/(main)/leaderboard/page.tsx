@@ -7,6 +7,8 @@ import {
   type RankedPlayer,
 } from "@/lib/leaderboard";
 import { PlayerCard, type CardTeam } from "@/app/components/PlayerCard";
+import { rowOnPage } from "@/app/components/ui/Card";
+import { chipClass, pillClass } from "@/app/components/ui/Pill";
 import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
 
 // Single-team leaderboard. STRICTLY the current user's own team — no other team
@@ -166,7 +168,7 @@ export default async function LeaderboardPage({
           <img
             src={logoUrl}
             alt={`${user.team.name} logo`}
-            className="h-14 w-14 shrink-0 rounded-xl bg-black object-contain p-1"
+            className="h-14 w-14 shrink-0 rounded-xl bg-frame object-contain p-1"
           />
         ) : null}
       </header>
@@ -175,21 +177,13 @@ export default async function LeaderboardPage({
       <div className="flex gap-2">
         <Link
           href="/leaderboard"
-          className={`rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
-            !weekView
-              ? "border-red-500 bg-red-600/20 text-brand-3"
-              : "border-ink/15 text-muted hover:border-ink/30"
-          }`}
+          className={pillClass(!weekView)}
         >
           All-time
         </Link>
         <Link
           href="/leaderboard?view=week"
-          className={`rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
-            weekView
-              ? "border-red-500 bg-red-600/20 text-brand-3"
-              : "border-ink/15 text-muted hover:border-ink/30"
-          }`}
+          className={pillClass(weekView)}
         >
           This week
         </Link>
@@ -206,10 +200,8 @@ export default async function LeaderboardPage({
                 <li key={p.id}>
                   <Link
                     href={`/brand/${p.id}`}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
-                      isMe
-                        ? "bg-red-600/15 ring-1 ring-red-500/40"
-                        : "bg-ink/[0.02] hover:bg-ink/[0.05]"
+                    className={`${rowOnPage} flex items-center gap-3 px-3 py-2.5 transition ${
+                      isMe ? "border-accent-edge ring-1 ring-accent-edge" : "hover:border-field-line"
                     }`}
                   >
                     <span className="w-7 shrink-0 text-center text-sm font-black tabular-nums text-subtle">
@@ -237,7 +229,7 @@ export default async function LeaderboardPage({
                       {isMe && " · You"}
                     </span>
                     {p.id === mostImprovedId && (
-                      <span className="shrink-0 rounded-full bg-green-600/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-good">
+                      <span className={`${chipClass("good")} shrink-0 uppercase`}>
                         ▲ Most improved
                       </span>
                     )}
@@ -245,7 +237,7 @@ export default async function LeaderboardPage({
                       <span className="text-sm font-black tabular-nums text-ink">
                         {p.weekPoints.toLocaleString()}
                       </span>
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-ink/40">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-subtle">
                         pts
                       </span>
                     </span>
@@ -259,7 +251,7 @@ export default async function LeaderboardPage({
 
       {/* Podium — top 3 */}
       {!weekView && podium.length > 0 && (
-        <section className="e24-surface rounded-2xl border border-red-600/25 px-4 py-6">
+        <section className="e24-surface rounded-2xl px-4 py-6">
           <div className="relative z-10 flex items-end justify-center gap-2">
             {podium.map((player, i) => (
               <PodiumItem key={player.id} player={player} slot={i} team={user.team} rosterSize={ranked.length} />
@@ -280,7 +272,7 @@ export default async function LeaderboardPage({
                   <Link
                     href={`/brand/${player.id}`}
                     className={`relative block rounded-xl transition active:scale-[0.99] ${
-                      isMe ? "ring-2 ring-red-400" : "hover:opacity-90"
+                      isMe ? "ring-2 ring-accent-edge ring-offset-2 ring-offset-canvas" : "hover:opacity-90"
                     }`}
                   >
                     <PlayerCard
@@ -299,7 +291,7 @@ export default async function LeaderboardPage({
                       team={user.team}
                     />
                     {isMe && (
-                      <span className="absolute -top-1.5 right-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-white shadow">
+                      <span className="absolute -top-1.5 right-2 rounded-full bg-accent px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-on-accent shadow">
                         You
                       </span>
                     )}

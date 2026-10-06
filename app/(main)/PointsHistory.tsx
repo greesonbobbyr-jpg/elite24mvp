@@ -19,7 +19,7 @@ export function PointsHistory({
 }) {
   return (
     <details className="rounded-2xl border border-line bg-gradient-to-b from-raised/60 to-panel shadow-lg shadow-shade">
-      <summary className="flex cursor-pointer list-none select-none items-center justify-between rounded-2xl px-5 py-3.5 transition hover:bg-ink/[0.03]">
+      <summary className="flex cursor-pointer list-none select-none items-center justify-between rounded-2xl px-5 py-3.5 transition hover:bg-sunken">
         <span className="e24-eyebrow">Points</span>
         <span className="flex items-baseline gap-2">
           <span className="text-2xl font-bold text-ink">{total}</span>

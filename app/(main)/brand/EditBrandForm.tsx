@@ -9,7 +9,7 @@ import { HeightFields } from "@/app/components/HeightFields";
 
 const initialState: BrandState = {};
 const fieldClass =
-  "w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm outline-none focus:border-red-500";
+  "w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm outline-none focus:border-accent-edge";
 const labelClass = "mb-1 block text-xs font-medium text-muted";
 
 type EditableProfile = {
@@ -95,7 +95,7 @@ export function EditBrandForm({ profile }: { profile: EditableProfile }) {
           />
         </div>
 
-        {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {state.error && <p className="text-sm text-brand">{state.error}</p>}
 
         <Button type="submit" disabled={pending} className="self-start">
           {pending ? "Saving…" : "Save"}

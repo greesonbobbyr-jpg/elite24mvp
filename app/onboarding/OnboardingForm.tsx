@@ -9,7 +9,7 @@ const initialState: OnboardingState = {};
 // Same dark field treatment as login/signup — this is a kid's first screen and
 // should read as the same product.
 const inputClass =
-  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-red-500";
+  "w-full rounded-lg border border-field-line bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-accent-edge";
 const labelClass = "mb-1 block text-xs font-medium text-muted";
 
 export function OnboardingForm() {
@@ -23,7 +23,7 @@ export function OnboardingForm() {
       {/* The Dream — required */}
       <div>
         <label htmlFor="dream" className={labelClass}>
-          Your dream <span className="text-red-600">★</span>
+          Your dream <span className="text-brand">★</span>
         </label>
         <textarea
           id="dream"
@@ -34,7 +34,7 @@ export function OnboardingForm() {
           className={inputClass}
         />
         {state.error && (
-          <p className="mt-1 text-sm text-red-600">{state.error}</p>
+          <p className="mt-1 text-sm text-brand">{state.error}</p>
         )}
       </div>
 
@@ -102,7 +102,7 @@ export function OnboardingForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:opacity-60"
+        className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent transition hover:bg-accent-hover active:scale-[0.99] disabled:bg-raised-3 disabled:text-muted"
       >
         {pending ? "Saving…" : "Let's go"}
       </button>

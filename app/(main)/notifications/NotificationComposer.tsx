@@ -7,7 +7,7 @@ import { Button } from "@/app/components/ui/Button";
 
 const initialState: NotificationState = {};
 const fieldClass =
-  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500";
+  "w-full rounded-lg border border-field-line bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-accent-edge";
 
 // canSendTimeout: server-decided (matrix send_timeout — HEAD_COACH/ORG_ADMIN).
 // Staff without it never see the toggle; the server enforces it regardless.
@@ -27,8 +27,8 @@ export function NotificationComposer({
       action={formAction}
       className={`e24-surface flex flex-col gap-3 rounded-2xl border p-5 transition ${
         isTimeout
-          ? "border-red-500/70 shadow-[0_0_24px_rgba(220,38,38,0.35)]"
-          : "border-red-600/30"
+          ? "border-line shadow-[0_0_24px_rgba(220,38,38,0.35)]"
+          : "border-line"
       }`}
     >
       <h2 className="e24-eyebrow relative z-10">Post to your team</h2>
@@ -54,7 +54,7 @@ export function NotificationComposer({
           name="isTimeout"
           checked={isTimeout}
           onChange={(e) => setIsTimeout(e.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-red-600"
+          className="mt-0.5 h-4 w-4 accent-accent"
         />
         <span>
           <span className="inline-flex items-center gap-1.5 font-semibold text-brand">

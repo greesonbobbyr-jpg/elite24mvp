@@ -41,7 +41,7 @@ export function QuotedMessage({
         align === "right" ? "self-end" : "self-start"
       } ${removed ? "cursor-default" : "hover:opacity-90"}`}
     >
-      <div className="rounded-xl border border-ink/10 bg-field px-2.5 pb-3 pt-1">
+      <div className="rounded-xl border border-line bg-field px-2.5 pb-3 pt-1">
         <p className="truncate text-[10px] font-semibold text-ink-mid">
           {authorName}
         </p>

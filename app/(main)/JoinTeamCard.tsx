@@ -14,7 +14,7 @@ export function JoinTeamCard() {
   const [state, formAction, pending] = useActionState(joinTeamWithCode, initial);
 
   return (
-    <section className="e24-surface rounded-2xl border border-red-600/30 p-5">
+    <section className="e24-surface rounded-2xl p-5">
       <div className="relative z-10">
         <p className="e24-eyebrow">Join your team</p>
         <p className="mt-1 text-sm text-muted">
@@ -31,7 +31,7 @@ export function JoinTeamCard() {
               name="code"
               placeholder="TEAM CODE"
               autoCapitalize="characters"
-              className="w-36 rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm font-mono uppercase tracking-widest text-ink outline-none transition focus:border-red-500"
+              className="w-36 rounded-lg border border-field-line bg-field px-3 py-2 text-sm font-mono uppercase tracking-widest text-ink outline-none transition focus:border-accent-edge"
             />
             <Button type="submit" disabled={pending} size="sm">
               {pending ? "Joining…" : "Join"}

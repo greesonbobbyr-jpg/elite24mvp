@@ -5,7 +5,7 @@ import { setMyUsername, type UsernameState } from "./actions";
 
 const initialState: UsernameState = {};
 const field =
-  "w-full rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500";
+  "w-full rounded-lg border border-field-line bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-accent-edge";
 
 // The staffer's own login: their email always works; a username is optional
 // and lets them log in the same way players do.
@@ -46,7 +46,7 @@ export function LoginUsernameForm({
         <button
           type="submit"
           disabled={pending}
-          className="shrink-0 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-95 disabled:opacity-60"
+          className="shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition hover:bg-accent-hover active:scale-95 disabled:bg-raised-3 disabled:text-muted"
         >
           {pending ? "Saving…" : "Save"}
         </button>

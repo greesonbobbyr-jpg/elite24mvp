@@ -20,7 +20,7 @@ export function JournalWall({
 
   if (entries.length === 0) {
     return (
-      <section className="e24-surface rounded-2xl border border-red-600/30 p-6">
+      <section className="e24-surface rounded-2xl p-6">
         <div className="relative z-10">
           <p className="e24-eyebrow">Your Journal</p>
           <p className="mt-2 text-lg font-semibold text-ink">
@@ -38,7 +38,7 @@ export function JournalWall({
   const open = openId != null ? entries.find((e) => e.id === openId) : null;
   if (open) {
     return (
-      <section className="e24-reveal e24-surface rounded-2xl border border-red-600/30 p-6">
+      <section className="e24-reveal e24-surface rounded-2xl p-6">
         <div className="relative z-10">
           <button
             type="button"
@@ -70,8 +70,8 @@ export function JournalWall({
               onClick={() => setOpenId(entry.id)}
               className={`e24-surface flex h-full w-full flex-col rounded-2xl border p-3.5 text-left transition hover:-translate-y-0.5 active:scale-[0.98] ${
                 isToday
-                  ? "border-red-500/60 shadow-[0_0_18px_rgba(220,38,38,0.35)]"
-                  : "border-red-600/25 hover:border-red-500/40"
+                  ? "border-line shadow-[0_0_18px_rgba(220,38,38,0.35)]"
+                  : "border-line hover:border-accent-edge"
               }`}
             >
               <span className="relative z-10 flex items-center justify-between gap-2">
@@ -79,7 +79,7 @@ export function JournalWall({
                   {formatDayKey(entry.day)}
                 </span>
                 {isToday && (
-                  <span className="shrink-0 rounded-full bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                  <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-on-accent">
                     Today
                   </span>
                 )}

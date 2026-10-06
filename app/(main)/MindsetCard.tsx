@@ -4,7 +4,8 @@ import { useActionState, useEffect, useState } from "react";
 import { speaker } from "@/lib/speech";
 import { saveMindsetTakeaway, type TakeawayState } from "./actions";
 import { Button } from "@/app/components/ui/Button";
-import { cardAccent } from "@/app/components/ui/Card";
+import { cardAccent, stripAccent } from "@/app/components/ui/Card";
+import { fieldClass } from "@/app/components/ui/Field";
 
 const initialTakeaway: TakeawayState = {};
 
@@ -61,7 +62,7 @@ export function MindsetCard({
   // --- Collapsed teaser: slim one-line strip (title only, no spoilers) ---
   if (!expanded) {
     return (
-      <section className="rounded-xl border border-red-600/40 bg-gradient-to-r from-red-600/[0.08] to-panel transition hover:-translate-y-0.5 hover:border-red-500/60 active:scale-[0.99]">
+      <section className={`${stripAccent} transition hover:-translate-y-0.5 hover:border-accent-edge active:scale-[0.99]`}>
         <button
           type="button"
           onClick={() => setExpanded(true)}
@@ -76,7 +77,7 @@ export function MindsetCard({
             {title}
           </span>
           <span
-            className="shrink-0 text-lg text-brand/70 transition-transform group-hover:rotate-90"
+            className="shrink-0 text-lg text-brand transition-transform group-hover:rotate-90"
             aria-hidden
           >
             ▸
@@ -127,7 +128,7 @@ export function MindsetCard({
       </p>
 
       {/* Optional takeaway — a reflection only; it does not gate the check-in. */}
-      <form action={saveAction} className="mt-4 border-t border-ink/10 pt-4">
+      <form action={saveAction} className="mt-4 border-t border-line pt-4">
         <label htmlFor="mindset-takeaway" className="e24-eyebrow">
           What&apos;d you take from this?
         </label>
@@ -139,7 +140,7 @@ export function MindsetCard({
           value={takeaway}
           onChange={(e) => setTakeaway(e.target.value)}
           placeholder="A few words on what stuck with you…"
-          className="mt-1.5 w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40"
+          className={`${fieldClass} mt-1.5`}
         />
         {state.error && <p className="mt-1 text-sm text-brand">{state.error}</p>}
         <div className="mt-2 flex items-center gap-3">

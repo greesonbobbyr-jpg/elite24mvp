@@ -48,7 +48,7 @@ export async function CoachHome({
       </header>
 
       {/* TODAY */}
-      <section className="e24-surface rounded-2xl border border-red-600/25 p-5">
+      <section className="e24-surface rounded-2xl p-5">
         <div className="relative z-10 flex items-center gap-5">
           <svg viewBox="0 0 72 72" className="h-[72px] w-[72px] shrink-0">
             <circle
@@ -96,11 +96,11 @@ export async function CoachHome({
         {remaining > 0 && (
           <form
             action={sendCheckInReminder}
-            className="relative z-10 mt-4 flex flex-wrap items-center gap-3 border-t border-ink/10 pt-3"
+            className="relative z-10 mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-3"
           >
             <button
               type="submit"
-              className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-red-500 active:scale-95"
+              className="rounded-full bg-accent px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-hover active:scale-95"
             >
               Send check-in reminder
             </button>
@@ -109,7 +109,7 @@ export async function CoachHome({
                 <input
                   type="checkbox"
                   name="isTimeout"
-                  className="h-3.5 w-3.5 accent-red-600"
+                  className="h-3.5 w-3.5 accent-accent"
                 />
                 Send as TIME OUT (takes over their screen)
               </label>

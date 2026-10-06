@@ -103,7 +103,7 @@ export default async function BoardPage({
               <img
                 src={logoUrl}
                 alt={`${user.team.name} logo`}
-                className="h-14 w-14 shrink-0 rounded-xl bg-black object-contain p-1"
+                className="h-14 w-14 shrink-0 rounded-xl bg-frame object-contain p-1"
               />
             ) : null}
           </header>
@@ -114,7 +114,7 @@ export default async function BoardPage({
             className="min-h-0 flex-1 overflow-y-auto px-6 pb-2"
           >
             {messages.length === 0 ? (
-              <section className="e24-surface rounded-2xl border border-red-600/25 p-6">
+              <section className="e24-surface rounded-2xl p-6">
                 <div className="relative z-10">
                   <p className={kicker}>Team Circle</p>
                   <p className="mt-2 text-sm text-muted">
@@ -128,7 +128,7 @@ export default async function BoardPage({
                 <div className="pb-2 text-center">
                   <Link
                     href={`/board?limit=${limit + BOARD_PAGE_SIZE}`}
-                    className="inline-block rounded-full border border-ink/15 px-4 py-1.5 text-xs font-semibold text-muted transition hover:border-ink/30 hover:text-ink-soft"
+                    className="inline-block rounded-full border border-line-strong px-4 py-1.5 text-xs font-semibold text-muted transition hover:border-field-line hover:text-ink-soft"
                   >
                     Show earlier messages
                   </Link>
@@ -246,7 +246,7 @@ export default async function BoardPage({
                             {authorName}
                           </span>
                           {authorBadge && (
-                            <span className="rounded bg-red-600/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-2">
+                            <span className="rounded bg-accent px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-on-accent">
                               {authorBadge}
                             </span>
                           )}
@@ -302,7 +302,7 @@ export default async function BoardPage({
                                 src={gif.file}
                                 alt={gif.label}
                                 className={`mt-2 max-h-48 rounded-lg border ${
-                                  isMine ? "border-black/10" : "border-black/30"
+                                  isMine ? "border-line" : "border-on-accent"
                                 }`}
                               />
                             )}
@@ -342,7 +342,7 @@ export default async function BoardPage({
           </BoardScroller>
 
           {/* BOTTOM — pinned composer (always visible) */}
-          <div className="shrink-0 border-t border-red-600/20 bg-field px-6 py-3">
+          <div className="shrink-0 border-t border-line bg-panel px-6 py-3">
             <MessageComposer
               initialBody={spotlightDraft ?? undefined}
               initialType={spotlightDraft ? "SPOTLIGHT" : undefined}

@@ -6,73 +6,96 @@
    set server-side so the page never flashes the wrong mode).
 
    Every UI color is a named ROLE below: a light value on :root, and a dark
-   value that is exactly the original all-black design. Use the roles —
-   text-ink, text-muted, bg-panel, bg-field, border-line, bg-ink/5 … — never
-   raw white/black/zinc, so a new screen works in both modes for free.
-   (Raw red/green tints like bg-red-600/15 are fine: they read on both.)
+   value. Use the roles — text-ink, bg-panel, border-line, bg-accent … —
+   never raw palette colors (tests/theme-guard.test.ts enforces it).
+
+   THE DESIGN RULES (owner, 2026-10-06 — light mode looked unfinished):
+   1. One accent, the deep red-orange #D2361A, ALWAYS SOLID: a fill with white
+      text (bg-accent text-on-accent), an outline (border-accent-edge) or a
+      left bar. Never a see-through tint — those came out pink on white.
+   2. Selected = solid accent fill; unselected = white with a gray outline.
+   3. Every container has an edge: cards border-line on the canvas, rows
+      bg-sunken + border-line inside cards, fields border-field-line.
+   4. Status is solid too (bg-good-solid, border-warn-solid bars).
+   5. Same structure in both modes; dark keeps its look with the new accent.
 
    `.theme-dark` pins a region dark in either mode: the brand frame (header,
-   tab bars) and the TIME OUT takeover. Player Cards keep their own fixed
-   palette — they're the collectible object, dark in both modes. */
+   tab bars, ☰ menu) and the TIME OUT takeover. Player Cards keep their own
+   fixed palette — they're the collectible object, dark in both modes. */
 
 :root {
   color-scheme: light;
-  /* surfaces */
-  --canvas: #f4f4f5;
+  /* the accent — the same solid red-orange in both modes */
+  --accent: #d2361a;
+  --accent-hover: #b42c14;
+  --on-accent: #ffffff; /* text/icons on any solid colored fill */
+  --on-gold: #1a1204; /* text on the gold and amber fills */
+  /* fixed in both modes */
+  --frame: #000000; /* the always-black brand frame: header, tab bars, menu */
+  --scrim: rgb(0 0 0 / 0.8); /* behind a full-screen takeover */
+  --logo: #e1102a; /* the "24" in the Elite24MVP wordmark — a mark, not the accent */
+  /* surfaces: a light gray page, white cards with a visible edge */
+  --canvas: #eeeef1;
   --panel: #ffffff;
   --raised: #ffffff;
-  --raised-2: #e4e4e7;
-  --raised-3: #d4d4d8;
+  --raised-2: #e4e4e8;
+  --raised-3: #d4d4da;
+  --sunken: #f5f5f7; /* rows nested inside a card */
   --field: #ffffff;
   /* lines */
-  --line: #e4e4e7;
-  --line-strong: #d4d4d8;
-  --line-faint: #ececef;
+  --line: #d4d4da;
+  --line-strong: #b4b4bc;
+  --line-faint: #e4e4e8;
+  --field-line: #8e8e98; /* ≥3:1 on white (WCAG non-text contrast) */
+  --accent-edge: #d2361a; /* outline of a selected / accent-marked element */
   /* drop-shadow tint: soft on white, deep on black */
-  --shade: rgb(24 24 27 / 0.1);
+  --shade: rgb(24 24 27 / 0.12);
   /* text, strongest → faintest (all but "faint" pass WCAG AA on canvas) */
   --ink: #0b0b0d;
   --ink-soft: #27272a;
   --ink-mid: #3f3f46;
   --muted: #52525b;
-  --subtle: #63636b;
+  --subtle: #5f5f67;
   --faint: #a1a1aa;
   /* hint text in empty fields — clearly lighter than a typed value */
-  --placeholder: #a1a1aa;
-  /* brand + status text (darker than the dark-mode shades, for contrast) */
-  --brand: #c81e1e;
-  --brand-2: #a81a1a;
-  --brand-3: #991b1b;
+  --placeholder: #9a9aa3;
+  /* accent + status TEXT (a step darker than the fill, for contrast) */
+  --brand: #b8301a;
+  --brand-2: #9e2914;
+  --brand-3: #8a2311;
   --good: #15803d;
   --good-2: #166534;
+  --good-solid: #15803d; /* solid fills: done, read, add */
   --warn: #92400e;
+  --warn-solid: #d97706; /* solid bars: not checked in yet */
   --info: #1d4ed8;
   --gold: #8a6a0c;
   --gold-2: #7a5c05;
-  /* Team Circle bubbles: mine is the inverse of the page */
+  --gold-solid: #d4af37; /* progress bars, medal fills */
+  /* Team Circle bubbles: others' are solid accent, mine the inverse of the page */
   --bubble-mine: #18181b;
   --bubble-mine-ink: #ffffff;
-  --bubble-ink: #27272a;
-  --bubble-glow: rgba(255, 255, 255, 0.7);
-  --bubble-from: #fdeeee;
-  --bubble-mid: #fbe4e4;
-  --bubble-to: #f8dada;
-  --bubble-shadow: 0 4px 12px -8px rgba(127, 29, 29, 0.35);
-  --bubble-ring: rgba(220, 38, 38, 0.18);
-  --bubble-sheen: rgba(255, 255, 255, 0.35);
-  /* the .e24-surface material */
-  --surface-glow: rgba(220, 38, 38, 0.07);
+  --bubble-ink: #ffffff;
+  --bubble-glow: rgba(255, 255, 255, 0);
+  --bubble-from: #d2361a;
+  --bubble-mid: #c63218;
+  --bubble-to: #b42c14;
+  --bubble-shadow: 0 4px 12px -8px rgba(60, 14, 6, 0.45);
+  --bubble-ring: rgba(0, 0, 0, 0);
+  --bubble-sheen: rgba(255, 255, 255, 0.06);
+  /* the .e24-surface material: a white card with a solid edge */
+  --surface-glow: rgba(255, 255, 255, 0);
   --surface-from: #ffffff;
   --surface-to: #ffffff;
-  --surface-shadow: 0 8px 24px -14px rgba(24, 24, 27, 0.2);
-  --surface-ring: rgba(220, 38, 38, 0.14);
-  --surface-arc: rgba(220, 38, 38, 0.08);
-  --surface-arc-2: rgba(220, 38, 38, 0.05);
+  --surface-shadow: 0 1px 2px rgba(24, 24, 27, 0.06), 0 10px 24px -16px rgba(24, 24, 27, 0.22);
+  --surface-ring: #d4d4da;
+  --surface-arc: rgba(24, 24, 27, 0.05);
+  --surface-arc-2: rgba(24, 24, 27, 0.035);
   --surface-sheen: rgba(255, 255, 255, 0);
 }
 
-/* DARK values — the original design, 1:1, except --subtle (lifted to pass
-   WCAG AA). Two copies (pinned + phone setting); keep them identical. */
+/* DARK values — the original all-black design with the new accent. Two
+   copies (pinned + phone setting); keep them identical. */
 :root[data-theme="dark"],
 .theme-dark {
   color-scheme: dark;
@@ -81,10 +104,13 @@
   --raised: #18181b;
   --raised-2: #27272a;
   --raised-3: #3f3f46;
+  --sunken: #121214;
   --field: rgb(0 0 0 / 0.4);
   --line: #27272a;
   --line-strong: #3f3f46;
   --line-faint: #18181b;
+  --field-line: #4a1b10;
+  --accent-edge: #d2361a;
   --shade: rgb(0 0 0 / 0.4);
   --ink: #ffffff;
   --ink-soft: #e4e4e7;
@@ -93,32 +119,35 @@
   --subtle: #85858e; /* was zinc-500 (#71717a): 3.9–4.3:1 on black, below AA */
   --faint: #52525b;
   --placeholder: #71717a;
-  --brand: #ef4444;
-  --brand-2: #f87171;
-  --brand-3: #fca5a5;
+  --brand: #ff6e4a;
+  --brand-2: #ff8a6b;
+  --brand-3: #ffb4a0;
   --good: #4ade80;
   --good-2: #86efac;
+  --good-solid: #15803d;
   --warn: #fbbf24;
+  --warn-solid: #f59e0b;
   --info: #93c5fd;
   --gold: #e8c766;
   --gold-2: #d4af37;
+  --gold-solid: #d4af37;
   --bubble-mine: #ffffff;
   --bubble-mine-ink: #18181b;
   --bubble-ink: #ffffff;
-  --bubble-glow: rgba(248, 113, 113, 0.35);
-  --bubble-from: #b91c1c;
-  --bubble-mid: #7f1d1d;
-  --bubble-to: #450a0a;
+  --bubble-glow: rgba(255, 120, 90, 0.3);
+  --bubble-from: #c03117;
+  --bubble-mid: #7a1f0f;
+  --bubble-to: #3f0f07;
   --bubble-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.6);
   --bubble-ring: rgba(255, 255, 255, 0.08);
   --bubble-sheen: rgba(255, 255, 255, 0.1);
-  --surface-glow: rgba(220, 38, 38, 0.2);
-  --surface-from: #1a0a0c;
+  --surface-glow: rgba(210, 54, 26, 0.2);
+  --surface-from: #1a0b08;
   --surface-to: #0a0a0a;
   --surface-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7);
-  --surface-ring: rgba(220, 38, 38, 0.12);
-  --surface-arc: rgba(220, 38, 38, 0.12);
-  --surface-arc-2: rgba(220, 38, 38, 0.08);
+  --surface-ring: #3a140c;
+  --surface-arc: rgba(210, 54, 26, 0.12);
+  --surface-arc-2: rgba(210, 54, 26, 0.08);
   --surface-sheen: rgba(255, 255, 255, 0.06);
 }
 
@@ -130,10 +159,13 @@
     --raised: #18181b;
     --raised-2: #27272a;
     --raised-3: #3f3f46;
+    --sunken: #121214;
     --field: rgb(0 0 0 / 0.4);
     --line: #27272a;
     --line-strong: #3f3f46;
     --line-faint: #18181b;
+    --field-line: #4a1b10;
+    --accent-edge: #d2361a;
     --shade: rgb(0 0 0 / 0.4);
     --ink: #ffffff;
     --ink-soft: #e4e4e7;
@@ -142,32 +174,35 @@
     --subtle: #85858e;
     --faint: #52525b;
     --placeholder: #71717a;
-    --brand: #ef4444;
-    --brand-2: #f87171;
-    --brand-3: #fca5a5;
+    --brand: #ff6e4a;
+    --brand-2: #ff8a6b;
+    --brand-3: #ffb4a0;
     --good: #4ade80;
     --good-2: #86efac;
+    --good-solid: #15803d;
     --warn: #fbbf24;
+    --warn-solid: #f59e0b;
     --info: #93c5fd;
     --gold: #e8c766;
     --gold-2: #d4af37;
+    --gold-solid: #d4af37;
     --bubble-mine: #ffffff;
     --bubble-mine-ink: #18181b;
     --bubble-ink: #ffffff;
-    --bubble-glow: rgba(248, 113, 113, 0.35);
-    --bubble-from: #b91c1c;
-    --bubble-mid: #7f1d1d;
-    --bubble-to: #450a0a;
+    --bubble-glow: rgba(255, 120, 90, 0.3);
+    --bubble-from: #c03117;
+    --bubble-mid: #7a1f0f;
+    --bubble-to: #3f0f07;
     --bubble-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.6);
     --bubble-ring: rgba(255, 255, 255, 0.08);
     --bubble-sheen: rgba(255, 255, 255, 0.1);
-    --surface-glow: rgba(220, 38, 38, 0.2);
-    --surface-from: #1a0a0c;
+    --surface-glow: rgba(210, 54, 26, 0.2);
+    --surface-from: #1a0b08;
     --surface-to: #0a0a0a;
     --surface-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7);
-    --surface-ring: rgba(220, 38, 38, 0.12);
-    --surface-arc: rgba(220, 38, 38, 0.12);
-    --surface-arc-2: rgba(220, 38, 38, 0.08);
+    --surface-ring: #3a140c;
+    --surface-arc: rgba(210, 54, 26, 0.12);
+    --surface-arc-2: rgba(210, 54, 26, 0.08);
     --surface-sheen: rgba(255, 255, 255, 0.06);
   }
 }
@@ -175,15 +210,25 @@
 /* The roles as Tailwind colors (`inline`, so a .theme-dark region's values
    apply to everything inside it). */
 @theme inline {
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-on-gold: var(--on-gold);
+  --color-frame: var(--frame);
+  --color-scrim: var(--scrim);
+  --color-logo: var(--logo);
+  --color-accent-edge: var(--accent-edge);
   --color-canvas: var(--canvas);
   --color-panel: var(--panel);
   --color-raised: var(--raised);
   --color-raised-2: var(--raised-2);
   --color-raised-3: var(--raised-3);
+  --color-sunken: var(--sunken);
   --color-field: var(--field);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-line-faint: var(--line-faint);
+  --color-field-line: var(--field-line);
   --color-shade: var(--shade);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
@@ -196,10 +241,13 @@
   --color-brand-3: var(--brand-3);
   --color-good: var(--good);
   --color-good-2: var(--good-2);
+  --color-good-solid: var(--good-solid);
   --color-warn: var(--warn);
+  --color-warn-solid: var(--warn-solid);
   --color-info: var(--info);
   --color-gold: var(--gold);
   --color-gold-2: var(--gold-2);
+  --color-gold-solid: var(--gold-solid);
   --color-bubble-mine: var(--bubble-mine);
   --color-bubble-mine-ink: var(--bubble-mine-ink);
   --color-bubble-ink: var(--bubble-ink);
@@ -236,29 +284,30 @@ body {
   animation: e24-reveal 180ms ease-out both;
 }
 
-/* Brief red highlight when you jump from a reply to the original message. */
+/* Brief accent highlight when you jump from a reply to the original message. */
 @keyframes msg-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 0 rgb(210 54 26 / 0);
   }
   15% {
     box-shadow:
-      0 0 0 3px rgba(239, 68, 68, 0.75),
-      0 0 20px rgba(239, 68, 68, 0.55);
+      0 0 0 3px rgb(210 54 26 / 0.85),
+      0 0 20px rgb(210 54 26 / 0.5);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 0 rgb(210 54 26 / 0);
   }
 }
 .msg-pulse {
   animation: msg-pulse 1.2s ease-out 2;
 }
 
-/* --- The "material": the app's premium brand surface (CLAUDE.md §9). A
-   diagonal red-tinted-black gradient + an ambient red glow, faint concentric
-   court arcs in the corner, a soft diagonal sheen, and a layered shadow. Apply
-   to a rounded element; put real content in a `relative z-10` layer so it sits
-   above the decorative pseudo-elements. Reused via the Card `material` variant. */
+/* --- The "material": the app's premium brand surface (CLAUDE.md §9). Dark:
+   a diagonal red-tinted-black gradient + an ambient accent glow. Light: a
+   clean white card. Both: a solid 1px edge (inset ring — no border class
+   needed), faint concentric court arcs in the corner and a layered shadow.
+   Apply to a rounded element; put real content in a `relative z-10` layer so
+   it sits above the decorative pseudo-elements. Reused via Card `material`. */
 .e24-surface {
   position: relative;
   overflow: hidden;
@@ -292,12 +341,10 @@ body {
   pointer-events: none;
 }
 
-/* Chat-bubble material: a compact cousin of .e24-surface for OTHER people's
-   messages (text in text-bubble-ink). Dark mode: a vivid red→black diagonal
-   gradient with a soft top-left glow, a thin light inset ring and a diagonal
-   sheen; the lighter red end keeps white text legible. Light mode: a soft red
-   tint with dark text (all-red would shout on a white page). No court-arc
-   rings (too busy at bubble scale). Content sits in a `relative z-10` layer. */
+/* Chat-bubble material for OTHER people's messages (text in text-bubble-ink):
+   the solid accent in both modes (owner, 2026-10-06). Dark adds a red→black
+   diagonal with a soft glow and a thin light ring; light is a nearly flat
+   accent so white text stays crisp. Content sits in a `relative z-10` layer. */
 .e24-bubble {
   position: relative;
   overflow: hidden;
@@ -316,7 +363,7 @@ body {
   pointer-events: none;
 }
 
-/* Bold uppercase red eyebrow label — the brand's section kicker. */
+/* Bold uppercase accent eyebrow label — the brand's section kicker. */
 .e24-eyebrow {
   font-size: 0.7rem;
   line-height: 1rem;

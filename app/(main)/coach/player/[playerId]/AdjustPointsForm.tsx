@@ -28,7 +28,7 @@ export function AdjustPointsForm({ playerId }: { playerId: number }) {
   // to the amount box, pushing it off the right edge of the card — invisible on
   // a phone, so a coach couldn't type the reason a removal requires.)
   const field =
-    "rounded-lg border border-red-600/25 bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-red-500";
+    "rounded-lg border border-field-line bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-accent-edge";
   const label =
     "mb-1 block text-[10px] font-bold uppercase tracking-wide text-subtle";
 
@@ -48,8 +48,8 @@ export function AdjustPointsForm({ playerId }: { playerId: number }) {
               direction === d
                 ? d === "add"
                   ? "border-green-500 bg-green-600/20 text-good-2"
-                  : "border-red-500 bg-red-600/20 text-brand-3"
-                : "border-ink/15 text-muted hover:border-ink/30"
+                  : "border-accent-edge bg-red-600/20 text-brand-3"
+                : "border-line-strong text-muted hover:border-field-line"
             }`}
           >
             {d === "add" ? "Add" : "Remove"}

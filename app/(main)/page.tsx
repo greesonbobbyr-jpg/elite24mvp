@@ -20,6 +20,7 @@ import { ReviewCard } from "./ReviewCard";
 import { CoachHome } from "./CoachHome";
 import { JoinTeamCard } from "./JoinTeamCard";
 import { Card } from "@/app/components/ui/Card";
+import { chipClass } from "@/app/components/ui/Pill";
 
 export default async function Home() {
   const ctx = await getCurrentContext();
@@ -83,10 +84,7 @@ export default async function Home() {
       {/* The Dream — the material hero */}
       {profile?.dream && (
         <Card variant="material">
-          <span
-            aria-hidden
-            className="absolute inset-y-0 left-0 w-1.5 bg-red-600 shadow-[0_0_12px_rgba(220,38,38,0.8)]"
-          />
+          <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-accent" />
           <div className="relative z-10">
             <h2 className="e24-eyebrow">My Dream</h2>
             <p className="mt-1 text-xl font-bold leading-snug text-ink">
@@ -98,7 +96,7 @@ export default async function Home() {
 
       {/* Progress strip — streak · tier · rank at a glance */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center">
+        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center shadow-sm shadow-shade">
           <p className="text-lg font-black leading-none text-ink">
             🔥 {streak}
             {shieldReady && streak > 0 && (
@@ -109,7 +107,7 @@ export default async function Home() {
             Day streak
           </p>
         </div>
-        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center">
+        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center shadow-sm shadow-shade">
           <p className="text-lg font-black uppercase leading-none text-ink">
             {tier.label}
           </p>
@@ -117,7 +115,7 @@ export default async function Home() {
             {nextTier ? `${nextTier.min - points} pts to ${nextTier.label}` : "Top tier"}
           </p>
         </div>
-        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center">
+        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center shadow-sm shadow-shade">
           <p className="text-lg font-black leading-none text-ink">
             {myRank > 0 ? `#${myRank}` : "—"}
           </p>
@@ -128,11 +126,11 @@ export default async function Home() {
       </div>
 
       {/* Daily check-in (the core loop) — the main act */}
-      <Card className="bg-gradient-to-b from-raised/60 to-panel shadow-lg shadow-shade">
+      <Card className="shadow-md">
         <h2 className="text-lg font-semibold">What will you work on today?</h2>
         {todaysEntry ? (
           <div className="mt-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/15 px-3 py-1 text-xs font-semibold text-brand-2">
+            <span className={chipClass("good")}>
               ✓ Checked in today · +{POINTS_PER_CHECKIN}
             </span>
             <p className="mt-3 whitespace-pre-wrap text-sm text-ink-soft">
@@ -162,7 +160,7 @@ export default async function Home() {
           savedTakeaway={takeaway?.text ?? ""}
         />
       ) : (
-        <section className="rounded-xl border border-line bg-canvas/60">
+        <section className="rounded-xl border border-dashed border-line-strong bg-sunken">
           <div className="flex w-full items-center gap-3 px-4 py-3">
             <span aria-hidden className="shrink-0 text-base">
               🔒

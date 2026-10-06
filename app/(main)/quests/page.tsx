@@ -90,7 +90,7 @@ export default async function QuestsPage() {
         </div>
         <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-raised-2">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-[#d4af37] to-[#e8c766] transition-[width]"
+            className="h-full rounded-full bg-gold-solid transition-[width]"
             style={{ width: `${tierPct}%` }}
           />
         </div>
@@ -107,7 +107,7 @@ export default async function QuestsPage() {
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-raised-2">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-red-500 to-red-600 transition-[width]"
+              className="h-full rounded-full bg-accent transition-[width]"
               style={{ width: `${pct}%` }}
             />
           </div>

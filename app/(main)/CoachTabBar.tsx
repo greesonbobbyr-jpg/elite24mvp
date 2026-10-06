@@ -52,7 +52,7 @@ export function CoachTabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="theme-dark fixed inset-x-0 bottom-0 z-40 border-t border-red-600/25 bg-gradient-to-b from-zinc-950 to-black pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.5)]"
+      className="theme-dark fixed inset-x-0 bottom-0 z-40 border-t border-line bg-gradient-to-b from-canvas to-frame pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.5)]"
     >
       <ul className="mx-auto flex max-w-xl">
         {TABS.map(({ href, label, Icon }) => {
@@ -69,7 +69,7 @@ export function CoachTabBar() {
                 {active && (
                   <span
                     aria-hidden
-                    className="absolute top-0 h-0.5 w-8 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]"
+                    className="absolute top-0 h-0.5 w-8 rounded-full bg-accent shadow-[0_0_8px_var(--accent)]"
                   />
                 )}
                 <Icon className="h-6 w-6" />

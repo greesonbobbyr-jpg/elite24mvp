@@ -34,7 +34,7 @@ export function QuestCountForm({
           onChange={(e) => setValue(e.target.value.replace(/[^0-9]/g, ""))}
           placeholder="?"
           aria-label={`How many made out of ${targetCount}`}
-          className="w-16 rounded-lg border border-line-strong bg-raised px-2 py-1.5 text-center text-sm text-ink outline-none transition focus:border-red-500"
+          className="w-16 rounded-lg border border-line-strong bg-raised px-2 py-1.5 text-center text-sm text-ink outline-none transition focus:border-accent-edge"
         />
         <span className="text-xs text-subtle">/ {targetCount}</span>
         <button
@@ -42,7 +42,7 @@ export function QuestCountForm({
           type="submit"
           disabled={value === ""}
           onClick={() => value !== "" && celebrate(ref.current, points)}
-          className="rounded-lg bg-gradient-to-b from-red-500 to-red-700 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-md shadow-red-900/40 transition hover:from-red-500 hover:to-red-600 active:scale-[0.97] disabled:opacity-50"
+          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-on-accent shadow-md shadow-shade transition hover:bg-accent-hover active:scale-[0.97] disabled:bg-raised-3 disabled:text-muted disabled:shadow-none"
         >
           Done +{points}
         </button>

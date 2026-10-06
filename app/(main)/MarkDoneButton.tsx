@@ -25,7 +25,7 @@ export function MarkDoneButton({
         ref={ref}
         type="submit"
         onClick={() => celebrate(ref.current, points)}
-        className="flex h-12 w-24 flex-col items-center justify-center rounded-xl bg-gradient-to-b from-red-500 to-red-700 text-white shadow-md shadow-red-900/40 transition hover:from-red-500 hover:to-red-600 active:scale-[0.97]"
+        className="flex h-12 w-24 flex-col items-center justify-center rounded-xl bg-accent text-on-accent shadow-md shadow-shade transition hover:bg-accent-hover active:scale-[0.97]"
       >
         <span className="text-xs font-bold uppercase tracking-wide leading-none">
           Mark done

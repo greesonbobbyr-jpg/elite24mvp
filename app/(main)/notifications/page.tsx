@@ -61,8 +61,8 @@ export default async function NotificationsPage() {
                 key={n.id}
                 className={`e24-surface rounded-2xl border p-5 ${
                   n.isTimeout
-                    ? "border-red-500/60 shadow-[0_0_22px_rgba(220,38,38,0.3)]"
-                    : "border-red-600/25"
+                    ? "border-line shadow-[0_0_22px_rgba(220,38,38,0.3)]"
+                    : "border-line"
                 }`}
               >
                 <div className="relative z-10">
@@ -80,7 +80,7 @@ export default async function NotificationsPage() {
                   </p>
 
                   {/* Per-message read receipt */}
-                  <div className="mt-4 border-t border-ink/10 pt-3">
+                  <div className="mt-4 border-t border-line pt-3">
                     <div className="flex items-center justify-between gap-3">
                       <p className="e24-eyebrow">
                         Read by {n.readCount} of {n.totalPlayers}
@@ -148,15 +148,15 @@ export default async function NotificationsPage() {
                   key={n.id}
                   className={`e24-surface overflow-hidden rounded-2xl border ${
                     n.isTimeout
-                      ? "border-red-500/70 shadow-[0_0_24px_rgba(220,38,38,0.4)]"
-                      : "border-red-600/30"
+                      ? "border-line shadow-[0_0_24px_rgba(220,38,38,0.4)]"
+                      : "border-line"
                   }`}
                 >
                   {/* red left accent bar */}
                   <div className="flex">
                     <div
                       className={`w-1 shrink-0 ${
-                        n.isTimeout ? "bg-red-500" : "bg-red-600"
+                        n.isTimeout ? "bg-accent" : "bg-accent"
                       }`}
                     />
                     <div
@@ -183,7 +183,7 @@ export default async function NotificationsPage() {
                           </p>
                         </div>
                         <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+                          className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent shadow-[0_0_8px_rgba(239,68,68,0.8)]"
                           aria-label="Unread"
                         />
                       </div>
@@ -221,7 +221,7 @@ export default async function NotificationsPage() {
                 {read.map((n) => (
                   <li
                     key={n.id}
-                    className="flex items-center gap-2.5 rounded-xl border border-ink/5 bg-ink/[0.02] px-3 py-2.5"
+                    className="flex items-center gap-2.5 rounded-xl border border-line bg-sunken px-3 py-2.5"
                   >
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600/20 text-[11px] font-bold text-good">
                       ✓
@@ -249,7 +249,7 @@ export default async function NotificationsPage() {
 // A material empty-state card.
 function EmptyCard({ line }: { line: string }) {
   return (
-    <section className="e24-surface rounded-2xl border border-red-600/25 p-6">
+    <section className="e24-surface rounded-2xl p-6">
       <div className="relative z-10">
         <p className="e24-eyebrow">Notifications</p>
         <p className="mt-2 text-sm text-muted">{line}</p>
@@ -271,7 +271,7 @@ function ReceiptGroup({
   const chip =
     tone === "read"
       ? "bg-green-600/15 text-good-2 ring-1 ring-green-500/30"
-      : "bg-ink/5 text-muted ring-1 ring-ink/10";
+      : "bg-sunken text-muted ring-1 ring-line";
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">
@@ -301,7 +301,7 @@ function ReceiptGroup({
 // Small red badge marking a notification as an urgent TIME OUT.
 function TimeoutBadge() {
   return (
-    <span className="mr-2 inline-flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-white">
+    <span className="mr-2 inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-on-accent">
       <WhistleIcon className="h-3 w-3" />
       Time Out
     </span>

@@ -102,13 +102,13 @@ export default async function CoachPlayerPage({
       <section>
         <p className="e24-eyebrow mb-2">Today&apos;s Mindset takeaway</p>
         {view.mindsetTakeaway ? (
-          <div className="e24-surface rounded-2xl border border-red-600/25 p-4">
+          <div className="e24-surface rounded-2xl p-4">
             <p className="relative z-10 whitespace-pre-wrap text-sm text-ink">
               {view.mindsetTakeaway}
             </p>
           </div>
         ) : (
-          <p className="rounded-xl border border-ink/5 bg-ink/[0.02] px-4 py-3 text-sm text-subtle">
+          <p className="rounded-xl border border-line bg-sunken px-4 py-3 text-sm text-subtle">
             Not written yet
           </p>
         )}
@@ -126,7 +126,7 @@ export default async function CoachPlayerPage({
       </section>
 
       {/* Points */}
-      <section className="e24-surface rounded-2xl border border-red-600/25 p-5">
+      <section className="e24-surface rounded-2xl p-5">
         <div className="relative z-10">
           <p className="e24-eyebrow">Points</p>
           <p className="mt-1 text-4xl font-black tabular-nums text-ink">
@@ -142,7 +142,7 @@ export default async function CoachPlayerPage({
 
 function Chip({ label, value }: { label: string; value: string }) {
   return (
-    <span className="rounded-lg border border-ink/10 bg-field px-2.5 py-1 text-xs">
+    <span className="rounded-lg border border-line bg-field px-2.5 py-1 text-xs">
       <span className="text-subtle">{label} </span>
       <span className="font-semibold text-ink">{value}</span>
     </span>
@@ -151,7 +151,7 @@ function Chip({ label, value }: { label: string; value: string }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-ink/10 bg-field px-3 py-3 text-center">
+    <div className="rounded-xl border border-line bg-field px-3 py-3 text-center">
       <div className="text-lg font-black tabular-nums text-ink">{value}</div>
       <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-subtle">
         {label}

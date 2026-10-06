@@ -227,8 +227,15 @@ function ring(plate: Buffer): { pixels: Buffer; size: number } {
   return { pixels: out, size };
 }
 
+/** The frame's alpha from a pixel's brightness: the plate's dark backdrop
+ * (≤ FRAME_CLEAR) is fully transparent, the metal (≥ FRAME_SOLID) opaque.
+ * A softer fade left the backdrop 20–45% opaque — invisible on black, a gray
+ * box around every row on a light page (owner, 2026-10-06). */
+const FRAME_CLEAR = 40;
+const FRAME_SOLID = 90;
+
 /** The rows' mini frame, as a 3×3 nine-slice (RGBA): the plate's corner, top
- * rail and left rail, mirrored for the other sides. Dark pixels fade to
+ * rail and left rail, mirrored for the other sides. Dark pixels are
  * transparent, so only the frame's lines sit over the row. */
 function frame(plate: Buffer): { pixels: Buffer; size: number; cell: number } {
   const cell = Math.round(FRAME_CELLS.size * UNIT);
@@ -250,7 +257,8 @@ function frame(plate: Buffer): { pixels: Buffer; size: number; cell: number } {
         out[o] = Math.round(rgb[0]);
         out[o + 1] = Math.round(rgb[1]);
         out[o + 2] = Math.round(rgb[2]);
-        out[o + 3] = Math.round(Math.min(1, (brightness(rgb[0], rgb[1], rgb[2]) / 255) * 3) * 255);
+        const lit = (brightness(rgb[0], rgb[1], rgb[2]) - FRAME_CLEAR) / (FRAME_SOLID - FRAME_CLEAR);
+        out[o + 3] = Math.round(Math.max(0, Math.min(1, lit)) * 255);
       }
     }
   }

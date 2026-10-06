@@ -82,7 +82,7 @@ export default async function MainLayout({
           the padded box. */}
       {/* theme-dark: the header is the brand frame — black in both modes
           (and the installed iPhone app's status-bar text is always white). */}
-      <header className="theme-dark border-b border-line-faint bg-black px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
+      <header className="theme-dark border-b border-line-faint bg-frame px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
         <div className="relative flex items-center justify-between">
           {/* left: player/coach identity avatar (photo or initials). Profile
               fields come from the permanent Profile since 4b (careerPoints ==
@@ -123,7 +123,7 @@ export default async function MainLayout({
               letterSpacing: "-0.01em",
             }}
           >
-            Elite<span style={{ color: "#e1102a" }}>24</span>MVP
+            Elite<span className="text-logo">24</span>MVP
           </div>
           {/* right: hamburger menu */}
           {user ? <NavMenu links={links} loginName={user.username ?? user.email} /> : <span />}

@@ -74,17 +74,15 @@ export function QuestList({
             key={quest.id}
             className={`rounded-xl border p-4 transition ${
               completed
-                ? "border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-canvas"
-                : "border-line bg-panel"
+                ? "border-gold-solid bg-panel shadow-sm shadow-shade"
+                : "border-line bg-panel shadow-sm shadow-shade"
             }`}
           >
             <div className="flex items-start gap-3">
               {/* icon square */}
               <span
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ring-1 ${
-                  completed
-                    ? "bg-[#d4af37]/15 text-gold-2 ring-[#d4af37]/40"
-                    : "bg-red-600/15 text-brand ring-red-600/30"
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
+                  completed ? "bg-gold-solid text-on-gold" : "bg-accent text-on-accent"
                 }`}
               >
                 {completed ? (
@@ -119,9 +117,9 @@ export function QuestList({
                     type="submit"
                     title="Tap to undo"
                     aria-label={`Undo ${quest.title}`}
-                    className="relative flex h-12 w-24 flex-col items-center justify-center rounded-xl border border-[#d4af37]/40 bg-[#d4af37]/15 text-gold shadow-[0_0_12px_rgba(212,175,55,0.5)] transition hover:bg-[#d4af37]/25 active:scale-[0.97]"
+                    className="relative flex h-12 w-24 flex-col items-center justify-center rounded-xl bg-gold-solid text-on-gold shadow-sm shadow-shade transition hover:brightness-95 active:scale-[0.97]"
                   >
-                    <IconUndo className="absolute right-1.5 top-1.5 h-3 w-3 text-gold-2/70" />
+                    <IconUndo className="absolute right-1.5 top-1.5 h-3 w-3 text-on-gold" />
                     <span className="text-xs font-bold uppercase tracking-wide leading-none">
                       Done
                     </span>

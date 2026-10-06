@@ -118,12 +118,12 @@ export function PdfViewer({ src }: { src: string }) {
             value={pageInput}
             onChange={(e) => setPageInput(e.target.value)}
             placeholder="1"
-            className="w-16 rounded border border-line-strong bg-raised px-2 py-1 text-ink outline-none focus:border-red-500"
+            className="w-16 rounded border border-line-strong bg-raised px-2 py-1 text-ink outline-none focus:border-accent-edge"
           />
           <span className="text-subtle">of {numPages}</span>
           <button
             type="submit"
-            className="rounded-full bg-red-600 px-3 py-1 font-semibold text-white hover:bg-red-700"
+            className="rounded-full bg-accent px-3 py-1 font-semibold text-on-accent hover:bg-accent-hover"
           >
             Go
           </button>
