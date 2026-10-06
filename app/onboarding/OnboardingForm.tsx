@@ -3,14 +3,13 @@
 import { useActionState } from "react";
 import { completeOnboarding, type OnboardingState } from "./actions";
 import { HeightFields } from "@/app/components/HeightFields";
+import { fieldBase, labelClass } from "@/app/components/ui/Field";
 
 const initialState: OnboardingState = {};
 
 // Same dark field treatment as login/signup — this is a kid's first screen and
 // should read as the same product.
-const inputClass =
-  "w-full rounded-lg border border-field-line bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-accent-edge";
-const labelClass = "mb-1 block text-xs font-medium text-muted";
+const inputClass = `${fieldBase} w-full px-3 py-2.5 text-sm`;
 
 export function OnboardingForm() {
   const [state, formAction, pending] = useActionState(

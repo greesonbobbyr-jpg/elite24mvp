@@ -68,10 +68,8 @@ export function JournalWall({
             <button
               type="button"
               onClick={() => setOpenId(entry.id)}
-              className={`e24-surface flex h-full w-full flex-col rounded-2xl border p-3.5 text-left transition hover:-translate-y-0.5 active:scale-[0.98] ${
-                isToday
-                  ? "border-line shadow-[0_0_18px_rgba(220,38,38,0.35)]"
-                  : "border-line hover:border-accent-edge"
+              className={`e24-surface flex h-full w-full flex-col rounded-2xl p-3.5 text-left transition hover:-translate-y-0.5 active:scale-[0.98] ${
+                isToday ? "border-2 border-accent-edge" : ""
               }`}
             >
               <span className="relative z-10 flex items-center justify-between gap-2">

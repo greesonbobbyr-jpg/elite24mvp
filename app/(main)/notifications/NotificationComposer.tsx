@@ -4,10 +4,9 @@ import { useActionState, useState } from "react";
 import { postNotification, type NotificationState } from "../actions";
 import { WhistleIcon } from "@/app/components/WhistleIcon";
 import { Button } from "@/app/components/ui/Button";
+import { fieldClass } from "@/app/components/ui/Field";
 
 const initialState: NotificationState = {};
-const fieldClass =
-  "w-full rounded-lg border border-field-line bg-field px-3 py-2 text-sm text-ink outline-none transition focus:border-accent-edge";
 
 // canSendTimeout: server-decided (matrix send_timeout — HEAD_COACH/ORG_ADMIN).
 // Staff without it never see the toggle; the server enforces it regardless.
@@ -25,10 +24,8 @@ export function NotificationComposer({
   return (
     <form
       action={formAction}
-      className={`e24-surface flex flex-col gap-3 rounded-2xl border p-5 transition ${
-        isTimeout
-          ? "border-line shadow-[0_0_24px_rgba(220,38,38,0.35)]"
-          : "border-line"
+      className={`e24-surface flex flex-col gap-3 rounded-2xl p-5 transition ${
+        isTimeout ? "border-2 border-accent-edge" : ""
       }`}
     >
       <h2 className="e24-eyebrow relative z-10">Post to your team</h2>

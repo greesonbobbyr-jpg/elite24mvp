@@ -74,7 +74,8 @@ Everything else in the app is secondary to this loop working smoothly across mul
 - **State/data:** Server components + server actions / route handlers where natural. Avoid unnecessary client-side complexity.
 - **Conventions:** Clear file and variable names over cleverness. Small, focused components. Comment the *why* when something isn't obvious. No dead code, no unused deferred-feature stubs left lying around.
 - **One repo, one command to run:** `npm run dev` should start everything. Document any other command in the README.
-- **Colors:** use the named color roles in `app/globals.css` (`text-ink`, `text-muted`, `bg-panel`, `bg-field`, `border-line`, `bg-ink/5` …), never raw white/black/zinc classes, so every screen works in light and dark mode. `npx tsx scripts/check-pages.ts --contrast` checks every page's text contrast in both modes.
+- **Colors and UI pieces:** build screens from the shared pieces in `app/components/ui/` (`Button`, `Card` + `cardAccent`/`rowNested`/`rowOnPage`, `Field` (`fieldClass`), `Pill` (`pillClass`, `chipClass`, `iconTile`), `Banner`) and the named color roles in `app/globals.css` (`bg-accent`, `text-on-accent`, `text-ink`, `bg-panel`, `bg-sunken`, `border-line`, `border-field-line` …). Never raw palette classes (`bg-red-600`, `text-white`, `border-zinc-800`), never an opacity on the accent or on an edge, never a hard-coded color — `tests/theme-guard.test.ts` fails the build on them. The dev-only `/style-guide` page shows every piece in both modes.
+- **Checks on any UI change:** `npm test` (theme guard), `npx tsx scripts/check-pages.ts --contrast` (text contrast, both modes), `--outlines` (every card, row and field has a visible edge in light mode), and `npx tsx scripts/shoot-style-guide.ts` (the style guide still matches its approved look; `--update` only after the owner approves a new look). If a token change doesn't show up in the browser, restart the dev server (Turbopack sometimes misses edits to `globals.css`).
 
 ---
 
@@ -105,7 +106,15 @@ If the owner asks for any of these later, treat it as a new project phase with i
 
 ## 9. Branding & Visual Identity
 
-- **Colors:** The accent is a bold **red / orange-red** in both modes. The app has **light and dark mode**: it follows the phone's setting by default, and the ☰ menu's Appearance switch (Auto / Light / Dark) can pin either. Dark mode is the original design (black base, white text); light mode is an off-white page with near-black text. The **brand frame stays black in both modes** — the top header bar and the bottom tab bars — and so do **Player Cards** (the collectible object) and the **TIME OUT** takeover. (Owner decision, 2026-09-26.)
+- **Colors:** The accent is a deep, solid **red-orange, `#D2361A`**, the same in both modes (owner, 2026-10-06). The app has **light and dark mode**: it follows the phone's setting by default, and the ☰ menu's Appearance switch (Auto / Light / Dark) can pin either. Dark mode is the original design (black base, white text); light mode is an off-white page with near-black text. The **brand frame stays black in both modes** — the top header bar and the bottom tab bars — and so do **Player Cards** (the collectible object) and the **TIME OUT** takeover. (Owner decision, 2026-09-26.)
+- **Light & dark design rules** (owner, 2026-10-06 — light mode had looked unfinished: missing outlines, a see-through pinkish accent). These are enforced by the theme guard and the outline check (§6):
+  1. **One accent, always solid.** A fill with white text, a solid outline, or a solid bar — never a see-through tint (tints come out pink on white). Accent *text* uses `text-brand`, a darker shade on light and a lighter one on dark, for contrast.
+  2. **Selected means solid:** selected tabs, pills and toggles are a solid accent fill; unselected ones are white with a gray outline.
+  3. **Every container has an edge:** cards are white on the gray page with a visible border, rows inside a card sit on `bg-sunken` with their own border, and fields have an outline of at least 3:1.
+  4. **Accent-marked cards** (My Dream, Pro Review, alerts) get a solid accent bar down the left edge, not a wash or glow.
+  5. **Status is solid too:** good/warn as solid chips or a solid left bar on a white card, with dark text.
+  6. **Same structure in both modes;** dark keeps its all-black look with the same accent. Team Circle: other people's messages are solid accent bubbles in both modes; your own stay the inverse of the page.
+  The Elite24MVP wordmark keeps its own red (`text-logo`): it's the mark, not the accent.
 - **Master logo:** the **"E24 / MVP"** basketball mark (Elite 24, "Most Valuable Process").
 - **Tagline:** "Most Valuable Process."
 - **Mascot:** **"Prospect"** — a pit bull in a #24 basketball jersey. Brand character, used for personality/flavor.

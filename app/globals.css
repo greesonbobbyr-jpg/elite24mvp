@@ -46,7 +46,7 @@
   --line: #d4d4da;
   --line-strong: #b4b4bc;
   --line-faint: #e4e4e8;
-  --field-line: #8e8e98; /* ≥3:1 on white (WCAG non-text contrast) */
+  --field-line: #7c7c86; /* ≥3:1 on white and on the canvas (WCAG non-text contrast) */
   --accent-edge: #d2361a; /* outline of a selected / accent-marked element */
   /* drop-shadow tint: soft on white, deep on black */
   --shade: rgb(24 24 27 / 0.12);
@@ -63,14 +63,14 @@
   --brand: #b8301a;
   --brand-2: #9e2914;
   --brand-3: #8a2311;
-  --good: #15803d;
-  --good-2: #166534;
+  --good: #166534; /* ≥4.5:1 on the gray page, not just on white */
+  --good-2: #14532d;
   --good-solid: #15803d; /* solid fills: done, read, add */
   --warn: #92400e;
   --warn-solid: #d97706; /* solid bars: not checked in yet */
   --info: #1d4ed8;
-  --gold: #8a6a0c;
-  --gold-2: #7a5c05;
+  --gold: #7a5c05;
+  --gold-2: #6b5004;
   --gold-solid: #d4af37; /* progress bars, medal fills */
   /* Team Circle bubbles: others' are solid accent, mine the inverse of the page */
   --bubble-mine: #18181b;

@@ -35,7 +35,7 @@ function EntryButton({
       <button
         type="submit"
         className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-raised-2 ${
-          active ? "bg-red-600/20 font-semibold" : ""
+          active ? "bg-accent font-semibold text-on-accent hover:bg-accent-hover" : ""
         }`}
       >
         <span className="truncate">{entry.name}</span>
@@ -72,7 +72,7 @@ export function DevUserSwitcher({
 
         {orgs.map((org) => (
           <div key={org.id} className="mb-3">
-            <p className="px-2 pb-0.5 pt-1 text-[10px] font-black uppercase tracking-widest text-brand/80">
+            <p className="px-2 pb-0.5 pt-1 text-[10px] font-black uppercase tracking-widest text-brand">
               {org.name}
             </p>
             {org.admins.map((entry) => (

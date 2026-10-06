@@ -200,7 +200,7 @@ export function OrgTree({ data }: { data: OrgViewData }) {
           placeholder="Search a player, team or coach"
           autoComplete="off"
           spellCheck={false}
-          className="w-full rounded-full border border-line-strong bg-field px-5 py-2.5 text-sm text-ink outline-none focus:border-accent-edge"
+          className="w-full rounded-full border border-field-line bg-field px-5 py-2.5 text-sm text-ink outline-none transition focus:border-accent-edge focus:ring-1 focus:ring-accent-edge"
         />
         {results.length > 0 && (
           <ul className="absolute inset-x-4 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-line bg-raised shadow-lg sm:inset-x-0">

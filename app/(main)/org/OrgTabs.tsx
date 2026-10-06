@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pillClass } from "@/app/components/ui/Pill";
 
 // Manage | Browse — the org admin's two views of their organization.
 export function OrgTabs({ current }: { current: "manage" | "browse" }) {
@@ -13,7 +14,7 @@ export function OrgTabs({ current }: { current: "manage" | "browse" }) {
           <span
             key={tab.key}
             aria-current="page"
-            className="rounded-full border border-brand bg-brand/15 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-brand-3"
+            className={pillClass(true)}
           >
             {tab.label}
           </span>
@@ -21,7 +22,7 @@ export function OrgTabs({ current }: { current: "manage" | "browse" }) {
           <Link
             key={tab.key}
             href={tab.href}
-            className="rounded-full border border-line-strong px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted transition hover:border-field-line"
+            className={pillClass(false)}
           >
             {tab.label}
           </Link>

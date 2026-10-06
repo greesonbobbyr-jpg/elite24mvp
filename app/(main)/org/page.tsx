@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { moveDivision, moveProgram, assignTeamToDivision } from "./actions";
 import { AddForm, RenameableName } from "./StructureForms";
 import { OrgTabs } from "./OrgTabs";
+import { fieldBase } from "@/app/components/ui/Field";
 
 // ORGANIZATION STRUCTURE (grouping Chunk 1) — ORG_ADMIN only. Programs →
 // Divisions → Teams with create/rename/reorder/assign. PROGRESSIVE
@@ -124,7 +125,7 @@ export default async function OrgPage() {
                       <select
                         name="divisionId"
                         defaultValue={division.id}
-                        className="rounded-lg border border-line-strong bg-field px-2 py-1 text-xs text-ink-mid"
+                        className={`${fieldBase} px-2 py-1 text-xs`}
                       >
                         {allDivisions.map((d) => (
                           <option key={d.id} value={d.id}>
@@ -162,7 +163,7 @@ export default async function OrgPage() {
                 <input type="hidden" name="teamId" value={team.id} />
                 <select
                   name="divisionId"
-                  className="rounded-lg border border-line-strong bg-field px-2 py-1 text-xs text-ink-mid"
+                  className={`${fieldBase} px-2 py-1 text-xs`}
                 >
                   {allDivisions.map((d) => (
                     <option key={d.id} value={d.id}>

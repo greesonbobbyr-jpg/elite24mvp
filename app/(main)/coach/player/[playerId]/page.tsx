@@ -6,6 +6,7 @@ import { formatTime } from "@/lib/format";
 import { AdjustPointsForm } from "./AdjustPointsForm";
 import { PlayerCard } from "@/app/components/PlayerCard";
 import { photoSrc, cutoutSrc } from "@/lib/photoUrl";
+import { bannerClass } from "@/app/components/ui/Banner";
 
 // Coach-only drill-in on one player. Guard: a COACH may view only a PLAYER on
 // their OWN team (getPlayerCoachView returns null otherwise → redirect), the same
@@ -77,7 +78,7 @@ export default async function CoachPlayerPage({
       <section>
         <p className="e24-eyebrow mb-2">Today</p>
         {view.checkedInAt ? (
-          <div className="rounded-xl border border-green-600/30 bg-green-600/10 px-4 py-3 text-sm font-medium text-good-2">
+          <div className={bannerClass("good")}>
             ✓ Checked in at {formatTime(view.checkedInAt)}
             {/* Review STATUS only — its text is player-private, like the journal. */}
             <span className="mt-1 block text-xs font-normal">
@@ -89,7 +90,7 @@ export default async function CoachPlayerPage({
             </span>
           </div>
         ) : (
-          <div className="rounded-xl border border-amber-600/30 bg-amber-600/10 px-4 py-3 text-sm font-medium text-warn">
+          <div className={bannerClass("warn")}>
             Not checked in yet
           </div>
         )}

@@ -104,7 +104,7 @@ export function PhotoUploadField({
           onClick={() => !busy && inputRef.current?.click()}
           className={`flex flex-1 cursor-pointer items-center gap-3 rounded-full border border-dashed py-2 pl-2 pr-4 text-sm transition ${
             dragging
-              ? "border-accent-edge bg-red-600/10"
+              ? "border-accent-edge bg-sunken ring-1 ring-accent-edge"
               : "border-field-line bg-field hover:border-accent-edge"
           } ${busy ? "pointer-events-none opacity-70" : ""}`}
         >
@@ -114,7 +114,7 @@ export function PhotoUploadField({
             <img
               src={preview}
               alt="Photo preview"
-              className="h-14 w-14 shrink-0 rounded-full bg-zinc-800 object-cover"
+              className="h-14 w-14 shrink-0 rounded-full bg-frame object-cover"
             />
           ) : (
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sunken text-2xl text-faint">
@@ -163,7 +163,7 @@ export function PhotoUploadField({
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />
       {busy && (
-        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-ink/10">
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-raised-2">
           <div
             className="h-full rounded-full bg-brand transition-[width] duration-200"
             style={{ width: `${busy.phase === "removing" ? busy.pct : 5}%` }}

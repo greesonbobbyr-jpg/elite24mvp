@@ -10,10 +10,11 @@ import {
   type StructureState,
 } from "./actions";
 import { Button } from "@/app/components/ui/Button";
+import { fieldBase } from "@/app/components/ui/Field";
 
 const initial: StructureState = {};
-const fieldClass =
-  "rounded-lg border border-field-line bg-field px-3 py-1.5 text-sm text-ink outline-none transition focus:border-accent-edge";
+// A compact inline field (auto width, slimmer padding).
+const inlineFieldClass = `${fieldBase} px-3 py-1.5 text-sm`;
 
 // Quiet "+ Add …" affordance that expands into a one-field create form.
 export function AddForm({
@@ -46,7 +47,7 @@ export function AddForm({
       {parentField && parentId != null && (
         <input type="hidden" name={parentField} value={parentId} />
       )}
-      <input name="name" placeholder={`New ${kind} name`} autoFocus className={fieldClass} />
+      <input name="name" placeholder={`New ${kind} name`} autoFocus className={inlineFieldClass} />
       <Button type="submit" size="sm" disabled={pending}>
         {pending ? "Adding…" : "Add"}
       </Button>
@@ -93,7 +94,7 @@ export function RenameableName({
   return (
     <form action={formAction} className="flex items-center gap-2">
       <input type="hidden" name={`${kind}Id`} value={id} />
-      <input name="name" defaultValue={name} autoFocus className={fieldClass} />
+      <input name="name" defaultValue={name} autoFocus className={inlineFieldClass} />
       <Button type="submit" size="sm" disabled={pending}>
         {pending ? "…" : "Save"}
       </Button>

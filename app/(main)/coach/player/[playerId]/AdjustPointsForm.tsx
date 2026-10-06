@@ -47,9 +47,9 @@ export function AdjustPointsForm({ playerId }: { playerId: number }) {
             className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition active:scale-95 ${
               direction === d
                 ? d === "add"
-                  ? "border-green-500 bg-green-600/20 text-good-2"
-                  : "border-accent-edge bg-red-600/20 text-brand-3"
-                : "border-line-strong text-muted hover:border-field-line"
+                  ? "border-good-solid bg-good-solid text-on-accent"
+                  : "border-accent-edge bg-accent text-on-accent"
+                : "border-line-strong bg-panel text-ink-mid hover:border-field-line"
             }`}
           >
             {d === "add" ? "Add" : "Remove"}

@@ -6,11 +6,9 @@ import { Button } from "@/app/components/ui/Button";
 import { cardDefault } from "@/app/components/ui/Card";
 import { PhotoUploadField } from "@/app/components/PhotoUploadField";
 import { HeightFields } from "@/app/components/HeightFields";
+import { fieldClass, labelClass } from "@/app/components/ui/Field";
 
 const initialState: BrandState = {};
-const fieldClass =
-  "w-full rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm outline-none focus:border-accent-edge";
-const labelClass = "mb-1 block text-xs font-medium text-muted";
 
 type EditableProfile = {
   heightInches: number | null;

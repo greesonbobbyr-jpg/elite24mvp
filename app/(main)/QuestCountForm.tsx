@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { fieldBase } from "@/app/components/ui/Field";
 import { completeQuest } from "./actions";
 import { celebrate } from "./celebrate";
 
@@ -34,7 +35,7 @@ export function QuestCountForm({
           onChange={(e) => setValue(e.target.value.replace(/[^0-9]/g, ""))}
           placeholder="?"
           aria-label={`How many made out of ${targetCount}`}
-          className="w-16 rounded-lg border border-line-strong bg-raised px-2 py-1.5 text-center text-sm text-ink outline-none transition focus:border-accent-edge"
+          className={`${fieldBase} w-16 px-2 py-1.5 text-center text-sm`}
         />
         <span className="text-xs text-subtle">/ {targetCount}</span>
         <button

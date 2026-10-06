@@ -56,7 +56,7 @@ export async function CoachHome({
               cy="36"
               r={R}
               fill="none"
-              className="stroke-ink/12"
+              className="stroke-raised-2"
               strokeWidth="8"
             />
             <circle
@@ -64,7 +64,7 @@ export async function CoachHome({
               cy="36"
               r={R}
               fill="none"
-              stroke="#ef4444"
+              stroke="var(--accent)"
               strokeWidth="8"
               strokeLinecap="round"
               strokeDasharray={C}
@@ -127,7 +127,7 @@ export async function CoachHome({
           .sort((a, b) => b.currentStreak - a.currentStreak);
         if (hot.length === 0) return null;
         return (
-          <section className="rounded-2xl border border-[#d4af37]/40 bg-gradient-to-r from-[#d4af37]/10 to-canvas p-5">
+          <section className="rounded-2xl border border-gold-solid bg-panel p-5 shadow-sm shadow-shade">
             <p className="e24-eyebrow">Streak milestones</p>
             <ul className="mt-2 flex flex-col gap-2">
               {hot.map((r) => (

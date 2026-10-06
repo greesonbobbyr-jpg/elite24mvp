@@ -85,7 +85,7 @@ export function PushToggle() {
   }
 
   return (
-    <div className="rounded-xl border border-line bg-sunken px-4 py-3">
+    <div className="rounded-xl border border-line bg-panel px-4 py-3 shadow-sm shadow-shade">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-ink">Daily reminder</p>
@@ -98,9 +98,9 @@ export function PushToggle() {
           type="button"
           disabled={busy}
           onClick={enabled ? disable : enable}
-          className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-60 ${
+          className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:bg-raised-3 disabled:text-muted ${
             enabled
-              ? "border border-line-strong text-ink-mid hover:border-field-line"
+              ? "border border-line-strong bg-panel text-ink-mid hover:border-field-line"
               : "bg-accent text-on-accent hover:bg-accent-hover"
           }`}
         >

@@ -75,62 +75,40 @@ coaches and GMs, whose deletes the server refuses.
 Full plan (local to the new laptop; the essentials are above):
 `C:\Users\grees\.claude\plans\c-users-grees-claude-uploads-a1d7a349-e-harmonic-sparkle.md`
 
-### Pending deploy (2026-09-27): quick fixes + light/dark mode + the new cards
+### Deployed 2026-10-02: quick fixes, light/dark mode, the new cards, the org tree
 
-`card-redesign` now contains all three: `theme-modes` (which includes `quick-fixes`) was
-merged into it, so `main` fast-forwards to it in one step. Verified on the merged branch:
-tsc, 225 tests, the five approved card baselines (0.00%), no page wider than a
-320/360/390px phone (Chromium and WebKit), WCAG AA contrast on every page in both modes.
+The owner said "merge and deploy to live". `main` was fast-forwarded to `grouping-layers`
+(fd826f7), which contains everything (`theme-modes` → `card-redesign` → `grouping-layers`).
+In order: `npx prisma migrate deploy` applied `20260814032118_card_photo_cutout` (six empty,
+optional photo columns) and `20260928120000_grouping_program_division` (Program, Division,
+an optional `Team.divisionId`); `scripts/backfill-structure.ts` dry run → `--execute` with
+`BACKFILL_CONFIRM=<host>` → `--verify` (2 orgs, 2 teams → hidden "Main" program and
+division, all checks pass); then `git push origin main`. The Vercel build succeeded.
 
-**The owner runs this** (auto mode blocks production deploys), in `C:\dev\elite24mvp`,
-whose `.env` points at the production database:
+After it: existing players' full cards say "Photo pending" until each player opens Your
+Brand → Edit my brand → **Re-cut photo** → Save.
 
-1. `git fetch origin`
-2. `git switch main`
-3. `git merge --ff-only origin/card-redesign`
-4. `npx prisma migrate deploy`. This applies `20260814032118_card_photo_cutout`: six empty,
-   optional photo columns (`photoCutoutUrl`, `photoMeta` on User, Profile and PlayerProfile).
-   Run it BEFORE step 5: the new code reads those columns; the running old code ignores them.
-5. `git push origin main`. Vercel builds and deploys (`next build` does not migrate).
+### Pending deploy: the light-mode revamp (`light-revamp`, 2026-10-06)
 
-After the deploy:
+The owner, looking at light mode on the live app: things that should have an outline don't,
+nothing looks finished, and the accent is see-through and should be "a deeper more solid
+reddish orange". Decisions: accent **#D2361A**, solid, in both modes; Team Circle's other
+people's messages are solid accent bubbles in light mode too. The rules are in CLAUDE.md §9
+("Light & dark design rules"); the guardrails in §6.
 
-- **Existing players' full cards show "Photo pending"** until each player opens Your Brand →
-  Edit my brand → **Re-cut photo** → Save, which makes the card portrait from the photo they
-  already have, on their phone (checked end to end). Circles and rows show their existing
-  photo meanwhile. Coaches' photos keep working as they are.
-- First deploy of the on-device photo tools: ~150 MB of model files are copied into
-  `public/bg-removal/` and `public/face/wasm/` at install (none over 12 MB). Watch that the
-  Vercel build finishes.
-- No new environment variables.
+- Color roles in `app/globals.css` (accent, a gray page with white cards and visible edges,
+  field outlines that pass WCAG non-text contrast, solid status colors, the always-black
+  frame, the logo red); shared pieces in `app/components/ui/`; every page swept.
+- Guardrails: `tests/theme-guard.test.ts` (no raw, see-through or hard-coded colors),
+  `check-pages.ts --outlines` (every card, row and field has a visible edge) and `--pinned`
+  (the Appearance switch wins over the phone), and the dev-only `/style-guide` with its
+  baselines `design/baselines/style-guide-{light,dark}.png` (`scripts/shoot-style-guide.ts`).
+- Card art: the mini frame's dark backdrop is now fully transparent (`scripts/card-art.ts`;
+  it showed as a gray box behind every player row on a light page). Card baselines unchanged.
+- No schema change, no migration, no new environment variables.
 
-### Then: the org tree (`grouping-layers`, 2026-09-28) — deploy AFTER the cards
-
-The owner approved the org tree mockup ("That is way better. That looks good.") and it is
-now built for real on `grouping-layers`, which contains `card-redesign` (merged in) plus
-the Program/Division grouping: `/org` (Manage) and the org tree at `/org/view` (Browse).
-Its migration `20260928120000_grouping_program_division` sorts after the card migration.
-Verified: tsc, all tests, no page wider than a 320/360/390px phone (Chromium and WebKit),
-WCAG AA contrast in both modes, the five card baselines.
-
-**The owner runs this**, once the cards deploy above is live, in `C:\dev\elite24mvp`:
-
-1. `git fetch origin`
-2. `git switch main`
-3. `git merge --ff-only origin/grouping-layers`
-4. `npx prisma migrate deploy` — adds the `Program` and `Division` tables and an optional
-   `Team.divisionId`. Nothing is removed.
-5. `npx tsx scripts/backfill-structure.ts` — a dry run: reports what it would create.
-6. `npx tsx scripts/backfill-structure.ts --execute` refuses and prints the database host;
-   then `$env:BACKFILL_CONFIRM = "<that host>"; npx tsx scripts/backfill-structure.ts --execute`
-   gives every org a hidden "Main" program and division and puts its teams in them.
-   Safe to re-run.
-7. `npx tsx scripts/backfill-structure.ts --verify` — every team in a division of its own org.
-8. `git push origin main`.
-
-After the deploy: an org admin opens ☰ → Organization. A one-team club sees nothing new
-in Browse beyond its tree (owner → head coach → players; the hidden "Main" layers never
-show). Divisions appear once an org adds a second one in Manage.
+**Deploy, on the owner's go:** in `C:\dev\elite24mvp`: `git fetch origin`, `git switch main`,
+`git merge --ff-only origin/light-revamp`, `git push origin main`.
 
 ---
 

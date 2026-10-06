@@ -21,6 +21,7 @@ const EXEMPT = [
   "app/components/StaffCard.tsx",
   "app/components/card/",
   "app/(main)/card-preview/",
+  "app/(main)/org/view/TreeNodes.tsx", // the org tree's mini cards: the card family's dark palette
 ];
 
 const PALETTE = "red|orange|rose|pink|zinc|gray|neutral|slate|stone|amber|yellow|green|emerald|lime|teal|cyan|sky|blue|indigo|violet|purple|white|black";
@@ -40,6 +41,11 @@ const RULES: { name: string; pattern: RegExp; fix: string }[] = [
     name: "faint see-through edge",
     pattern: /(?<![\w-])(?:[a-z-]+:)*(?:border|divide|ring)-(?:ink|canvas|panel)\/[\w.[\]]+/g,
     fix: "edges are solid: border-line, border-line-strong or border-field-line",
+  },
+  {
+    name: "see-through surface",
+    pattern: /(?<![\w-])(?:[a-z-]+:)*bg-(?:raised|raised-2|raised-3|canvas|panel|sunken|field)\/[\w.[\]]+/g,
+    fix: "surfaces are solid: bg-panel, bg-sunken or bg-raised-2",
   },
   {
     name: "hard-coded color class",

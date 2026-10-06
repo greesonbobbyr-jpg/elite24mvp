@@ -6,6 +6,7 @@ import {
   resetPlayerPassword,
   type RosterActionState,
 } from "./actions";
+import { bannerClass } from "@/app/components/ui/Banner";
 
 const initial: RosterActionState = {};
 
@@ -50,7 +51,7 @@ export function RosterManager({
     <div className="flex flex-col gap-2">
       {/* One-time temp password reveal */}
       {resetState.resetPassword && (
-        <div className="rounded-lg border border-green-600/40 bg-green-600/10 px-3 py-2.5 text-sm">
+        <div className={bannerClass("good")}>
           <p className="font-semibold text-good-2">
             New password for {resetState.resetName}:
             <code className="ml-2 rounded bg-field px-2 py-0.5 font-mono text-ink">
@@ -74,7 +75,7 @@ export function RosterManager({
           return (
             <li
               key={p.id}
-              className="rounded-xl border border-line bg-sunken px-3 py-2.5"
+              className="rounded-xl border border-line bg-panel px-3 py-2.5 shadow-sm shadow-shade"
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
@@ -109,8 +110,8 @@ export function RosterManager({
               </div>
 
               {confirming && (
-                <div className="mt-2 rounded-lg border border-line bg-red-600/[0.07] p-3">
-                  <p className="text-xs text-brand-3">
+                <div className="mt-2 rounded-lg border border-line border-l-4 border-l-accent bg-sunken p-3">
+                  <p className="text-xs text-ink-mid">
                     This removes {p.name.split(" ")[0]} from the roster and
                     leaderboards. Their account, journal, streak, and career
                     points are kept — they can re-join anytime with the team

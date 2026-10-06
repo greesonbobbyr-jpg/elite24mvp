@@ -18,7 +18,7 @@ export default async function JoinPage() {
           className="text-2xl font-black italic tracking-tight text-ink"
           style={{ fontFamily: "var(--font-barlow)" }}
         >
-          Elite<span style={{ color: "#e1102a" }}>24</span>MVP
+          Elite<span className="text-logo">24</span>MVP
         </span>
         <p className="mt-2 text-sm text-subtle">Join your team</p>
       </div>

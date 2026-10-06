@@ -7,6 +7,7 @@ import { TeamSettingsForm } from "./TeamSettingsForm";
 import { RosterManager } from "./RosterManager";
 import { StartSeasonForm } from "./StartSeasonForm";
 import { LoginUsernameForm } from "./LoginUsernameForm";
+import { Card } from "@/app/components/ui/Card";
 
 // Staff team page (4e: matrix-gated per section). ALL staff see the roster
 // (view_roster); the join code, team settings, and password resets are
@@ -88,25 +89,29 @@ export default async function TeamSettingsPage() {
       {canManageSettings && (
         <section>
           <p className="e24-eyebrow mb-2">Team details</p>
-          <TeamSettingsForm
-            team={{
-              name: team.name,
-              logoUrl: team.logoUrl,
-              primaryColor: team.primaryColor,
-              secondaryColor: team.secondaryColor,
-              checkInReminderHour: team.checkInReminderHour,
-            }}
-            coachPhotoUrl={user.photoUrl}
-            coachCutoutUrl={user.photoCutoutUrl}
-            coachPhotoMeta={user.photoMeta ? JSON.stringify(user.photoMeta) : null}
-          />
+          <Card>
+            <TeamSettingsForm
+              team={{
+                name: team.name,
+                logoUrl: team.logoUrl,
+                primaryColor: team.primaryColor,
+                secondaryColor: team.secondaryColor,
+                checkInReminderHour: team.checkInReminderHour,
+              }}
+              coachPhotoUrl={user.photoUrl}
+              coachCutoutUrl={user.photoCutoutUrl}
+              coachPhotoMeta={user.photoMeta ? JSON.stringify(user.photoMeta) : null}
+            />
+          </Card>
         </section>
       )}
 
       {/* Every staffer's own login (not team-wide, so no matrix gate). */}
       <section>
         <p className="e24-eyebrow mb-2">Your login</p>
-        <LoginUsernameForm email={user.email} username={user.username} />
+        <Card>
+          <LoginUsernameForm email={user.email} username={user.username} />
+        </Card>
       </section>
     </main>
   );

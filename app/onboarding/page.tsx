@@ -18,7 +18,7 @@ export default async function OnboardingPage() {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-6 py-12">
       <header className="flex flex-col gap-2">
-        <span className="w-fit rounded-full bg-red-600/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-2">
+        <span className="w-fit rounded-full bg-accent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-on-accent">
           Welcome
         </span>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">

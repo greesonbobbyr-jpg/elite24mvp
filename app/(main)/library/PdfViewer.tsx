@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
+import { fieldBase } from "@/app/components/ui/Field";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
 // PDF.js renders the pages into the page (works regardless of the browser's
@@ -108,7 +109,7 @@ export function PdfViewer({ src }: { src: string }) {
       {numPages > 0 && (
         <form
           onSubmit={jumpToPage}
-          className="sticky top-0 z-10 flex items-center gap-2 rounded-lg border border-line bg-canvas/80 px-3 py-2 text-xs backdrop-blur"
+          className="sticky top-0 z-10 flex items-center gap-2 rounded-lg border border-line bg-panel px-3 py-2 text-xs shadow-sm shadow-shade"
         >
           <span className="text-muted">Jump to page</span>
           <input
@@ -118,7 +119,7 @@ export function PdfViewer({ src }: { src: string }) {
             value={pageInput}
             onChange={(e) => setPageInput(e.target.value)}
             placeholder="1"
-            className="w-16 rounded border border-line-strong bg-raised px-2 py-1 text-ink outline-none focus:border-accent-edge"
+            className={`${fieldBase} w-16 px-2 py-1`}
           />
           <span className="text-subtle">of {numPages}</span>
           <button

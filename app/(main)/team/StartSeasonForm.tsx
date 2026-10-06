@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { startSeason, type SeasonState } from "./actions";
 import { Button } from "@/app/components/ui/Button";
+import { bannerClass } from "@/app/components/ui/Banner";
 
 const initial: SeasonState = {};
 
@@ -15,14 +16,14 @@ export function StartSeasonForm({ currentSeason }: { currentSeason: string }) {
 
   if (state.ok) {
     return (
-      <p className="rounded-lg border border-green-600/40 bg-green-600/10 px-3 py-2.5 text-sm font-semibold text-good-2">
+      <p className={bannerClass("good")}>
         Season {state.seasonName} started. Players re-join with the team code.
       </p>
     );
   }
 
   return (
-    <div className="rounded-xl border border-line bg-sunken p-4">
+    <div className="rounded-xl border border-line bg-panel p-4 shadow-sm shadow-shade">
       <p className="text-sm text-muted">
         Current season: <span className="font-semibold text-ink">{currentSeason}</span>
       </p>

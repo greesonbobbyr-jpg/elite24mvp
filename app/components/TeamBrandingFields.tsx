@@ -69,7 +69,7 @@ export function TeamBrandingFields({
           onClick={() => inputRef.current?.click()}
           className={`flex cursor-pointer items-center gap-3 rounded-lg border border-dashed px-3 py-4 text-sm transition ${
             dragging
-              ? "border-accent-edge bg-red-600/10"
+              ? "border-accent-edge bg-sunken ring-1 ring-accent-edge"
               : "border-field-line bg-field hover:border-accent-edge"
           }`}
         >

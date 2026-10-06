@@ -6,12 +6,22 @@
  *   - CONTRAST (--contrast): text that fails WCAG AA against its background,
  *     via axe-core — the light/dark color roles in app/globals.css must keep
  *     every screen readable in both modes.
+ *   - OUTLINES (--outlines, light mode): every card, row, pill and field must
+ *     have a visible edge (CLAUDE.md §9 rule 3 — the owner's "things that
+ *     should have an outline don't" in light mode). Cards and rows need an
+ *     edge of at least 1.2:1 against what's behind them; fields 3:1 (WCAG
+ *     non-text contrast). Text contrast alone never caught a missing edge.
  *   - SHOTS (--shots <dir>): full-page screenshots per mode/user/page, for review.
  *
  *   npx tsx scripts/check-pages.ts [--url http://localhost:3000] [--webkit]
- *       [--contrast] [--shots <dir>] [--theme light|dark] [--verbose]
+ *       [--contrast] [--outlines] [--shots <dir>] [--theme light|dark]
+ *       [--pinned] [--verbose]
  *
  * Mode is the phone's setting (colorScheme emulation) — the "Auto" path.
+ * --pinned instead pins each mode with the ☰ Appearance switch's cookie while
+ * the phone is set to the OTHER mode, proving the pinned path wins.
+ * The seeded TIME OUT only takes over on the day it was seeded: reseed the
+ * local database first so the player crawl checks the takeover too.
  * Requires a dev server running against a LOCAL seeded database (seed password
  * "password123"). Refuses any non-localhost URL. Exit code 1 on any problem.
  */
@@ -30,10 +40,12 @@ if (host !== "localhost" && host !== "127.0.0.1") {
   throw new Error("check-pages only runs against localhost.");
 }
 const CONTRAST = args.includes("--contrast");
+const OUTLINES = args.includes("--outlines");
+const PINNED = args.includes("--pinned");
 const SHOTS = argValue("--shots");
-const THEMES = (argValue("--theme") ? [argValue("--theme")] : ["light", "dark"]) as ("light" | "dark")[];
-// Contrast and screenshots only need one width; fit needs the narrow ones.
-const WIDTHS = CONTRAST || SHOTS ? [390] : [320, 360, 390];
+const THEMES = (argValue("--theme") ? [argValue("--theme")] : OUTLINES ? ["light"] : ["light", "dark"]) as ("light" | "dark")[];
+// Contrast, outlines and screenshots only need one width; fit needs the narrow ones.
+const WIDTHS = CONTRAST || OUTLINES || SHOTS ? [390] : [320, 360, 390];
 const PASSWORD = "password123";
 const MAX_PAGES_PER_USER = 40;
 // Run from the repo root, like the other scripts.
@@ -42,7 +54,7 @@ const AXE_PATH = join(process.cwd(), "node_modules", "axe-core", "axe.min.js");
 // Who to look as, and where each starts. Links found on each page are
 // followed (same origin, no API/logout), so dynamic routes like
 // /brand/[id] and /coach/player/[id] are covered without hard-coding ids.
-const VISITS: { label: string; login?: string; start: string[] }[] = [
+const VISITS: { label: string; login?: string; start: string[]; menuOpen?: boolean; follow?: boolean }[] = [
   { label: "logged-out", start: ["/login", "/signup", "/join"] },
   // Menu pages listed too: a TIME OUT takeover can cover the ☰ button.
   {
@@ -54,6 +66,8 @@ const VISITS: { label: string; login?: string; start: string[] }[] = [
   // menu's Organization link is followed.
   { label: "coach", login: "gary@elite24.demo", start: ["/", "/team", "/org", "/org/view"] },
   { label: "new-player", login: "andre", start: ["/onboarding"] },
+  // The ☰ menu open (it isn't a page of its own).
+  { label: "menu", login: "tyler", start: ["/"], menuOpen: true, follow: false },
 ];
 
 type Culprit = { tag: string; cls: string; text: string; right: number };
@@ -86,6 +100,80 @@ function measure(): { scrollWidth: number; clientWidth: number; culprits: Culpri
   };
   walk(document.body, false);
   return { scrollWidth: doc.scrollWidth, clientWidth, culprits };
+}
+
+// Runs in the page (light mode): surfaces and fields without a visible edge.
+// A "surface" is a rounded box with its own opaque background (a card, row,
+// pill, tile); it needs a border (or the .e24-surface ring) that stands out
+// from what's behind it, or a fill that does (a solid accent button). Fields
+// need a 3:1 outline. The always-dark brand frame, the Player/Staff cards and
+// images are their own design, so they're skipped.
+type OutlineIssue = { what: string; ratio: string };
+function outlines(): OutlineIssue[] {
+  type RGBA = [number, number, number, number];
+  const parse = (c: string): RGBA | null => {
+    const m = c.match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    const [r, g, b, a = "1"] = m[1].split(/[\s,/]+/).filter(Boolean);
+    return [Number(r), Number(g), Number(b), Number(a)];
+  };
+  const over = (top: RGBA, under: RGBA): RGBA => {
+    const a = top[3];
+    return [top[0] * a + under[0] * (1 - a), top[1] * a + under[1] * (1 - a), top[2] * a + under[2] * (1 - a), 1];
+  };
+  const lum = (c: RGBA) => {
+    const f = (v: number) => {
+      const x = v / 255;
+      return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  };
+  const ratio = (a: RGBA, b: RGBA) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  // The color behind an element: the nearest ancestor with an opaque fill.
+  const behind = (el: Element): RGBA => {
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      const c = parse(getComputedStyle(p).backgroundColor);
+      if (c && c[3] > 0.5) return c;
+    }
+    return parse(getComputedStyle(document.body).backgroundColor) ?? [255, 255, 255, 1];
+  };
+  const skip = '.theme-dark, [data-finish], [data-staff], .pc-stage, details.fixed, nextjs-portal, svg, img, [aria-hidden="true"]';
+  const issues: OutlineIssue[] = [];
+  const describe = (el: Element) =>
+    `<${el.tagName.toLowerCase()}> "${(el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 40)}" .${(el.getAttribute("class") ?? "").slice(0, 70)}`;
+  for (const el of Array.from(document.body.querySelectorAll("*"))) {
+    if (el.closest(skip)) continue;
+    const s = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    if (s.display === "none" || s.visibility === "hidden" || r.width < 40 || r.height < 24) continue;
+    // Disabled controls are exempt (WCAG 1.4.11).
+    if ((el as HTMLButtonElement).disabled) continue;
+    const back = behind(el);
+    const field = (el.tagName === "INPUT" && !["checkbox", "radio", "hidden", "range"].includes((el as HTMLInputElement).type)) || el.tagName === "TEXTAREA" || el.tagName === "SELECT";
+    const fill = parse(s.backgroundColor);
+    // A see-through field inside an outlined bar (the Team Circle composer):
+    // the bar is the visible field, checked as a surface.
+    if (field && (!fill || fill[3] < 0.5)) continue;
+    const surface = el.classList.contains("e24-surface") || (fill !== null && fill[3] > 0.5 && parseFloat(s.borderTopLeftRadius) >= 6);
+    if (!field && !surface) continue;
+    const own = fill && fill[3] > 0.5 ? over(fill, back) : back;
+    const borderW = parseFloat(s.borderTopWidth);
+    const border = parse(s.borderTopColor);
+    let edge = borderW >= 1 && border ? ratio(over(border, back), back) : 1;
+    // .e24-surface draws its edge as an inset ring in box-shadow.
+    const ring = s.boxShadow.match(/(rgba?\([^)]+\))\s+0px 0px 0px 1px inset/);
+    if (ring) edge = Math.max(edge, ratio(over(parse(ring[1])!, own), back));
+    if (field) {
+      if (edge < 3) issues.push({ what: `field ${describe(el)}`, ratio: edge.toFixed(2) });
+      continue;
+    }
+    const fillContrast = ratio(own, back);
+    if (edge < 1.2 && fillContrast < 1.5) issues.push({ what: `surface ${describe(el)}`, ratio: edge.toFixed(2) });
+  }
+  return issues;
 }
 
 type ContrastIssue = { target: string; text: string; detail: string };
@@ -142,8 +230,10 @@ async function checkUser(
     deviceScaleFactor: SHOTS ? 2 : 1,
     isMobile: true, // honor the meta viewport like a phone does
     hasTouch: true,
-    colorScheme: theme,
+    // --pinned: the phone says the opposite; the Appearance cookie must win.
+    colorScheme: PINNED ? (theme === "light" ? "dark" : "light") : theme,
   });
+  if (PINNED) await context.addCookies([{ name: "e24_theme", value: theme, url: BASE }]);
   // tsx (esbuild keepNames) wraps functions in a `__name` helper that doesn't
   // exist inside the browser page that `measure` is sent to.
   await context.addInitScript({ content: "window.__name = (f) => f;" });
@@ -164,6 +254,10 @@ async function checkUser(
       console.log(`  - ${theme} ${width}px ${path}: skipped (${(e as Error).message.split("\n")[0]})`);
       continue;
     }
+    if (visit.menuOpen) {
+      await page.locator('button[aria-label="Menu"]').first().click({ timeout: 10_000 });
+      await page.waitForTimeout(400);
+    }
     const landed = new URL(page.url()).pathname;
     const where = `${theme} ${width}px ${path}${landed !== path ? ` → ${landed}` : ""}`;
 
@@ -183,6 +277,14 @@ async function checkUser(
         for (const i of issues.slice(0, 8)) console.log(`      ${i.text}\n        ${i.detail}`);
       }
     }
+    if (OUTLINES) {
+      const missing = await page.evaluate(outlines);
+      if (missing.length > 0) {
+        problems++;
+        console.log(`  ✗ OUTLINES ${where}: ${missing.length}`);
+        for (const m of missing.slice(0, 8)) console.log(`      ${m.ratio}:1  ${m.what}`);
+      }
+    }
     if (SHOTS) {
       const dir = join(SHOTS, theme, visit.label);
       mkdirSync(dir, { recursive: true });
@@ -192,6 +294,7 @@ async function checkUser(
 
     // Most player pages are only linked from the ☰ menu, which renders its
     // links on open. (force: a TIME OUT takeover may be covering the header.)
+    if (visit.follow === false) continue;
     const menu = page.locator('button[aria-label="Menu"]');
     if (await menu.count()) await menu.first().click({ force: true, timeout: 5_000 }).catch(() => {});
     const hrefs = await page.$$eval("a[href]", (as) => as.map((a) => a.getAttribute("href") ?? ""));

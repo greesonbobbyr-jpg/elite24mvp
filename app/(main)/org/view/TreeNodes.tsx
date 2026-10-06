@@ -12,11 +12,11 @@ import { MINI_CARD, MiniBorder, MiniFace } from "@/app/components/card/MiniFrame
 // The org tree's nodes: small cards from the card family (a player's own card
 // at a smaller size, staff in graphite) and round division badges.
 // Each node carries data-node for the tree's connector lines, search flash
-// and scrolling. The open node and a search hit glow red.
+// and scrolling. The open node and a search hit glow in the accent.
 
 function glow(lit: boolean): CSSProperties {
   return {
-    filter: lit ? "drop-shadow(0 0 7px rgba(225,16,42,0.95))" : "drop-shadow(0 3px 6px rgba(0,0,0,0.5))",
+    filter: lit ? "drop-shadow(0 0 7px var(--accent))" : "drop-shadow(0 3px 6px rgba(0,0,0,0.5))",
     transition: "filter 200ms, transform 150ms",
   };
 }

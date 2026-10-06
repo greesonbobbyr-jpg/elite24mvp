@@ -136,7 +136,7 @@ export default async function BrandPage({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-line bg-raised/60 px-3 py-2">
+    <div className="rounded-lg border border-line bg-panel px-3 py-2 shadow-sm shadow-shade">
       <div className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
         {label}
       </div>
