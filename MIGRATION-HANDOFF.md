@@ -88,7 +88,7 @@ division, all checks pass); then `git push origin main`. The Vercel build succee
 After it: existing players' full cards say "Photo pending" until each player opens Your
 Brand → Edit my brand → **Re-cut photo** → Save.
 
-### Pending deploy: the light-mode revamp (`light-revamp`, 2026-10-06)
+### Deployed 2026-10-06: the light-mode revamp (`light-revamp`, 011af26)
 
 The owner, looking at light mode on the live app: things that should have an outline don't,
 nothing looks finished, and the accent is see-through and should be "a deeper more solid
@@ -107,8 +107,8 @@ people's messages are solid accent bubbles in light mode too. The rules are in C
   it showed as a gray box behind every player row on a light page). Card baselines unchanged.
 - No schema change, no migration, no new environment variables.
 
-**Deploy, on the owner's go:** in `C:\dev\elite24mvp`: `git fetch origin`, `git switch main`,
-`git merge --ff-only origin/light-revamp`, `git push origin main`.
+Deployed on the owner's go ("Deploy"): `main` fast-forwarded to `origin/light-revamp` and
+pushed; the Vercel build succeeded. No migration was needed (production schema up to date).
 
 ---
 
