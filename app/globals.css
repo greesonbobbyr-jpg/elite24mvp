@@ -10,7 +10,8 @@
    never raw palette colors (tests/theme-guard.test.ts enforces it).
 
    THE DESIGN RULES (owner, 2026-10-06 — light mode looked unfinished):
-   1. One accent, the deep red-orange #D2361A, ALWAYS SOLID: a fill with white
+   1. One accent, the red of the "24" in the Elite24MVP wordmark (#E1102A,
+      owner 2026-10-06), ALWAYS SOLID: a fill with white
       text (bg-accent text-on-accent), an outline (border-accent-edge) or a
       left bar. Never a see-through tint — those came out pink on white.
    2. Selected = solid accent fill; unselected = white with a gray outline.
@@ -25,15 +26,15 @@
 
 :root {
   color-scheme: light;
-  /* the accent — the same solid red-orange in both modes */
-  --accent: #d2361a;
-  --accent-hover: #b42c14;
+  /* the accent — the wordmark's red, the same solid fill in both modes */
+  --accent: #e1102a;
+  --accent-hover: #bd0d23;
   --on-accent: #ffffff; /* text/icons on any solid colored fill */
   --on-gold: #1a1204; /* text on the gold and amber fills */
   /* fixed in both modes */
   --frame: #000000; /* the always-black brand frame: header, tab bars, menu */
   --scrim: rgb(0 0 0 / 0.8); /* behind a full-screen takeover */
-  --logo: #e1102a; /* the "24" in the Elite24MVP wordmark — a mark, not the accent */
+  --logo: #e1102a; /* the "24" in the wordmark — the accent matches it, but the mark keeps its own role */
   /* surfaces: a light gray page, white cards with a visible edge */
   --canvas: #eeeef1;
   --panel: #ffffff;
@@ -47,7 +48,7 @@
   --line-strong: #b4b4bc;
   --line-faint: #e4e4e8;
   --field-line: #7c7c86; /* ≥3:1 on white and on the canvas (WCAG non-text contrast) */
-  --accent-edge: #d2361a; /* outline of a selected / accent-marked element */
+  --accent-edge: #e1102a; /* outline of a selected / accent-marked element */
   /* drop-shadow tint: soft on white, deep on black */
   --shade: rgb(24 24 27 / 0.12);
   /* text, strongest → faintest (all but "faint" pass WCAG AA on canvas) */
@@ -60,9 +61,9 @@
   /* hint text in empty fields — clearly lighter than a typed value */
   --placeholder: #9a9aa3;
   /* accent + status TEXT (a step darker than the fill, for contrast) */
-  --brand: #b8301a;
-  --brand-2: #9e2914;
-  --brand-3: #8a2311;
+  --brand: #c00d24;
+  --brand-2: #a00b1e;
+  --brand-3: #8a0a1a;
   --good: #166534; /* ≥4.5:1 on the gray page, not just on white */
   --good-2: #14532d;
   --good-solid: #15803d; /* solid fills: done, read, add */
@@ -77,9 +78,9 @@
   --bubble-mine-ink: #ffffff;
   --bubble-ink: #ffffff;
   --bubble-glow: rgba(255, 255, 255, 0);
-  --bubble-from: #d2361a;
-  --bubble-mid: #c63218;
-  --bubble-to: #b42c14;
+  --bubble-from: #e1102a;
+  --bubble-mid: #d40f27;
+  --bubble-to: #bd0d23;
   --bubble-shadow: 0 4px 12px -8px rgba(60, 14, 6, 0.45);
   --bubble-ring: rgba(0, 0, 0, 0);
   --bubble-sheen: rgba(255, 255, 255, 0.06);
@@ -109,8 +110,8 @@
   --line: #27272a;
   --line-strong: #3f3f46;
   --line-faint: #18181b;
-  --field-line: #4a1b10;
-  --accent-edge: #d2361a;
+  --field-line: #4a1016;
+  --accent-edge: #e1102a;
   --shade: rgb(0 0 0 / 0.4);
   --ink: #ffffff;
   --ink-soft: #e4e4e7;
@@ -119,9 +120,9 @@
   --subtle: #85858e; /* was zinc-500 (#71717a): 3.9–4.3:1 on black, below AA */
   --faint: #52525b;
   --placeholder: #71717a;
-  --brand: #ff6e4a;
-  --brand-2: #ff8a6b;
-  --brand-3: #ffb4a0;
+  --brand: #ff3b4f;
+  --brand-2: #ff6b7a;
+  --brand-3: #ffa3ad;
   --good: #4ade80;
   --good-2: #86efac;
   --good-solid: #15803d;
@@ -134,20 +135,20 @@
   --bubble-mine: #ffffff;
   --bubble-mine-ink: #18181b;
   --bubble-ink: #ffffff;
-  --bubble-glow: rgba(255, 120, 90, 0.3);
-  --bubble-from: #c03117;
-  --bubble-mid: #7a1f0f;
-  --bubble-to: #3f0f07;
+  --bubble-glow: rgba(255, 90, 105, 0.3);
+  --bubble-from: #c40e25;
+  --bubble-mid: #7a0a17;
+  --bubble-to: #3f050c;
   --bubble-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.6);
   --bubble-ring: rgba(255, 255, 255, 0.08);
   --bubble-sheen: rgba(255, 255, 255, 0.1);
-  --surface-glow: rgba(210, 54, 26, 0.2);
+  --surface-glow: rgba(225, 16, 42, 0.2);
   --surface-from: #1a0b08;
   --surface-to: #0a0a0a;
   --surface-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7);
-  --surface-ring: #3a140c;
-  --surface-arc: rgba(210, 54, 26, 0.12);
-  --surface-arc-2: rgba(210, 54, 26, 0.08);
+  --surface-ring: #3a0c12;
+  --surface-arc: rgba(225, 16, 42, 0.12);
+  --surface-arc-2: rgba(225, 16, 42, 0.08);
   --surface-sheen: rgba(255, 255, 255, 0.06);
 }
 
@@ -164,8 +165,8 @@
     --line: #27272a;
     --line-strong: #3f3f46;
     --line-faint: #18181b;
-    --field-line: #4a1b10;
-    --accent-edge: #d2361a;
+    --field-line: #4a1016;
+    --accent-edge: #e1102a;
     --shade: rgb(0 0 0 / 0.4);
     --ink: #ffffff;
     --ink-soft: #e4e4e7;
@@ -174,9 +175,9 @@
     --subtle: #85858e;
     --faint: #52525b;
     --placeholder: #71717a;
-    --brand: #ff6e4a;
-    --brand-2: #ff8a6b;
-    --brand-3: #ffb4a0;
+    --brand: #ff3b4f;
+    --brand-2: #ff6b7a;
+    --brand-3: #ffa3ad;
     --good: #4ade80;
     --good-2: #86efac;
     --good-solid: #15803d;
@@ -189,20 +190,20 @@
     --bubble-mine: #ffffff;
     --bubble-mine-ink: #18181b;
     --bubble-ink: #ffffff;
-    --bubble-glow: rgba(255, 120, 90, 0.3);
-    --bubble-from: #c03117;
-    --bubble-mid: #7a1f0f;
-    --bubble-to: #3f0f07;
+    --bubble-glow: rgba(255, 90, 105, 0.3);
+    --bubble-from: #c40e25;
+    --bubble-mid: #7a0a17;
+    --bubble-to: #3f050c;
     --bubble-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.6);
     --bubble-ring: rgba(255, 255, 255, 0.08);
     --bubble-sheen: rgba(255, 255, 255, 0.1);
-    --surface-glow: rgba(210, 54, 26, 0.2);
+    --surface-glow: rgba(225, 16, 42, 0.2);
     --surface-from: #1a0b08;
     --surface-to: #0a0a0a;
     --surface-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7);
-    --surface-ring: #3a140c;
-    --surface-arc: rgba(210, 54, 26, 0.12);
-    --surface-arc-2: rgba(210, 54, 26, 0.08);
+    --surface-ring: #3a0c12;
+    --surface-arc: rgba(225, 16, 42, 0.12);
+    --surface-arc-2: rgba(225, 16, 42, 0.08);
     --surface-sheen: rgba(255, 255, 255, 0.06);
   }
 }
@@ -287,15 +288,15 @@ body {
 /* Brief accent highlight when you jump from a reply to the original message. */
 @keyframes msg-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgb(210 54 26 / 0);
+    box-shadow: 0 0 0 0 rgb(225 16 42 / 0);
   }
   15% {
     box-shadow:
-      0 0 0 3px rgb(210 54 26 / 0.85),
-      0 0 20px rgb(210 54 26 / 0.5);
+      0 0 0 3px rgb(225 16 42 / 0.85),
+      0 0 20px rgb(225 16 42 / 0.5);
   }
   100% {
-    box-shadow: 0 0 0 0 rgb(210 54 26 / 0);
+    box-shadow: 0 0 0 0 rgb(225 16 42 / 0);
   }
 }
 .msg-pulse {

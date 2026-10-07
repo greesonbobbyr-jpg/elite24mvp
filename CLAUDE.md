@@ -106,7 +106,7 @@ If the owner asks for any of these later, treat it as a new project phase with i
 
 ## 9. Branding & Visual Identity
 
-- **Colors:** The accent is a deep, solid **red-orange, `#D2361A`**, the same in both modes (owner, 2026-10-06). The app has **light and dark mode**: it follows the phone's setting by default, and the ☰ menu's Appearance switch (Auto / Light / Dark) can pin either. Dark mode is the original design (black base, white text); light mode is an off-white page with near-black text. The **brand frame stays black in both modes** — the top header bar and the bottom tab bars — and so do **Player Cards** (the collectible object) and the **TIME OUT** takeover. (Owner decision, 2026-09-26.)
+- **Colors:** The accent is the red of the **"24" in the Elite24MVP wordmark, `#E1102A`**, solid, the same in both modes (owner, 2026-10-06 — a red-orange `#D2361A` was tried first and rejected). The app has **light and dark mode**: it follows the phone's setting by default, and the ☰ menu's Appearance switch (Auto / Light / Dark) can pin either. Dark mode is the original design (black base, white text); light mode is an off-white page with near-black text. The **brand frame stays black in both modes** — the top header bar and the bottom tab bars — and so do **Player Cards** (the collectible object) and the **TIME OUT** takeover. (Owner decision, 2026-09-26.)
 - **Light & dark design rules** (owner, 2026-10-06 — light mode had looked unfinished: missing outlines, a see-through pinkish accent). These are enforced by the theme guard and the outline check (§6):
   1. **One accent, always solid.** A fill with white text, a solid outline, or a solid bar — never a see-through tint (tints come out pink on white). Accent *text* uses `text-brand`, a darker shade on light and a lighter one on dark, for contrast.
   2. **Selected means solid:** selected tabs, pills and toggles are a solid accent fill; unselected ones are white with a gray outline.
@@ -114,7 +114,7 @@ If the owner asks for any of these later, treat it as a new project phase with i
   4. **Accent-marked cards** (My Dream, Pro Review, alerts) get a solid accent bar down the left edge, not a wash or glow.
   5. **Status is solid too:** good/warn as solid chips or a solid left bar on a white card, with dark text.
   6. **Same structure in both modes;** dark keeps its all-black look with the same accent. Team Circle: other people's messages are solid accent bubbles in both modes; your own stay the inverse of the page.
-  The Elite24MVP wordmark keeps its own red (`text-logo`): it's the mark, not the accent.
+  The accent matches the wordmark's red; the wordmark keeps its own role (`text-logo`) so the mark never follows a future accent change.
 - **Master logo:** the **"E24 / MVP"** basketball mark (Elite 24, "Most Valuable Process").
 - **Tagline:** "Most Valuable Process."
 - **Mascot:** **"Prospect"** — a pit bull in a #24 basketball jersey. Brand character, used for personality/flavor.

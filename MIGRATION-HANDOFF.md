@@ -110,6 +110,12 @@ people's messages are solid accent bubbles in light mode too. The rules are in C
 Deployed on the owner's go ("Deploy"): `main` fast-forwarded to `origin/light-revamp` and
 pushed; the Vercel build succeeded. No migration was needed (production schema up to date).
 
+**Then (2026-10-06): the accent became the wordmark's red.** The owner didn't like the
+red-orange: "Change it to the color of the 24 in elite24mvp. But keep any other changes."
+The accent is now `#E1102A` (branch `accent-logo-red`), with accent text a shade darker on
+the light page (`#C00D24`) and lighter on black (`#FF3B4F`) for contrast. Only color values
+in `app/globals.css` changed, plus the style-guide baselines.
+
 ---
 
 ## 1. WHERE WE ARE (mid-motion, this second)
