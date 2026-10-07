@@ -126,8 +126,11 @@ export const STAFF_LOOK: Pick<LevelLook, "frame" | "window" | "live" | "energy">
 export const RING_BAND = { x0: 44, x1: 66, y0: 500, y1: 1150 };
 
 /** The corner, top rail and left rail cells of the rows' mini frame; the
- * other sides mirror them, so it's symmetric and free of the card's notches. */
-export const FRAME_CELLS = { size: 80, corner: { x: 40, y: 17 }, top: { x: 250, y: 17 }, left: { x: 40, y: 600 } };
+ * other sides mirror them, so it's symmetric and free of the card's notches.
+ * The rails come from flat stretches whose edges line up with the corner's
+ * (the top rail steps down at x 318–328; the side rail has ornaments at
+ * y 420 and 725–775 — cells across those showed as notches on the rows). */
+export const FRAME_CELLS = { size: 80, corner: { x: 40, y: 20 }, top: { x: 160, y: 20 }, left: { x: 40, y: 820 } };
 
 // ---- the recolor -----------------------------------------------------------
 

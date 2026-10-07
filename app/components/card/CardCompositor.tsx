@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { CARD_ASPECT, DEFAULT_WIDTH_PX, MASTER_W } from "@/lib/cardGeometry";
+import { CARD_ASPECT, CARD_CLIP, DEFAULT_WIDTH_PX, MASTER_W } from "@/lib/cardGeometry";
 
 // THE COMPOSITOR ROOT (Plan v4 §4.5). One fixed-aspect stage on the 1000×1500
 // master: every child positions itself in design units via `--u`
@@ -13,6 +13,11 @@ import { CARD_ASPECT, DEFAULT_WIDTH_PX, MASTER_W } from "@/lib/cardGeometry";
 // The stack must stay FLAT: every layer is a direct child of the stage — no
 // wrapper with filter/clip-path/opacity between a blended layer and what it
 // blends onto (each of those creates a stacking context and breaks blending).
+//
+// The stage is clipped to the frame's outline (CARD_CLIP), so the plate's
+// black surround never shows on a light page. A caller's `filter` (the card's
+// drop shadow) goes on the box AROUND the stage, so the shadow follows the
+// clipped outline instead of being cut off by it.
 
 export function CardCompositor({
   width = DEFAULT_WIDTH_PX,
@@ -30,6 +35,7 @@ export function CardCompositor({
   className?: string;
   style?: CSSProperties;
 } & Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "children">) {
+  const { filter, ...stageStyle } = style ?? {};
   const ref = useRef<HTMLDivElement>(null);
   const raf = useRef<number | null>(null);
   const [reduced, setReduced] = useState(false);
@@ -84,7 +90,7 @@ export function CardCompositor({
   // too — read on the stage, container units come from whatever container
   // is outside the card, and a small card got a screen-sized shadow.
   return (
-    <div style={{ width, maxWidth: "100%", containerType: "inline-size" }}>
+    <div style={{ width, maxWidth: "100%", containerType: "inline-size", filter }}>
       <div
         ref={ref}
         {...rest}
@@ -105,6 +111,7 @@ export function CardCompositor({
           // still widened the page, letting it open zoomed-in on a phone.
           // "clip", not "hidden": no scroll container, and the 3D tilt holds.
           overflow: "clip",
+          clipPath: CARD_CLIP,
           isolation: "isolate",
           // Vertical scroll and pinch-zoom still work when a gesture starts on
           // the card; sideways drags drive the tilt. A still card leaves touch
@@ -120,7 +127,7 @@ export function CardCompositor({
             "--u": `calc(100cqw / ${MASTER_W})`,
             ...(staticRender ? { "--so": "0" } : {}),
           } as CSSProperties),
-          ...style,
+          ...stageStyle,
         }}
       >
         <style>{STAGE_STYLE}</style>

@@ -4,6 +4,8 @@ import { formatTime } from "@/lib/format";
 import { PlayerCard } from "@/app/components/PlayerCard";
 import { sendCheckInReminder } from "./coach/actions";
 import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
+import { cardDefault } from "@/app/components/ui/Card";
+import { chipClass } from "@/app/components/ui/Pill";
 
 // The coach's team dashboard (shown at "/" for a COACH). A TODAY summary with a
 // check-in progress ring + the full roster (alphabetical by last name) as compact
@@ -151,13 +153,19 @@ export async function CoachHome({
         );
       })()}
 
-      {/* ROSTER */}
-      <section>
-        <p className="e24-eyebrow mb-2">Roster · {totalPlayers}</p>
+      {/* ROSTER — one panel; each player is a unit: their row, then today's
+          status as a chip (owner, 2026-10-06: loose lines read as floating). */}
+      <section className={`${cardDefault} p-4`}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="e24-eyebrow">Roster · {totalPlayers}</h2>
+          <span className="text-xs font-semibold text-subtle">
+            {checkedInToday} of {totalPlayers} checked in
+          </span>
+        </div>
         {roster.length === 0 ? (
-          <p className="text-sm text-subtle">No players on this team yet.</p>
+          <p className="mt-3 text-sm text-subtle">No players on this team yet.</p>
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="mt-3 flex flex-col gap-4">
             {roster.map((r) => (
               <li key={r.id}>
                 <Link
@@ -179,15 +187,17 @@ export async function CoachHome({
                     }}
                     team={user.team}
                   />
-                  <p
-                    className={`mt-1 px-1 text-[11px] font-medium ${
-                      r.checkedInAt ? "text-good" : "text-warn"
-                    }`}
-                  >
-                    {r.checkedInAt
-                      ? `✓ Checked in ${formatTime(r.checkedInAt)}`
-                      : "Not checked in yet"}
-                  </p>
+                  <span className="mt-1.5 flex items-center justify-between gap-2 px-1">
+                    {r.checkedInAt ? (
+                      <span className={chipClass("good")}>✓ Checked in {formatTime(r.checkedInAt)}</span>
+                    ) : (
+                      <span className={chipClass("neutral")}>
+                        <span aria-hidden className="h-2 w-2 rounded-full bg-warn-solid" />
+                        Not checked in yet
+                      </span>
+                    )}
+                    <span className="text-xs font-semibold text-subtle">Open →</span>
+                  </span>
                 </Link>
               </li>
             ))}

@@ -44,6 +44,19 @@ export type Zone = { x: number; y: number; w: number; h: number };
 /** Selects the face window in the supplied artwork; never draws metal. */
 export const FRAME_WINDOW = "M115 82H885L918 115V1160L884 1211H120L82 1170V116L115 82Z";
 
+/** The card's outline: the frame's outside edge, a hair inside the metal,
+ * measured from the plate art (every level's plate is a recolor of the same
+ * frame). The plate is a rectangle with black around the frame — invisible on
+ * a black page, a black box on a light one (owner, 2026-10-06) — so the card
+ * is clipped to this. Not a geometry change: everything inside stays put. */
+export const CARD_SILHOUETTE: readonly (readonly [number, number])[] = [
+  [44, 95], [115, 24], [318, 24], [328, 34], [672, 34], [682, 24], [885, 24], [956, 95],
+  [956, 1406], [890, 1472], [795, 1472], [785, 1479], [745, 1479], [735, 1486],
+  [265, 1486], [255, 1479], [215, 1479], [205, 1472], [110, 1472], [44, 1406],
+];
+/** CARD_SILHOUETTE as a CSS clip-path (percentages, so it fits any width). */
+export const CARD_CLIP = `polygon(${CARD_SILHOUETTE.map(([x, y]) => `${(x / MASTER_W) * 100}% ${(y / MASTER_H) * 100}%`).join(", ")})`;
+
 // ---- safe areas -----------------------------------------------------------
 
 /**

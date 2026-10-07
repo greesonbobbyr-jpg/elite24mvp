@@ -7,7 +7,7 @@ import {
   type RankedPlayer,
 } from "@/lib/leaderboard";
 import { PlayerCard, type CardTeam } from "@/app/components/PlayerCard";
-import { rowOnPage } from "@/app/components/ui/Card";
+import { cardDefault, rowOnPage } from "@/app/components/ui/Card";
 import { chipClass, pillClass } from "@/app/components/ui/Pill";
 import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
 
@@ -260,11 +260,12 @@ export default async function LeaderboardPage({
         </section>
       )}
 
-      {/* List — rank 4+ */}
+      {/* List — rank 4+, in one panel under the podium (owner, 2026-10-06:
+          rows loose on the page read as floating). */}
       {!weekView && rest.length > 0 && (
-        <section>
-          <div className="mb-3 h-px w-full bg-gradient-to-r from-transparent via-line-strong to-transparent" />
-          <ul className="flex flex-col gap-2">
+        <section className={`${cardDefault} p-4`}>
+          <h2 className="e24-eyebrow">Ranks 4–{ranked.length}</h2>
+          <ul className="mt-3 flex flex-col gap-2.5">
             {rest.map((player) => {
               const isMe = player.id === user.id;
               return (
@@ -272,7 +273,7 @@ export default async function LeaderboardPage({
                   <Link
                     href={`/brand/${player.id}`}
                     className={`relative block rounded-xl transition active:scale-[0.99] ${
-                      isMe ? "ring-2 ring-accent-edge ring-offset-2 ring-offset-canvas" : "hover:opacity-90"
+                      isMe ? "ring-2 ring-accent-edge ring-offset-2 ring-offset-panel" : "hover:opacity-90"
                     }`}
                   >
                     <PlayerCard

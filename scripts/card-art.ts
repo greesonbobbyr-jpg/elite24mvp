@@ -31,13 +31,12 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
-import { FRAME_WINDOW, MASTER_W } from "../lib/cardGeometry";
+import { CARD_SILHOUETTE, FRAME_WINDOW, MASTER_W } from "../lib/cardGeometry";
 import {
   FRAME_CELLS,
   LEVEL_LOOKS,
   RING_BAND,
   STAFF_LOOK,
-  brightness,
   pixelRecolor,
   swirlSource,
   type Recolor,
@@ -74,6 +73,28 @@ function columnWeight(x: number): number {
   if (x < KEEP_END) return 0;
   if (x < HANDOVER_END) return (x - KEEP_END) / (HANDOVER_END - KEEP_END);
   return 1;
+}
+
+/** The rows' frame band = 255: the metal rail just inside the card's
+ * outline, ROW_RAIL card units deep all the way round (the outline drawn as a
+ * thick inside stroke, rendered as SVG so every edge is a clean straight cut).
+ * The card's own inner lines and notches stay out of the rows' frame. */
+const ROW_RAIL = 38;
+async function frameBandMask(): Promise<Buffer> {
+  const unit = W / MASTER_W;
+  const points = CARD_SILHOUETTE.map(([x, y]) => `${x * unit},${y * unit}`).join(" ");
+  return sharp(
+    Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">` +
+        `<defs><clipPath id="c"><polygon points="${points}"/></clipPath></defs>` +
+        `<rect width="100%" height="100%" fill="black"/>` +
+        `<polygon points="${points}" fill="none" stroke="white" stroke-width="${ROW_RAIL * 2 * unit}" ` +
+        `stroke-linejoin="miter" clip-path="url(#c)"/></svg>`,
+    ),
+  )
+    .greyscale()
+    .raw()
+    .toBuffer();
 }
 
 /** Inside the frame window = 255. */
@@ -227,17 +248,12 @@ function ring(plate: Buffer): { pixels: Buffer; size: number } {
   return { pixels: out, size };
 }
 
-/** The frame's alpha from a pixel's brightness: the plate's dark backdrop
- * (≤ FRAME_CLEAR) is fully transparent, the metal (≥ FRAME_SOLID) opaque.
- * A softer fade left the backdrop 20–45% opaque — invisible on black, a gray
- * box around every row on a light page (owner, 2026-10-06). */
-const FRAME_CLEAR = 40;
-const FRAME_SOLID = 90;
-
 /** The rows' mini frame, as a 3×3 nine-slice (RGBA): the plate's corner, top
- * rail and left rail, mirrored for the other sides. Dark pixels are
- * transparent, so only the frame's lines sit over the row. */
-function frame(plate: Buffer): { pixels: Buffer; size: number; cell: number } {
+ * rail and left rail, mirrored for the other sides. Opaque exactly on the
+ * frame band (inside the card's outline, outside its window), so every edge
+ * is a clean straight cut: the owner saw ragged, notched edges on the rows
+ * when the alpha came from brightness (2026-10-06). */
+function frame(plate: Buffer, band: Buffer): { pixels: Buffer; size: number; cell: number } {
   const cell = Math.round(FRAME_CELLS.size * UNIT);
   const size = cell * 3;
   const out = Buffer.alloc(size * size * 4);
@@ -257,8 +273,7 @@ function frame(plate: Buffer): { pixels: Buffer; size: number; cell: number } {
         out[o] = Math.round(rgb[0]);
         out[o + 1] = Math.round(rgb[1]);
         out[o + 2] = Math.round(rgb[2]);
-        const lit = (brightness(rgb[0], rgb[1], rgb[2]) - FRAME_CLEAR) / (FRAME_SOLID - FRAME_CLEAR);
-        out[o + 3] = Math.round(Math.max(0, Math.min(1, lit)) * 255);
+        out[o + 3] = band[Math.round(sy) * W + Math.round(sx)];
       }
     }
   }
@@ -266,28 +281,29 @@ function frame(plate: Buffer): { pixels: Buffer; size: number; cell: number } {
 }
 
 /** A level's plate plus the small sizes' ring and mini frame cut from it. */
-async function writeArt(dir: string, plate: Buffer, writePlate = true) {
+async function writeArt(dir: string, plate: Buffer, band: Buffer, writePlate = true) {
   if (writePlate) await writeWebp(plate, W, H, 3, join(dir, "plate.webp"), 92);
   const r = ring(plate);
   await writeWebp(r.pixels, r.size, r.size, 4, join(dir, "ring.webp"), 92);
-  const f = frame(plate);
+  const f = frame(plate, band);
   await writeWebp(f.pixels, f.size, f.size, 4, join(dir, "frame.webp"), 92);
 }
 
 async function main() {
   const mask = await windowMask();
+  const band = await frameBandMask();
   const plate = await platinumPlate(mask);
-  await writeArt(finishDir("platinum"), plate, false);
+  await writeArt(finishDir("platinum"), plate, band, false);
   const field = await sharp(FIELD_SOURCE).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: fw, height: fh } = field.info;
   await writeWebp(field.data, fw, fh, 3, join(finishDir("platinum"), "field.webp"), 90);
 
   for (const [level, look] of Object.entries(LEVEL_LOOKS)) {
-    await writeArt(finishDir(level), recolor(plate, W, H, 3, look.frame, look.window, mask));
+    await writeArt(finishDir(level), recolor(plate, W, H, 3, look.frame, look.window, mask), band);
     const own = twist(field.data, fw, fh, 3, look.swirls);
     await writeWebp(recolor(own, fw, fh, 3, look.field), fw, fh, 3, join(finishDir(level), "field.webp"), 90);
   }
-  await writeArt(join("public", "card", "staff"), recolor(plate, W, H, 3, STAFF_LOOK.frame, STAFF_LOOK.window, mask));
+  await writeArt(join("public", "card", "staff"), recolor(plate, W, H, 3, STAFF_LOOK.frame, STAFF_LOOK.window, mask), band);
 }
 
 main().catch((e) => {

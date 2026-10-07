@@ -116,6 +116,13 @@ The accent is now `#E1102A` (branch `accent-logo-red`), with accent text a shade
 the light page (`#C00D24`) and lighter on black (`#FF3B4F`) for contrast. Only color values
 in `app/globals.css` changed, plus the style-guide baselines.
 
+**Then (2026-10-06): light-mode polish** (branch `light-polish`), from the owner's
+screenshots: the full card showed the plate's black surround as a box on a light page (now
+clipped to the frame's outline, `CARD_SILHOUETTE`; card baselines re-recorded, identical
+inside the outline); the roster and leaderboard lists looked like loose pieces (each now
+one panel, with roster status as chips); the sideways rows' frame edges looked ragged (the
+mini frame is now cut from one even band of the rail, `scripts/card-art.ts`). No migration.
+
 ---
 
 ## 1. WHERE WE ARE (mid-motion, this second)

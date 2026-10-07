@@ -3,6 +3,7 @@
 Owner-approved card renders. `scripts/shoot-cards.ts --check` pixel-compares fresh shots against these to catch accidental drift. The owner's visual approval is the design authority; these files only record it.
 
 - `master-bronze.png`, `master-silver.png`, `master-gold.png`, `master-platinum.png`, `master-diamond.png`: the master card at every level, approved together on 2026-09-26 ("This looks really good. Let's go with this for now"). Platinum's geometry was locked earlier the same day; it has changed by 0.01% since (its energy texture moved to WebP), and this set records the lineup as approved.
+- Re-recorded 2026-10-06: the card is now clipped to its frame's outline (`CARD_SILHOUETTE` in `lib/cardGeometry.ts`) — the owner saw the plate's black surround as a box around the card on a light page. Inside the outline these match the 2026-09-26 set to within 18 pixels of anti-aliasing; only the black surround and the cut edge changed.
 
 Check (needs the card dev server against the local `e24cards` database):
 
