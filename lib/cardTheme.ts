@@ -245,6 +245,31 @@ export function starsForPoints(points: number): 1 | 2 | 3 | 4 | 5 {
   return (idx + 1) as 1 | 2 | 3 | 4 | 5;
 }
 
+/**
+ * Progress toward the next star, in the card's own terms: every player is a
+ * Prospect with 1–5 stars (the card's TIER panel). The app speaks in stars —
+ * "1-star Prospect · 915 pts to 2★" — never in the old tier names, which
+ * don't match the card (owner, 2026-10-09: "Prospect … 915 points to bronze
+ * … is not the ranking system").
+ */
+export function starProgress(points: number): {
+  stars: 1 | 2 | 3 | 4 | 5;
+  nextStars: 2 | 3 | 4 | 5 | null;
+  toNext: number;
+  pct: number;
+} {
+  const stars = starsForPoints(points);
+  const here = TIERS[stars - 1];
+  const next = TIERS[stars] ?? null;
+  if (!next) return { stars, nextStars: null, toNext: 0, pct: 100 };
+  return {
+    stars,
+    nextStars: (stars + 1) as 2 | 3 | 4 | 5,
+    toNext: next.min - points,
+    pct: Math.min(100, Math.max(0, ((points - here.min) / (next.min - here.min)) * 100)),
+  };
+}
+
 // ---- finish tokens (card redesign, Δ2/Δ4) ----------------------------------
 //
 // The SECOND token system: material finishes. Geometry lives in

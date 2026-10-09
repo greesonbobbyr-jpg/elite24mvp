@@ -4,6 +4,7 @@ import { Banner } from "@/app/components/ui/Banner";
 import { Card, rowNested, rowOnPage, stripAccent } from "@/app/components/ui/Card";
 import { checkClass, fieldClass, labelClass } from "@/app/components/ui/Field";
 import { chipClass, iconTile, pillClass } from "@/app/components/ui/Pill";
+import { StarIcon, StatTile } from "@/app/components/ui/StatTile";
 
 // STYLE GUIDE — every shared building block in one place, in whichever mode
 // the phone (or the ☰ Appearance switch) is in. The light-mode revamp's
@@ -85,12 +86,18 @@ export default function StyleGuidePage() {
 
       <Section title="Stat tiles and icons">
         <div className="grid grid-cols-3 gap-2">
-          {[["🔥 3", "Day streak"], ["GOLD", "8160 to go"], ["#1", "Team rank"]].map(([value, label]) => (
-            <div key={label} className="rounded-xl border border-line bg-panel px-3 py-2 text-center shadow-sm shadow-shade">
-              <p className="text-lg font-black leading-none text-ink">{value}</p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-subtle">{label}</p>
-            </div>
-          ))}
+          <StatTile label="Day streak">
+            <p className="text-xl font-black leading-none text-ink">🔥 3</p>
+          </StatTile>
+          <StatTile label="915 pts to 2★" ariaLabel="1-star Prospect, 915 points to 2 stars">
+            <span className="flex text-gold-solid">
+              <StarIcon className="h-3.5 w-3.5" />
+            </span>
+            <span className="mt-1 text-[10px] font-black uppercase tracking-[0.16em] text-ink">Prospect</span>
+          </StatTile>
+          <StatTile label="Team rank">
+            <p className="text-xl font-black leading-none text-ink">#1</p>
+          </StatTile>
         </div>
         <div className="mt-3 flex items-center gap-3">
           <span className={iconTile} aria-hidden>◎</span>

@@ -3,11 +3,10 @@ import { actingScope, actingTeamId, getCurrentContext } from "@/lib/context";
 import { can } from "@/lib/authz";
 import { listPlayerNotifications, getTeamReadStatus } from "@/lib/notifications";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { confirmRead } from "../actions";
 import { NotificationComposer } from "./NotificationComposer";
 import { PushToggle } from "./PushToggle";
 import { WhistleIcon } from "@/app/components/WhistleIcon";
-import { Button } from "@/app/components/ui/Button";
+import { TimeoutBadge, UnreadAlerts } from "./UnreadAlerts";
 
 // Notifications history/list. STRICTLY the current user's own team — the player
 // reads their team's notifications, the coach posts to + sees receipts for their
@@ -139,68 +138,20 @@ export default async function NotificationsPage() {
         <EmptyCard line="No notifications from your coach yet." />
       ) : (
         <>
-          {unread.length > 0 && (
-            <ol className="flex flex-col gap-4">
-              {unread.map((n) => (
-                <li
-                  key={n.id}
-                  className={`e24-surface overflow-hidden rounded-2xl ${
-                    n.isTimeout ? "border-2 border-accent-edge" : ""
-                  }`}
-                >
-                  {/* solid accent left bar */}
-                  <div className="flex">
-                    <div className="w-1.5 shrink-0 bg-accent" />
-                    <div className="relative z-10 flex-1 p-5">
-                      {/* author identity row — name + role snapshot (4c) */}
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-on-accent">
-                          {initials(n.authorName)}
-                        </span>
-                        <div className="min-w-0 flex-1 leading-tight">
-                          <p className="truncate text-sm font-semibold text-ink">
-                            {n.authorName}
-                            {n.authorRoleLabel && (
-                              <span className="font-normal text-muted">
-                                {" "}· {n.authorRoleLabel}
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[11px] text-subtle">
-                            {formatDateTime(n.createdAt)}
-                          </p>
-                        </div>
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent shadow-[0_0_8px_var(--accent)]"
-                          aria-label="Unread"
-                        />
-                      </div>
-
-                      <h2 className="mt-3 font-bold text-ink">
-                        {n.isTimeout && <TimeoutBadge />}
-                        {n.title}
-                      </h2>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-ink-soft">
-                        {n.body}
-                      </p>
-
-                      {/* Acknowledge — unchanged behavior */}
-                      <form action={confirmRead} className="mt-4">
-                        <input
-                          type="hidden"
-                          name="notificationId"
-                          value={n.id}
-                        />
-                        <Button type="submit" size="sm">
-                          I&apos;ve read this
-                        </Button>
-                      </form>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
+          {/* Always mounted, so its "marked as read" message survives the
+              refresh that moves the last unread alert to "Earlier". */}
+          <UnreadAlerts
+            items={unread.map((n) => ({
+              id: n.id,
+              initials: initials(n.authorName),
+              authorName: n.authorName,
+              authorRoleLabel: n.authorRoleLabel,
+              when: formatDateTime(n.createdAt),
+              title: n.title,
+              body: n.body,
+              isTimeout: n.isTimeout,
+            }))}
+          />
 
           {read.length > 0 && (
             <section>
@@ -283,15 +234,5 @@ function ReceiptGroup({
         </div>
       )}
     </div>
-  );
-}
-
-// Small solid accent badge marking a notification as an urgent TIME OUT.
-function TimeoutBadge() {
-  return (
-    <span className="mr-2 inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-on-accent">
-      <WhistleIcon className="h-3 w-3" />
-      Time Out
-    </span>
   );
 }

@@ -3,6 +3,7 @@ import {
   TIERS,
   tierForPoints,
   starsForPoints,
+  starProgress,
   FINISHES,
   FINISH_ORDER,
   finishForStars,
@@ -23,6 +24,16 @@ describe("tier thresholds (owner-locked 0/1k/5k/20k/50k)", () => {
       expect(tierForPoints(TIERS[i].min).key).toBe(TIERS[i].key);
       expect(tierForPoints(TIERS[i].min - 1).key).toBe(TIERS[i - 1].key);
     }
+  });
+});
+
+describe("starProgress: the app speaks in stars", () => {
+  it("counts to the next star, never past the top", () => {
+    expect(starProgress(85)).toEqual({ stars: 1, nextStars: 2, toNext: 915, pct: 8.5 });
+    expect(starProgress(1000)).toMatchObject({ stars: 2, nextStars: 3, toNext: 4000, pct: 0 });
+    expect(starProgress(49999)).toMatchObject({ stars: 4, nextStars: 5, toNext: 1 });
+    expect(starProgress(50000)).toEqual({ stars: 5, nextStars: null, toNext: 0, pct: 100 });
+    expect(starProgress(250000).nextStars).toBeNull();
   });
 });
 

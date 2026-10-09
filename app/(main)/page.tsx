@@ -13,7 +13,7 @@ import { POINTS_PER_CHECKIN } from "@/lib/points";
 import { storyForDay } from "@/lib/mindset";
 import { listActiveQuestsForOrg, getTodaysCompletedQuestIds } from "@/lib/quests";
 import { getTeamRanking } from "@/lib/leaderboard";
-import { tierForPoints, TIERS } from "@/lib/cardTheme";
+import { starProgress } from "@/lib/cardTheme";
 import { CheckInForm } from "./CheckInForm";
 import { MindsetCard } from "./MindsetCard";
 import { ReviewCard } from "./ReviewCard";
@@ -21,6 +21,7 @@ import { CoachHome } from "./CoachHome";
 import { JoinTeamCard } from "./JoinTeamCard";
 import { Card } from "@/app/components/ui/Card";
 import { chipClass } from "@/app/components/ui/Pill";
+import { StarIcon, StatTile } from "@/app/components/ui/StatTile";
 
 export default async function Home() {
   const ctx = await getCurrentContext();
@@ -70,8 +71,7 @@ export default async function Home() {
   const ranking = await getTeamRanking(ctx.membership?.teamId ?? user.teamId);
   const myRank = ranking.find((r) => r.id === user.id)?.rank ?? 0;
   const points = ctx.profile?.careerPoints ?? profile?.points ?? 0;
-  const tier = tierForPoints(points);
-  const nextTier = TIERS[TIERS.findIndex((t) => t.key === tier.key) + 1] ?? null;
+  const level = starProgress(points);
   const streak = profile?.currentStreak ?? 0;
   const shieldReady = !(profile?.streakGraceUsed ?? false);
 
@@ -94,35 +94,31 @@ export default async function Home() {
         </Card>
       )}
 
-      {/* Progress strip — streak · tier · rank at a glance */}
+      {/* Progress strip — streak · stars · rank at a glance. The stars are
+          the card's TIER panel: a 1–5 star Prospect. */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center shadow-sm shadow-shade">
-          <p className="text-lg font-black leading-none text-ink">
+        <StatTile label="Day streak">
+          <p className="text-xl font-black leading-none text-ink">
             🔥 {streak}
             {shieldReady && streak > 0 && (
-              <span title="Shield ready — one missed day won't break it" className="ml-1 align-middle text-[10px]">🛡️</span>
+              <span title="Shield ready — one missed day won't break it" className="ml-1 align-middle text-[11px]">🛡️</span>
             )}
           </p>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-subtle">
-            Day streak
-          </p>
-        </div>
-        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center shadow-sm shadow-shade">
-          <p className="text-lg font-black uppercase leading-none text-ink">
-            {tier.label}
-          </p>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-subtle">
-            {nextTier ? `${nextTier.min - points} pts to ${nextTier.label}` : "Top tier"}
-          </p>
-        </div>
-        <div className="rounded-xl border border-line bg-panel px-3 py-2 text-center shadow-sm shadow-shade">
-          <p className="text-lg font-black leading-none text-ink">
-            {myRank > 0 ? `#${myRank}` : "—"}
-          </p>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-subtle">
-            Team rank
-          </p>
-        </div>
+        </StatTile>
+        <StatTile
+          ariaLabel={`${level.stars}-star Prospect${level.nextStars ? `, ${level.toNext} points to ${level.nextStars} stars` : ", top level"}`}
+          label={level.nextStars ? <>{level.toNext.toLocaleString()} pts to {level.nextStars}★</> : "Top level"}
+        >
+          <span className="flex text-gold-solid">
+            {Array.from({ length: level.stars }, (_, i) => (
+              <StarIcon key={i} className="h-3.5 w-3.5" />
+            ))}
+          </span>
+          <span className="mt-1 text-[10px] font-black uppercase tracking-[0.16em] text-ink">Prospect</span>
+        </StatTile>
+        <StatTile label="Team rank">
+          <p className="text-xl font-black leading-none text-ink">{myRank > 0 ? `#${myRank}` : "—"}</p>
+        </StatTile>
       </div>
 
       {/* Daily check-in (the core loop) — the main act */}
