@@ -63,13 +63,15 @@ export default async function CeoTeamPage({ params }: { params: Promise<{ teamId
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-ink">{p.name}</span>
-                  <span className="flex items-center gap-1 text-xs text-subtle">
+                  {/* Each piece stays whole when the line wraps. */}
+                  <span className="flex flex-wrap items-center gap-x-1 text-xs text-subtle">
                     <span className="flex text-gold-solid" aria-label={`${p.stars} stars`}>
                       {Array.from({ length: p.stars }, (_, i) => (
                         <StarIcon key={i} className="h-3 w-3" />
                       ))}
                     </span>
-                    · {p.teamPoints.toLocaleString()} pts this season · 🔥 {p.streak}
+                    <span className="whitespace-nowrap">· {p.teamPoints.toLocaleString()} pts this season</span>
+                    <span className="whitespace-nowrap">· 🔥 {p.streak}</span>
                   </span>
                 </span>
                 <span className={chipClass(p.checkedInToday ? "good" : "neutral")}>
