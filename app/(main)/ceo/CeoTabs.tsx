@@ -6,7 +6,7 @@ import { pillClass } from "@/app/components/ui/Pill";
 
 const TABS = [
   { href: "/ceo", label: "Overview" },
-  { href: "/ceo/orgs", label: "Organizations" },
+  { href: "/ceo/orgs", label: "Orgs" },
   { href: "/ceo/people", label: "People" },
   { href: "/ceo/activity", label: "Activity" },
 ] as const;
