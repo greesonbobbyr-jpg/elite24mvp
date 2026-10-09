@@ -15,7 +15,7 @@
  *
  *   npx tsx scripts/check-pages.ts [--url http://localhost:3000] [--webkit]
  *       [--contrast] [--outlines] [--shots <dir>] [--theme light|dark]
- *       [--pinned] [--verbose]
+ *       [--pinned] [--verbose] [--only player,ceo,...]
  *
  * Mode is the phone's setting (colorScheme emulation) — the "Auto" path.
  * --pinned instead pins each mode with the ☰ Appearance switch's cookie while
@@ -43,6 +43,8 @@ const CONTRAST = args.includes("--contrast");
 const OUTLINES = args.includes("--outlines");
 const PINNED = args.includes("--pinned");
 const SHOTS = argValue("--shots");
+// --only <labels>: check just these visits (comma-separated labels below).
+const ONLY = argValue("--only")?.split(",");
 const THEMES = (argValue("--theme") ? [argValue("--theme")] : OUTLINES ? ["light"] : ["light", "dark"]) as ("light" | "dark")[];
 // Contrast, outlines and screenshots only need one width; fit needs the narrow ones.
 const WIDTHS = CONTRAST || OUTLINES || SHOTS ? [390] : [320, 360, 390];
@@ -317,7 +319,7 @@ async function main() {
   const browser = await engine.launch();
   let total = 0;
   try {
-    for (const visit of VISITS) {
+    for (const visit of VISITS.filter((v) => !ONLY || ONLY.includes(v.label))) {
       console.log(`\n${visit.label}`);
       for (const theme of THEMES) {
         for (const width of WIDTHS) total += await checkUser(browser, visit, theme, width);
