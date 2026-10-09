@@ -123,6 +123,20 @@ inside the outline); the roster and leaderboard lists looked like loose pieces (
 one panel, with roster status as chips); the sideways rows' frame edges looked ragged (the
 mini frame is now cut from one even band of the rail, `scripts/card-art.ts`). No migration.
 
+### Deployed 2026-10-09: home tiles, star progress, the "read" reaction (`home-alerts-polish`, 66bb147)
+
+From the owner: the home tiles' values sat at the top and "PROSPECT" didn't fit; "915 pts to
+Bronze" "is not the ranking system" (it's stars); marking an alert read showed no reaction.
+Now the tiles (`app/components/ui/StatTile.tsx`) center the value with the label at the
+bottom; progress reads "N pts to M★" (`starProgress()` in `lib/cardTheme.ts`, also on
+Quests); tapping "I've read this" folds the card away with a toast ("✓ Marked as read · N
+still to read") (`notifications/UnreadAlerts.tsx`). Style-guide baselines re-recorded.
+No migration. Deployed on the owner's "Deploy": `main` fast-forwarded to 66bb147 and pushed.
+
+**Next (approved plan, 2026-10-09): accounts for everyone, the CEO, flexible org structure,
+announcements.** Phase 0, a dev-only clickable mockup at `/preview/*`, is on branch
+`person-first-mockup` and waits for the owner's sign-off before Phase 1.
+
 ---
 
 ## 1. WHERE WE ARE (mid-motion, this second)
