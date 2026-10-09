@@ -134,8 +134,34 @@ still to read") (`notifications/UnreadAlerts.tsx`). Style-guide baselines re-rec
 No migration. Deployed on the owner's "Deploy": `main` fast-forwarded to 66bb147 and pushed.
 
 **Next (approved plan, 2026-10-09): accounts for everyone, the CEO, flexible org structure,
-announcements.** Phase 0, a dev-only clickable mockup at `/preview/*`, is on branch
-`person-first-mockup` and waits for the owner's sign-off before Phase 1.
+announcements.** Plan: `~/.claude/plans/c-users-grees-claude-uploads-a1d7a349-e-harmonic-sparkle.md`.
+The owner approved the Phase 0 mockup (`/preview/*`, dev only). The order was changed so that
+Gary Harper (the CEO) can log in sooner: Phase 1, then the CEO step, then Phases 2 → 3 → 5.
+
+### Ready, awaiting "Deploy": Phase 1 + the CEO step (branch `person-first-p1`)
+
+- **Phase 1:**
+  - `User.teamId` is nullable; screens read persona (`lib/persona.ts`), not `User.role`.
+  - Personal athletes have no team.
+  - Fixed: the removed-player TIME OUT bug; quests now earn career points with no team; new orgs get active quests.
+  - The ☰ menu shows an unread count.
+- **CEO step:**
+  - `PlatformGrant`, `AuditEvent`, `User.mustChangePassword`.
+  - CEO View `/ceo`, read-only, never journals or reflections.
+  - Change password.
+  - `scripts/grant-platform-role.ts`.
+
+**Production runbook.** Migrations are additive; the `.env` database is production.
+
+1. `npx prisma migrate deploy` applies `user_team_optional` and `ceo_platform_grant`.
+2. Turn on the Elite24 quest set for no-team athletes. The 2026-10-09 dry run showed 0 of 6 active and no empty orgs.
+   - `BACKFILL_CONFIRM=<host> npx tsx scripts/activate-platform-quests.ts --execute`
+   - Then `--verify`.
+3. Fast-forward `main` to `person-first-p1` and push; wait for Vercel's "Deployment has completed".
+4. Create Gary's account. The owner asked for it on 2026-10-09; the starting password came from the owner in chat, is passed only as an env var, and is never written down.
+   - `BACKFILL_CONFIRM=<host> CEO_INITIAL_PASSWORD=… npx tsx scripts/grant-platform-role.ts --email <Gary's email> --name "Gary Harper" --execute`
+   - Then `--verify`.
+   - At first login he must pick his own password.
 
 ---
 
