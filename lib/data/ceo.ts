@@ -16,14 +16,27 @@ import {
 // include), and check-in/review activity comes only as counts and times from
 // lib/data/reflections. tests/ceo.test.ts holds this file to that.
 //
-// Callers gate on ctx.platformRole === "CEO" (app/(main)/ceo/layout.tsx), and
-// each detail view writes an AuditEvent so the organization can see what was
-// opened.
+// GATE: every read takes a CeoAccess, which only ceoAccessFrom() can make —
+// from a context that holds an active CEO grant. Each PAGE must get it itself:
+// Next.js renders a page alongside its layout, so a check in the layout alone
+// does not stop the page's reads (a non-CEO's response carried People-search
+// results until 2026-10-09). Each detail view writes an AuditEvent so the
+// organization can see what was opened.
+
+declare const ceoBrand: unique symbol;
+export type CeoAccess = { readonly profileId: number; readonly [ceoBrand]: true };
+
+export function ceoAccessFrom(
+  ctx: { platformRole: "CEO" | null; profile: { id: number } | null } | null,
+): CeoAccess | null {
+  if (ctx?.platformRole !== "CEO" || !ctx.profile) return null;
+  return { profileId: ctx.profile.id } as CeoAccess;
+}
 
 const ACTIVE = { endedAt: null, season: { isCurrent: true } } as const;
 const STAFF_ROLES: Role[] = ["HEAD_COACH", "ASSISTANT_COACH", "GENERAL_MANAGER"];
 
-export async function ceoOverview() {
+export async function ceoOverview(_ceo: CeoAccess) {
   const [organizations, teams, players, staff, checkedInToday, noTeam, noEmail] = await Promise.all([
     prisma.organization.count(),
     prisma.team.count(),
@@ -44,7 +57,7 @@ export async function ceoOverview() {
   return { organizations, teams, players, staff, checkedInToday, noTeam, noEmail };
 }
 
-export async function listOrganizations(q = "") {
+export async function listOrganizations(_ceo: CeoAccess, q = "") {
   const orgs = await prisma.organization.findMany({
     where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
     orderBy: { name: "asc" },
@@ -71,7 +84,7 @@ export async function listOrganizations(q = "") {
   }));
 }
 
-export async function orgDetail(orgId: number) {
+export async function orgDetail(_ceo: CeoAccess, orgId: number) {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
     select: {
@@ -113,7 +126,7 @@ export async function orgDetail(orgId: number) {
   };
 }
 
-export async function teamDetail(teamId: number) {
+export async function teamDetail(_ceo: CeoAccess, teamId: number) {
   const team = await prisma.team.findUnique({
     where: { id: teamId },
     select: {
@@ -170,7 +183,7 @@ export async function teamDetail(teamId: number) {
   };
 }
 
-export async function searchPeople(q: string) {
+export async function searchPeople(_ceo: CeoAccess, q: string) {
   const term = q.trim();
   if (term.length < 2) return [];
   const profiles = await prisma.profile.findMany({
@@ -212,7 +225,7 @@ function weekStartKey(now = new Date()): string {
   return todayKey(d);
 }
 
-export async function personDetail(profileId: number) {
+export async function personDetail(_ceo: CeoAccess, profileId: number) {
   const p = await prisma.profile.findUnique({
     where: { id: profileId },
     select: {
@@ -291,13 +304,13 @@ export async function personDetail(profileId: number) {
 export type CeoAuditAction = "ceo.view_org" | "ceo.view_team" | "ceo.view_person";
 
 export async function recordAudit(
-  actorProfileId: number,
+  ceo: CeoAccess,
   action: CeoAuditAction,
   refs: { organizationId?: number | null; teamId?: number | null; targetProfileId?: number | null; detail?: string },
 ) {
   await prisma.auditEvent.create({
     data: {
-      actorProfileId,
+      actorProfileId: ceo.profileId,
       action,
       organizationId: refs.organizationId ?? null,
       teamId: refs.teamId ?? null,
@@ -307,9 +320,9 @@ export async function recordAudit(
   });
 }
 
-export async function listAudit(actorProfileId: number, limit = 100) {
+export async function listAudit(ceo: CeoAccess, limit = 100) {
   return prisma.auditEvent.findMany({
-    where: { actorProfileId },
+    where: { actorProfileId: ceo.profileId },
     orderBy: { createdAt: "desc" },
     take: limit,
     select: { id: true, action: true, detail: true, createdAt: true },

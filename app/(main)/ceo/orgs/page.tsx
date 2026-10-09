@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listOrganizations } from "@/lib/data/ceo";
+import { requireCeo } from "../gate";
 import { cardDefault } from "@/app/components/ui/Card";
 import { fieldClass } from "@/app/components/ui/Field";
 
@@ -9,8 +10,9 @@ export default async function CeoOrgsPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  const ceo = await requireCeo();
   const { q = "" } = await searchParams;
-  const orgs = await listOrganizations(q.trim());
+  const orgs = await listOrganizations(ceo, q.trim());
   return (
     <section className="flex flex-col gap-2">
       <form role="search" className="flex gap-2">

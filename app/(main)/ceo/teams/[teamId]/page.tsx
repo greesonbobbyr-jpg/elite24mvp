@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCurrentContext } from "@/lib/context";
 import { recordAudit, teamDetail } from "@/lib/data/ceo";
+import { requireCeo } from "../../gate";
 import { roleLabel } from "@/lib/format";
 import { cardDefault } from "@/app/components/ui/Card";
 import { chipClass } from "@/app/components/ui/Pill";
@@ -10,11 +10,12 @@ import { StarIcon } from "@/app/components/ui/StatTile";
 // CEO View · one team: staff and the roster with each player's card numbers
 // and today's check-in status (done / not — never what they wrote).
 export default async function CeoTeamPage({ params }: { params: Promise<{ teamId: string }> }) {
+  const ceo = await requireCeo();
   const id = Number.parseInt((await params).teamId, 10);
   if (!Number.isInteger(id)) notFound();
-  const [ctx, team] = await Promise.all([getCurrentContext(), teamDetail(id)]);
-  if (!team || !ctx?.profile) notFound();
-  await recordAudit(ctx.profile.id, "ceo.view_team", {
+  const team = await teamDetail(ceo, id);
+  if (!team) notFound();
+  await recordAudit(ceo, "ceo.view_team", {
     organizationId: team.organization?.id ?? null,
     teamId: team.id,
     detail: team.name,

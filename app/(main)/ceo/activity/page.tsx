@@ -1,5 +1,5 @@
-import { getCurrentContext } from "@/lib/context";
 import { listAudit } from "@/lib/data/ceo";
+import { requireCeo } from "../gate";
 import { cardDefault } from "@/app/components/ui/Card";
 
 const VERB: Record<string, string> = {
@@ -12,8 +12,7 @@ const VERB: Record<string, string> = {
 // CEO View · Activity — everything the CEO opened, newest first. The same
 // records will show in each organization's own Activity.
 export default async function CeoActivityPage() {
-  const ctx = await getCurrentContext();
-  const events = ctx?.profile ? await listAudit(ctx.profile.id) : [];
+  const events = await listAudit(await requireCeo());
   if (events.length === 0) {
     return <p className="px-1 py-4 text-sm text-muted">Nothing yet. What you open in CEO View is listed here.</p>;
   }

@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCurrentContext } from "@/lib/context";
 import { orgDetail, recordAudit } from "@/lib/data/ceo";
+import { requireCeo } from "../../gate";
 import { cardDefault } from "@/app/components/ui/Card";
 import { chipClass } from "@/app/components/ui/Pill";
 
 // CEO View · one organization: its admins and every team. Opening it is
 // recorded (AuditEvent) for the organization's own Activity.
 export default async function CeoOrgPage({ params }: { params: Promise<{ orgId: string }> }) {
+  const ceo = await requireCeo();
   const id = Number.parseInt((await params).orgId, 10);
   if (!Number.isInteger(id)) notFound();
-  const [ctx, org] = await Promise.all([getCurrentContext(), orgDetail(id)]);
-  if (!org || !ctx?.profile) notFound();
-  await recordAudit(ctx.profile.id, "ceo.view_org", { organizationId: org.id, detail: org.name });
+  const org = await orgDetail(ceo, id);
+  if (!org) notFound();
+  await recordAudit(ceo, "ceo.view_org", { organizationId: org.id, detail: org.name });
 
   return (
     <section className="flex flex-col gap-3">

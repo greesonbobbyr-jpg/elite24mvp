@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { ceoOverview } from "@/lib/data/ceo";
+import { requireCeo } from "./gate";
 import { cardDefault } from "@/app/components/ui/Card";
 import { chipClass } from "@/app/components/ui/Pill";
 import { StatTile } from "@/app/components/ui/StatTile";
 
 // CEO View · Overview — the whole app in numbers.
 export default async function CeoOverviewPage() {
-  const o = await ceoOverview();
+  const o = await ceoOverview(await requireCeo());
   const tiles: [string, number][] = [
     ["Organizations", o.organizations],
     ["Teams", o.teams],

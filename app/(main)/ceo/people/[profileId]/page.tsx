@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCurrentContext } from "@/lib/context";
 import { personDetail, recordAudit } from "@/lib/data/ceo";
+import { requireCeo } from "../../gate";
 import { roleLabel } from "@/lib/format";
 import { formatHeight } from "@/lib/height";
 import { cardDefault, rowNested } from "@/app/components/ui/Card";
@@ -10,12 +10,13 @@ import { chipClass } from "@/app/components/ui/Pill";
 // CEO View · one person: their teams, their card, and this week's activity as
 // counts. Never their journal or reflections. Opening it is recorded.
 export default async function CeoPersonPage({ params }: { params: Promise<{ profileId: string }> }) {
+  const ceo = await requireCeo();
   const id = Number.parseInt((await params).profileId, 10);
   if (!Number.isInteger(id)) notFound();
-  const [ctx, p] = await Promise.all([getCurrentContext(), personDetail(id)]);
-  if (!p || !ctx?.profile) notFound();
+  const p = await personDetail(ceo, id);
+  if (!p) notFound();
   const active = p.memberships.find((m) => m.active);
-  await recordAudit(ctx.profile.id, "ceo.view_person", {
+  await recordAudit(ceo, "ceo.view_person", {
     targetProfileId: p.id,
     teamId: active?.teamId ?? null,
     detail: p.name,

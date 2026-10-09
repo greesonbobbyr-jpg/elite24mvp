@@ -60,20 +60,28 @@ dbDescribe("the CEO", () => {
     expect(chrome.links[0]).toEqual({ href: "/ceo", label: "CEO View" });
   });
 
-  it("nobody else resolves as CEO", async () => {
+  it("nobody else resolves as CEO — or can get a CEO pass for the reads", async () => {
     const { prisma } = await import("../lib/prisma");
     const { resolveContextForUser } = await import("../lib/context");
-    for (const email of ["gary@elite24.demo", "alex@elite24.demo", "jordan.carter@example.com"]) {
+    const { ceoAccessFrom } = await import("../lib/data/ceo");
+    for (const email of ["gary@elite24.demo", "alex@elite24.demo", "jordan.carter@example.com", "avery.collins@example.com"]) {
       const u = await prisma.user.findUniqueOrThrow({ where: { email } });
-      expect((await resolveContextForUser(u.id, null))!.platformRole).toBeNull();
+      const ctx = (await resolveContextForUser(u.id, null))!;
+      expect(ctx.platformRole).toBeNull();
+      expect(ceoAccessFrom(ctx)).toBeNull();
     }
+    expect(ceoAccessFrom(null)).toBeNull();
+    const ceo = await prisma.user.findUniqueOrThrow({ where: { email: "ceo@elite24.demo" } });
+    expect(ceoAccessFrom((await resolveContextForUser(ceo.id, null))!)).not.toBeNull();
   });
 
   it("sees a whole team and a player's card — and none of their written words", async () => {
     const { prisma } = await import("../lib/prisma");
-    const { teamDetail, personDetail, orgDetail, listOrganizations, searchPeople, ceoOverview } = await import(
-      "../lib/data/ceo"
-    );
+    const { teamDetail, personDetail, orgDetail, listOrganizations, searchPeople, ceoOverview, ceoAccessFrom } =
+      await import("../lib/data/ceo");
+    const { resolveContextForUser } = await import("../lib/context");
+    const ceoUser = await prisma.user.findUniqueOrThrow({ where: { email: "ceo@elite24.demo" } });
+    const ceo = ceoAccessFrom((await resolveContextForUser(ceoUser.id, null))!)!;
     const jordan = await prisma.user.findUniqueOrThrow({
       where: { email: "jordan.carter@example.com" },
       include: { profileRecord: { include: { memberships: true } } },
@@ -83,12 +91,12 @@ dbDescribe("the CEO", () => {
     const team = await prisma.team.findUniqueOrThrow({ where: { id: teamId } });
 
     const results = await Promise.all([
-      ceoOverview(),
-      listOrganizations(),
-      orgDetail(team.organizationId!),
-      teamDetail(teamId),
-      searchPeople("jordan"),
-      personDetail(profileId),
+      ceoOverview(ceo),
+      listOrganizations(ceo),
+      orgDetail(ceo, team.organizationId!),
+      teamDetail(ceo, teamId),
+      searchPeople(ceo, "jordan"),
+      personDetail(ceo, profileId),
     ]);
     const person = results[5]!;
     expect(person.name).toBe("Jordan Carter");
@@ -109,10 +117,12 @@ dbDescribe("the CEO", () => {
 
   it("opening a person is recorded", async () => {
     const { prisma } = await import("../lib/prisma");
-    const { recordAudit, listAudit } = await import("../lib/data/ceo");
-    const ceo = await prisma.profile.findFirstOrThrow({ where: { platformGrants: { some: { revokedAt: null } } } });
-    await recordAudit(ceo.id, "ceo.view_person", { targetProfileId: ceo.id, detail: "__audit_probe__" });
-    const recent = await listAudit(ceo.id, 5);
+    const { recordAudit, listAudit, ceoAccessFrom } = await import("../lib/data/ceo");
+    const { resolveContextForUser } = await import("../lib/context");
+    const ceoUser = await prisma.user.findUniqueOrThrow({ where: { email: "ceo@elite24.demo" } });
+    const ceo = ceoAccessFrom((await resolveContextForUser(ceoUser.id, null))!)!;
+    await recordAudit(ceo, "ceo.view_person", { targetProfileId: ceo.profileId, detail: "__audit_probe__" });
+    const recent = await listAudit(ceo, 5);
     expect(recent.some((e) => e.detail === "__audit_probe__")).toBe(true);
     await prisma.auditEvent.deleteMany({ where: { detail: "__audit_probe__" } });
   });
