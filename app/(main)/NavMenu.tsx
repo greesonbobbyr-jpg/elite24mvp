@@ -29,8 +29,17 @@ type NavLink = { href: string; label: string };
 // Top-right hamburger menu. Pure styling + open/close behavior — it just renders
 // whatever links it's given (the routing targets are decided by the caller).
 // `loginName` is what this person types to log in, shown so nobody has to
-// guess (players rarely see their username anywhere else).
-export function NavMenu({ links, loginName }: { links: NavLink[]; loginName?: string | null }) {
+// guess (players rarely see their username anywhere else). `unread` puts a
+// number on the button so new alerts are noticed from any page.
+export function NavMenu({
+  links,
+  loginName,
+  unread = 0,
+}: {
+  links: NavLink[];
+  loginName?: string | null;
+  unread?: number;
+}) {
   const [open, setOpen] = useState(false);
   // Read from <html data-theme> (set server-side). The picker only renders
   // once the menu is open, so the server's "system" default never shows.
@@ -54,11 +63,19 @@ export function NavMenu({ links, loginName }: { links: NavLink[]; loginName?: st
     <div ref={ref} className="relative">
       <button
         type="button"
-        aria-label="Menu"
+        aria-label={unread > 0 ? `Menu, ${unread} unread` : "Menu"}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-frame text-ink transition hover:border-accent-edge hover:text-brand-2 active:scale-95"
+        className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-frame text-ink transition hover:border-accent-edge hover:text-brand-2 active:scale-95"
       >
+        {unread > 0 && (
+          <span
+            aria-hidden
+            className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-frame bg-accent px-1 text-[11px] font-black leading-none text-on-accent"
+          >
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
         <svg
           width="18"
           height="18"

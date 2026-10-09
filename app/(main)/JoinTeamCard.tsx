@@ -6,10 +6,11 @@ import { Button } from "@/app/components/ui/Button";
 
 const initial: JoinTeamState = {};
 
-// Shown on Home to a player with NO active membership (removed from a roster,
-// or the season rolled over). Their daily loop keeps working (offseason —
-// career points, streaks, journal); this card gets them onto a roster: enter
-// the team code, membership lands on their EXISTING profile, history carries.
+// Shown on Home to an athlete with NO active membership (Personal Player
+// Development, removed from a roster, or the season rolled over). Their daily
+// loop keeps working (career points, streaks, journal); this card gets them
+// onto a roster: enter the team code, membership lands on their EXISTING
+// profile, history carries.
 export function JoinTeamCard() {
   const [state, formAction, pending] = useActionState(joinTeamWithCode, initial);
 
@@ -18,8 +19,8 @@ export function JoinTeamCard() {
       <div className="relative z-10">
         <p className="e24-eyebrow">Join your team</p>
         <p className="mt-1 text-sm text-muted">
-          You&apos;re not on a team roster this season. Your journal, streak, and
-          career points are safe — enter your coach&apos;s team code to join.
+          You&apos;re not on a team right now. Your journal, streak, and career
+          points are yours — got a team code from a coach? Enter it to join.
         </p>
         {state.ok ? (
           <p className="mt-3 text-sm font-semibold text-good">

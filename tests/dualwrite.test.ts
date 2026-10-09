@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 //   Profile.careerPoints  == Σ ledger by profileId    (new)
 //   Membership.points     == Σ ledger by membershipId (new)
 // Also covers the offseason ruling (no active membership: check-in stamps
-// profileId + NULL membershipId; quest stamps nothing) and reversal-by-stamp.
+// profileId + NULL membershipId, quests included) and reversal-by-stamp.
 //
 // Same runner contract as the other DB suites: localhost-only, self-skips
 // without TEST_DATABASE_URL. Builds its own throwaway world; cleans up after.
@@ -249,7 +249,7 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     await assertInvariants();
   });
 
-  it("offseason ruling: check-in stamps profileId + NULL membershipId; quest stamps nothing", async () => {
+  it("no-team ruling: check-in AND quest stamp profileId + NULL membershipId", async () => {
     const { prisma } = await import("../lib/prisma");
     const { performCheckIn, performOneTapQuest } = await import("../lib/data/points");
     const offCtx = {
@@ -266,18 +266,19 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     const offProfile = await prisma.profile.findUniqueOrThrow({ where: { id: world.offProfileId } });
     expect(offProfile.careerPoints).toBe(5);
 
-    // Team-context source with no membership: all-or-nothing → nothing.
+    // A quest with no team still earns CAREER points (owner, 2026-10-09:
+    // Personal Player Development) — profile stamped, no team board.
     const quest = await prisma.quest.findUniqueOrThrow({ where: { id: world.questTapId } });
     await performOneTapQuest(offCtx, quest, DAY);
     const qLedger = await prisma.pointsLedger.findFirstOrThrow({
       where: { userId: world.offUserId, source: "QUEST" },
     });
-    expect(qLedger.profileId).toBeNull();
+    expect(qLedger.profileId).toBe(world.offProfileId);
     expect(qLedger.membershipId).toBeNull();
     const off = await prisma.playerProfile.findUniqueOrThrow({ where: { userId: world.offUserId } });
-    expect(off.points).toBe(25); // legacy still earns
+    expect(off.points).toBe(25); // legacy cache
     const offProfile2 = await prisma.profile.findUniqueOrThrow({ where: { id: world.offProfileId } });
-    expect(offProfile2.careerPoints).toBe(5); // unstamped row ≠ career sum — converges at 4a
+    expect(offProfile2.careerPoints).toBe(25); // career == legacy: nothing lost
     await assertInvariants();
   });
 });

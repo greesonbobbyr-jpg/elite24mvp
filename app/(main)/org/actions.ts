@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentContext, type Ctx } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { can } from "@/lib/authz";
 import { uniqueJoinCode } from "@/lib/joincode";
 
@@ -24,7 +25,7 @@ async function requireOrgAdmin(): Promise<{ ctx: Ctx; orgId: number } | null> {
   if (orgId == null) return null;
   const allowed = ctx.profile
     ? can(ctx, "create_team", { organizationId: orgId })
-    : ctx.user.role === "COACH"; // pre-backfill fallback (dies at Stage 6)
+    : isStaffSide(personaOf(ctx)); // pre-backfill fallback (dies at Stage 6)
   return allowed ? { ctx, orgId } : null;
 }
 

@@ -92,7 +92,11 @@ dbDescribe("Stage 4a quest converge — round trip", () => {
     await convergeQuests(prisma as never);
 
     expect(await prisma.quest.count({ where: { organizationId: null, active: true } })).toBe(0);
-    expect(await prisma.questLog.count({ where: { quest: { organizationId: null } } })).toBe(0);
+    // Every TEAM player's log moved to their org's copy. (An athlete with no
+    // team logs the shared Elite24 set by design — those logs stay.)
+    expect(
+      await prisma.questLog.count({ where: { quest: { organizationId: null }, user: { teamId: { not: null } } } }),
+    ).toBe(0);
 
     const after = await listActiveQuestsForOrg(orgId);
     expect(after.map((q) => [q.title, q.points, q.targetCount, q.sortOrder])).toEqual(

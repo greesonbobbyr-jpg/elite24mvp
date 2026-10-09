@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
-import { actingTeamId, getCurrentContext } from "@/lib/context";
+import { actingTeam, actingTeamId, getCurrentContext } from "@/lib/context";
 import { isSetUp } from "@/lib/onboarding";
+import { isStaffSide, personaOf } from "@/lib/persona";
+import { chromeFor } from "@/lib/nav";
+import { PERSONAL_CARD_TEAM } from "@/app/components/PlayerCard";
 import { getActiveTimeout, countUnreadForPlayer } from "@/lib/notifications";
 import { TimeoutTakeover } from "./TimeoutTakeover";
 import { NavMenu } from "./NavMenu";
@@ -8,8 +11,6 @@ import { IdentityChip } from "./IdentityChip";
 import { TeamSwitcher } from "./TeamSwitcher";
 import { PlayerTabBar } from "./PlayerTabBar";
 import { CoachTabBar } from "./CoachTabBar";
-
-type NavLink = { href: string; label: string };
 
 // Gate for the main app: a Player must finish onboarding before using anything
 // here. Coaches and "no user selected" pass through (CLAUDE.md section 2).
@@ -34,45 +35,34 @@ export default async function MainLayout({
     redirect("/onboarding");
   }
 
+  // What this person sees comes from their team roles (lib/persona), not the
+  // login's fixed role.
+  const persona = ctx ? personaOf(ctx) : null;
+
   // TIME OUT + unread badge are scoped to the ACTING membership's team (4c):
   // a two-team athlete only ever gets their acting team's takeover — and only
-  // for alerts sent since they joined it.
+  // for alerts sent since they joined it. No team, no takeover.
   const teamId = ctx ? actingTeamId(ctx) : null;
   const joinedAt = ctx?.membership?.startedAt ?? null;
   const timeout =
-    user?.role === "PLAYER" && teamId != null
+    user && persona === "athlete" && teamId != null
       ? await getActiveTimeout(user.id, teamId, joinedAt)
       : null;
 
-  // Nav links — same role-based set as before, now built here so the menu lives
-  // in the shared header bar instead of floating on the home page only.
-  let links: NavLink[] = [];
-  if (user?.role === "PLAYER") {
-    const unreadCount = await countUnreadForPlayer(user.id, teamId ?? user.teamId, joinedAt);
-    // Overflow links only — Home/Team Circle/Quests live in the bottom tab bar.
-    links = [
-      { href: `/brand/${user.id}`, label: "Your Brand" },
-      { href: "/journal", label: "Journal" },
-      { href: "/leaderboard", label: "Leaderboard" },
-      {
-        href: "/notifications",
-        label:
-          unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications",
-      },
-      { href: "/library", label: "Playbook" },
-    ];
-  } else if (user?.role === "COACH") {
-    // Overflow only — Home/Team Circle/Alerts live in the coach bottom tab bar.
-    // "Organization" (structure page) is org-admin only — grant-gated, with
-    // the pre-backfill legacy fallback (dies at Stage 6).
-    const isOrgAdmin = ctx?.profile ? (ctx?.orgAdminOf.length ?? 0) > 0 : true;
-    links = [
-      { href: "/team", label: "Team settings" },
-      ...(isOrgAdmin ? [{ href: "/org", label: "Organization" }] : []),
-      { href: "/leaderboard", label: "Team leaderboard" },
-      { href: "/library", label: "Playbook" },
-    ];
-  }
+  // The ☰ menu + bottom tabs for this persona (lib/nav). The ☰ button
+  // carries the unread count so alerts are seen from any page.
+  const unreadCount =
+    user && persona === "athlete" && teamId != null
+      ? await countUnreadForPlayer(user.id, teamId, joinedAt)
+      : 0;
+  // "Organization" (structure page) is org-admin only — grant-gated, with
+  // the pre-backfill legacy fallback (dies at Stage 6).
+  const isOrgAdmin = ctx?.profile ? ctx.orgAdminOf.length > 0 : true;
+  const { links, tabs } = chromeFor(persona, {
+    userId: user?.id ?? 0,
+    unread: unreadCount,
+    isOrgAdmin,
+  });
 
   return (
     <>
@@ -93,11 +83,11 @@ export default async function MainLayout({
               user={{
                 id: user.id,
                 name: user.name,
-                role: user.role,
+                staff: persona != null && isStaffSide(persona),
                 photoUrl: user.photoUrl,
                 photoCutoutUrl: user.photoCutoutUrl,
                 photoMeta: user.photoMeta,
-                team: user.team,
+                team: actingTeam(ctx) ?? PERSONAL_CARD_TEAM,
                 profile: ctx.profile
                   ? {
                       photoUrl: ctx.profile.photoUrl,
@@ -126,7 +116,7 @@ export default async function MainLayout({
             Elite<span className="text-logo">24</span>MVP
           </div>
           {/* right: hamburger menu */}
-          {user ? <NavMenu links={links} loginName={user.username ?? user.email} /> : <span />}
+          {user ? <NavMenu links={links} loginName={user.username ?? user.email} unread={unreadCount} /> : <span />}
         </div>
       </header>
       {/* Context switcher — only for a person with 2+ active memberships. */}
@@ -142,8 +132,9 @@ export default async function MainLayout({
       )}
       {children}
       {/* Role bottom tab bars (z-40, below the TIME OUT takeover). */}
-      {user?.role === "PLAYER" && <PlayerTabBar />}
-      {user?.role === "COACH" && <CoachTabBar />}
+      {tabs === "player" && <PlayerTabBar team />}
+      {tabs === "player-solo" && <PlayerTabBar team={false} />}
+      {tabs === "coach" && <CoachTabBar />}
       {timeout && <TimeoutTakeover notification={timeout} />}
     </>
   );

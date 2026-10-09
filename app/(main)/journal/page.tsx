@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentContext } from "@/lib/context";
+import { isPlayerSide, personaOf } from "@/lib/persona";
 import { todayKey } from "@/lib/journal";
 import { listMyEntries } from "@/lib/data/reflections";
 import { JournalWall } from "../JournalWall";
@@ -10,7 +11,7 @@ import { JournalWall } from "../JournalWall";
 export default async function JournalPage() {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER") {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx))) {
     redirect("/");
   }
 

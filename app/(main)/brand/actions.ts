@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentContext } from "@/lib/context";
 import { isOnboarded } from "@/lib/onboarding";
+import { isPlayerSide, personaOf } from "@/lib/persona";
 import {
   validateImageDataUrl,
   validateCutoutDataUrl,
@@ -40,7 +41,7 @@ export async function updateBrand(
 ): Promise<BrandState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) {
     return { error: "Only the player can edit their own profile." };
   }
 

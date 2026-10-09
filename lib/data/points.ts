@@ -11,12 +11,13 @@ import { createMyEntryInTx, createMyReviewOp } from "./reflections";
 // - updates Profile.careerPoints and Membership.points in the SAME transaction
 //   as PlayerProfile.points — one commit, three caches, same ledger row.
 //
-// Offseason ruling (HIERARCHY_PLAN.md §2.10): membershipId is REQUIRED for
-// quest completions and coach adjustments — those stamp only when the actor
-// has BOTH a Profile and an acting Membership (all-or-nothing; a quest row
-// must never carry a profile stamp without its membership). Check-ins and
-// reviews stamp profileId whenever a Profile exists and NULL membershipId when
-// there is no active membership (career points still accrue; no team board).
+// No-team ruling (owner, 2026-10-09 — replaces the offseason ruling of
+// HIERARCHY_PLAN.md §2.10): every player-earned source — check-in, review,
+// AND quests — stamps profileId whenever a Profile exists, with NULL
+// membershipId when there is no active membership. An athlete with no team
+// (Personal Player Development, or between teams) earns career points from
+// quests like anyone else; only the team board needs a membership. Coach
+// adjustments stay all-or-nothing: they only exist on a roster.
 //
 // Legacy-only logins (created by the old signup path, no Profile yet) stamp
 // nothing — their rows converge at the idempotent backfill re-run (Stage 4a).
@@ -50,20 +51,13 @@ async function bumpNewCaches(
   }
 }
 
-// Stamps for person-scope sources (check-in / review): profile whenever known,
-// membership nullable (offseason ruling).
+// Stamps for player-earned sources (check-in / review / quests): profile
+// whenever known, membership nullable (no-team ruling).
 function personStamps(ctx: WriteCtx) {
   return {
     profileId: ctx.profile?.id ?? null,
     membershipId: ctx.profile ? (ctx.membership?.id ?? null) : null,
   };
-}
-
-// Stamps for team-context sources (quests / adjustments): all-or-nothing.
-function teamStamps(ctx: WriteCtx) {
-  return ctx.profile && ctx.membership
-    ? { profileId: ctx.profile.id, membershipId: ctx.membership.id }
-    : { profileId: null, membershipId: null };
 }
 
 // Daily check-in: JournalEntry + ledger + caches + streak, one transaction.
@@ -174,7 +168,7 @@ export async function performReview(
 
 // One-tap quest completion (no targetCount). Throws P2002 when already logged.
 export async function performOneTapQuest(ctx: WriteCtx, quest: Quest, day: string) {
-  const stamps = teamStamps(ctx);
+  const stamps = personStamps(ctx);
   // Interactive transaction so the ledger row can link back to the created
   // QuestLog (questLogId) — undo uses that link to reverse the exact row.
   await prisma.$transaction(async (tx) => {
@@ -206,7 +200,7 @@ export async function performMeasuredQuest(
   actual: number,
   day: string,
 ) {
-  const stamps = teamStamps(ctx);
+  const stamps = personStamps(ctx);
   const award = (tx: Prisma.TransactionClient, questLogId: number) =>
     Promise.all([
       tx.pointsLedger.create({

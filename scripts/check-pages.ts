@@ -66,6 +66,10 @@ const VISITS: { label: string; login?: string; start: string[]; menuOpen?: boole
   // menu's Organization link is followed.
   { label: "coach", login: "gary@elite24.demo", start: ["/", "/team", "/org", "/org/view"] },
   { label: "new-player", login: "andre", start: ["/onboarding"] },
+  // No team: Personal Player Development, a removed player, an org admin.
+  { label: "personal", login: "avery", start: ["/", "/quests", "/journal", "/library"] },
+  { label: "removed", login: "devon", start: ["/"] },
+  { label: "org-admin", login: "alex@elite24.demo", start: ["/"] },
   // The ☰ menu open (it isn't a page of its own).
   { label: "menu", login: "tyler", start: ["/"], menuOpen: true, follow: false },
 ];
@@ -255,7 +259,7 @@ async function checkUser(
       continue;
     }
     if (visit.menuOpen) {
-      await page.locator('button[aria-label="Menu"]').first().click({ timeout: 10_000 });
+      await page.locator('button[aria-label^="Menu"]').first().click({ timeout: 10_000 });
       await page.waitForTimeout(400);
     }
     const landed = new URL(page.url()).pathname;
@@ -295,7 +299,7 @@ async function checkUser(
     // Most player pages are only linked from the ☰ menu, which renders its
     // links on open. (force: a TIME OUT takeover may be covering the header.)
     if (visit.follow === false) continue;
-    const menu = page.locator('button[aria-label="Menu"]');
+    const menu = page.locator('button[aria-label^="Menu"]');
     if (await menu.count()) await menu.first().click({ force: true, timeout: 5_000 }).catch(() => {});
     const hrefs = await page.$$eval("a[href]", (as) => as.map((a) => a.getAttribute("href") ?? ""));
     for (const link of internalLinks(hrefs)) if (!seen.has(link)) queue.push(link);

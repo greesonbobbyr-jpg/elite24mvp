@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentContext } from "@/lib/context";
+import { actingTeam, actingTeamId, getCurrentContext } from "@/lib/context";
 import {
   getTeamRanking,
   getWeeklyRanking,
@@ -113,14 +113,14 @@ export default async function LeaderboardPage({
   const ctx = await getCurrentContext();
   const user = ctx?.user;
   if (!ctx || !user) redirect("/");
-  // Re-home (4f): no roster spot → no team board.
-  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) redirect("/");
+  // Re-home (4f): no team → no team board. Boards are the ACTING team (4d).
+  const boardTeamId = actingTeamId(ctx);
+  const team = actingTeam(ctx);
+  if (boardTeamId == null || !team) redirect("/");
 
   const { view } = await searchParams;
   const weekView = view === "week";
 
-  // Boards are the ACTING membership's team (4d); legacy teamId fallback.
-  const boardTeamId = ctx.membership?.teamId ?? user.teamId;
   // photoSrc/cutoutSrc: serve photos via /api/photo instead of inlining base64 into HTML.
   const ranked = (await getTeamRanking(boardTeamId)).map(({ photoCutoutUrl, ...p }) => ({
     ...p,
@@ -144,7 +144,7 @@ export default async function LeaderboardPage({
   )?.id;
   const podium = ranked.slice(0, 3);
   const rest = ranked.slice(3);
-  const logoUrl = user.team.logoUrl;
+  const logoUrl = team.logoUrl;
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-8 px-6 py-10">
@@ -153,7 +153,7 @@ export default async function LeaderboardPage({
         <div className="min-w-0">
           <p className="e24-eyebrow">Leaderboard</p>
           <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-ink">
-            {user.team.name}
+            {team.name}
           </h1>
           <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-subtle">
             Your team · updated live
@@ -167,7 +167,7 @@ export default async function LeaderboardPage({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logoUrl}
-            alt={`${user.team.name} logo`}
+            alt={`${team.name} logo`}
             className="h-14 w-14 shrink-0 rounded-xl bg-frame object-contain p-1"
           />
         ) : null}
@@ -218,7 +218,7 @@ export default async function LeaderboardPage({
                         cutoutUrl: p.cutoutUrl,
                         photoMeta: p.photoMeta,
                       }}
-                      team={user.team}
+                      team={team}
                     />
                     <span
                       className={`min-w-0 flex-1 truncate text-sm font-bold uppercase tracking-wide ${
@@ -254,7 +254,7 @@ export default async function LeaderboardPage({
         <section className="e24-surface rounded-2xl px-4 py-6">
           <div className="relative z-10 flex items-end justify-center gap-2">
             {podium.map((player, i) => (
-              <PodiumItem key={player.id} player={player} slot={i} team={user.team} rosterSize={ranked.length} />
+              <PodiumItem key={player.id} player={player} slot={i} team={team} rosterSize={ranked.length} />
             ))}
           </div>
         </section>
@@ -289,7 +289,7 @@ export default async function LeaderboardPage({
                         cutoutUrl: player.cutoutUrl,
                         photoMeta: player.photoMeta,
                       }}
-                      team={user.team}
+                      team={team}
                     />
                     {isMe && (
                       <span className="absolute -top-1.5 right-2 rounded-full bg-accent px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-on-accent shadow">

@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { actingScope, actingTeamId, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { can } from "@/lib/authz";
 import { isOnboarded } from "@/lib/onboarding";
+import { isPlayerSide, isStaffSide, personaOf } from "@/lib/persona";
+import { listActiveQuestsForOrg } from "@/lib/quests";
 import { todayKey } from "@/lib/journal";
 import { hasMyEntryFor } from "@/lib/data/reflections";
 import {
@@ -28,7 +30,7 @@ export async function submitCheckIn(
 ): Promise<CheckInState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) {
     return { error: "Only a player can check in." };
   }
 
@@ -71,7 +73,7 @@ export async function saveMindsetTakeaway(
 ): Promise<TakeawayState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) {
     return { error: "Only a player can do this." };
   }
   const text = String(formData.get("text") ?? "").trim();
@@ -109,7 +111,7 @@ export async function submitReview(
 ): Promise<ReviewState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) {
     return { error: "Only a player can review their day." };
   }
 
@@ -150,6 +152,14 @@ export async function submitReview(
   return {};
 }
 
+// A quest may be logged only if it's in the set this player is SERVED today:
+// their org's quests, or the Elite24 set for an athlete with no team (and, for
+// an org that has none active yet, the same fallback the quest page shows).
+async function servedQuest(organizationId: number | null | undefined, questId: number) {
+  const quests = await listActiveQuestsForOrg(organizationId);
+  return quests.find((q) => q.id === questId) ?? null;
+}
+
 // MEASURABLE quests (Quest.targetCount != null): the player logs HOW MANY they
 // made in one step ("36 / 50") — recorded on the QuestLog and shown on the tile.
 // (A predict-first step existed briefly; the owner cut it — logging the real
@@ -157,17 +167,14 @@ export async function submitReview(
 export async function completeQuest(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) return;
 
   const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
   const actual = Number.parseInt(String(formData.get("actual") ?? ""), 10);
   if (!Number.isInteger(questId) || !Number.isInteger(actual)) return;
 
-  const quest = await prisma.quest.findUnique({ where: { id: questId } });
-  if (!quest || !quest.active || quest.targetCount == null) return;
-  // Org-bound (4a): an org quest must belong to the player's own org.
-  // (Globals pass — they exist only until the converge flip retires them.)
-  if (quest.organizationId != null && quest.organizationId !== ctx.org?.id) return;
+  const quest = await servedQuest(ctx.org?.id, questId);
+  if (!quest || quest.targetCount == null) return;
   if (actual < 0 || actual > quest.targetCount) return;
 
   // Log + ledger + all caches in ONE transaction, incl. the leftover-PENDING
@@ -185,15 +192,13 @@ export async function completeQuest(formData: FormData): Promise<void> {
 export async function logQuest(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) return;
 
   const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
   if (!Number.isInteger(questId)) return;
 
-  const quest = await prisma.quest.findUnique({ where: { id: questId } });
-  if (!quest || !quest.active) return;
-  // Org-bound (4a): an org quest must belong to the player's own org.
-  if (quest.organizationId != null && quest.organizationId !== ctx.org?.id) return;
+  const quest = await servedQuest(ctx.org?.id, questId);
+  if (!quest) return;
   // Measurable quests go through the predict-then-log flow, never one-tap.
   if (quest.targetCount != null) return;
 
@@ -225,7 +230,7 @@ export async function logQuest(formData: FormData): Promise<void> {
 export async function undoQuest(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) return;
 
   const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
   if (!Number.isInteger(questId)) return;
@@ -253,7 +258,7 @@ export async function postNotification(
   const scope = actingScope(ctx);
   const mayPost = scope
     ? can(ctx, "post_notification", scope)
-    : user.role === "COACH";
+    : isStaffSide(personaOf(ctx));
   if (!mayPost) return { error: "Only a coach can post notifications." };
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
@@ -265,13 +270,15 @@ export async function postNotification(
   // pattern as special board types).
   const maySendTimeout = scope
     ? can(ctx, "send_timeout", scope)
-    : user.role === "COACH";
+    : isStaffSide(personaOf(ctx));
   const isTimeout = formData.get("isTimeout") === "on" && maySendTimeout;
 
+  // The acting team — the same one the permission check above used.
+  const teamId = actingTeamId(ctx);
+  if (teamId == null) return { error: "Pick a team first." };
   await prisma.notification.create({
     data: {
-      // The acting team — the same one the permission check above used.
-      teamId: actingTeamId(ctx),
+      teamId,
       authorId: user.id,
       title,
       body,
@@ -294,7 +301,7 @@ export async function postNotification(
 export async function confirmRead(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER" || !isOnboarded(user)) return;
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) return;
   // 4f: read receipts belong to roster members only.
   if (ctx.profile && !ctx.membership) return;
 
@@ -308,7 +315,8 @@ export async function confirmRead(formData: FormData): Promise<void> {
     where: { id: notificationId },
     select: { teamId: true },
   });
-  if (!notification || notification.teamId !== actingTeamId(ctx)) return;
+  const teamId = actingTeamId(ctx);
+  if (!notification || teamId == null || notification.teamId !== teamId) return;
 
   try {
     await prisma.notificationRead.create({

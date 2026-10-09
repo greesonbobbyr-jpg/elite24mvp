@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentContext } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { can } from "@/lib/authz";
 import { getOrgStructure } from "@/lib/structure";
 import { prisma } from "@/lib/prisma";
@@ -23,7 +24,7 @@ export default async function OrgPage() {
     orgId != null &&
     (ctx.profile
       ? can(ctx, "create_team", { organizationId: orgId })
-      : user.role === "COACH"); // pre-backfill fallback (dies at Stage 6)
+      : isStaffSide(personaOf(ctx))); // pre-backfill fallback (dies at Stage 6)
   if (!allowed || orgId == null) redirect("/");
 
   const [org, structure] = await Promise.all([

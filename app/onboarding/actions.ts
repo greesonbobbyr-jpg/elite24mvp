@@ -26,8 +26,9 @@ export async function completeOnboarding(
 ): Promise<OnboardingState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  // Only a player who hasn't completed setup may run this (4f gate).
-  if (!ctx || !user || user.role !== "PLAYER" || isSetUp(ctx)) {
+  // Only an athlete who hasn't completed setup may run this (4f gate; staff
+  // are always set up).
+  if (!ctx || !user || isSetUp(ctx)) {
     redirect("/");
   }
 

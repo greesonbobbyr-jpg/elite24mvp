@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { actingScope, actingTeamId, getCurrentContext } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { can } from "@/lib/authz";
 import { listPlayerNotifications, getTeamReadStatus } from "@/lib/notifications";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -28,18 +29,21 @@ export default async function NotificationsPage() {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
   if (!ctx || !user) redirect("/");
-  // Re-home (4f): no roster spot → no team notifications.
-  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) redirect("/");
+  // Re-home (4f): no team → no team notifications. The ACTING team
+  // throughout — the same one the TIME OUT takeover and the menu badge use.
+  const teamId = actingTeamId(ctx);
+  if (teamId == null) redirect("/");
+  const staff = isStaffSide(personaOf(ctx));
 
-  // ----- Coach: compose + per-message read receipts for their own team -----
-  if (user.role === "COACH") {
-    const items = await getTeamReadStatus(actingTeamId(ctx));
+  // ----- Staff: compose + per-message read receipts for their own team -----
+  if (staff) {
+    const items = await getTeamReadStatus(teamId);
     // The TIME OUT toggle is hidden from staff without send_timeout (the
     // server also enforces it; matrix: HEAD_COACH / ORG_ADMIN only).
     const scope = actingScope(ctx);
     const canSendTimeout = scope
       ? can(ctx, "send_timeout", scope)
-      : user.role === "COACH";
+      : staff;
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
         <header>
@@ -120,7 +124,7 @@ export default async function NotificationsPage() {
   // them, so the badge can always be cleared), dimmed read rows under "EARLIER".
   const { unread, read } = await listPlayerNotifications(
     user.id,
-    actingTeamId(ctx),
+    teamId,
     ctx.membership?.startedAt ?? null,
   );
 

@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
-import { getCurrentUser } from "@/lib/session";
-import { isOnboarded } from "@/lib/onboarding";
+import { getCurrentContext } from "@/lib/context";
+import { isSetUp } from "@/lib/onboarding";
 
 export const runtime = "nodejs";
 
@@ -21,14 +21,15 @@ async function loadPlaybook(): Promise<Buffer | null> {
   }
 }
 
-// Serves the team playbook PDF, gated to team members (a coach, or an onboarded
-// player) — the same access as the rest of the app. The file lives in content/
+// Serves the playbook PDF to anyone set up in the app (staff, or an athlete
+// who has written their Dream — on a team or on their own) — the same access
+// as the rest of the app. The file lives in content/
 // (NOT public/), so it is never reachable on an un-gated URL (CLAUDE.md §3.2).
 // Route handlers bypass the (main) layout, so the gate is enforced here.
 // Supports HTTP Range requests so the browser's inline PDF viewer renders.
 export async function GET(request: NextRequest) {
-  const user = await getCurrentUser();
-  const allowed = !!user && (user.role === "COACH" || isOnboarded(user));
+  const ctx = await getCurrentContext();
+  const allowed = !!ctx && isSetUp(ctx);
   if (!allowed) {
     return new NextResponse("Not authorized", { status: 403 });
   }

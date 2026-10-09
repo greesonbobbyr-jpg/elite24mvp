@@ -6,6 +6,8 @@ import { impersonate, stopImpersonating } from "@/app/dev/actions";
 // membership cookie, so a two-team athlete can be entered in either team
 // context. Org admins without a roster spot sit under the org header. A big
 // org's teams fold (the seeded Mustang club has 14); your own team stays open.
+// People on no team at all (a personal athlete, a removed player) sit in a
+// "No team" group at the end.
 export type SwitcherEntry = {
   userId: number;
   name: string;
@@ -49,14 +51,16 @@ function EntryButton({
 
 export function DevUserSwitcher({
   orgs,
+  noTeam,
   currentUserId,
 }: {
   orgs: SwitcherOrg[];
+  noTeam: SwitcherEntry[];
   currentUserId: number | null;
 }) {
-  const hasUsers = orgs.some(
-    (o) => o.admins.length > 0 || o.teams.some((t) => t.members.length > 0),
-  );
+  const hasUsers =
+    noTeam.length > 0 ||
+    orgs.some((o) => o.admins.length > 0 || o.teams.some((t) => t.members.length > 0));
 
   return (
     <details className="fixed bottom-4 left-4 z-50 w-72 rounded-xl border border-line-strong bg-raised text-ink shadow-lg">
@@ -103,6 +107,21 @@ export function DevUserSwitcher({
             ))}
           </div>
         ))}
+
+        {noTeam.length > 0 && (
+          <div className="mb-3">
+            <p className="px-2 pb-0.5 pt-1 text-[10px] font-black uppercase tracking-widest text-brand">
+              No team
+            </p>
+            {noTeam.map((entry) => (
+              <EntryButton
+                key={`noteam-${entry.userId}`}
+                entry={entry}
+                active={entry.userId === currentUserId}
+              />
+            ))}
+          </div>
+        )}
 
         {currentUserId !== null && (
           <div className="border-t border-line-strong pt-2">

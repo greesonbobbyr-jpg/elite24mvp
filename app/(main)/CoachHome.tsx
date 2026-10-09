@@ -10,27 +10,26 @@ import { chipClass } from "@/app/components/ui/Pill";
 // The coach's team dashboard (shown at "/" for a COACH). A TODAY summary with a
 // check-in progress ring + the full roster (alphabetical by last name) as compact
 // PlayerCards with a check-in strip, each linking to the coach-only player
-// drill-in. Team-scoped via getTeamOverview (the coach's own teamId). Read-only.
+// drill-in. Team-scoped via getTeamOverview (the ACTING team). Read-only.
 
 export async function CoachHome({
-  user,
+  teamId,
+  team,
   canSendTimeout = true,
 }: {
-  user: {
-    teamId: number;
-    team: {
-      name: string;
-      logoUrl: string | null;
-      primaryColor: string | null;
-      secondaryColor: string | null;
-    };
+  teamId: number;
+  team: {
+    name: string;
+    logoUrl: string | null;
+    primaryColor: string | null;
+    secondaryColor: string | null;
   };
   // Matrix send_timeout (HEAD_COACH/ORG_ADMIN) — staff without it never see
   // the TIME OUT checkbox; the server enforces it regardless.
   canSendTimeout?: boolean;
 }) {
   const { roster, totalPlayers, checkedInToday, questsDoneToday } =
-    await getTeamOverview(user.teamId);
+    await getTeamOverview(teamId);
 
   const remaining = Math.max(0, totalPlayers - checkedInToday);
   const frac = totalPlayers > 0 ? checkedInToday / totalPlayers : 0;
@@ -45,7 +44,7 @@ export async function CoachHome({
       <header>
         <p className="e24-eyebrow">Team Dashboard</p>
         <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-ink">
-          {user.team.name}
+          {team.name}
         </h1>
       </header>
 
@@ -185,7 +184,7 @@ export async function CoachHome({
                       cutoutUrl: cutoutSrc(r.id, r.photoCutoutUrl),
                       photoMeta: r.photoMeta,
                     }}
-                    team={user.team}
+                    team={team}
                   />
                   <span className="mt-1.5 flex items-center justify-between gap-2 px-1">
                     {r.checkedInAt ? (

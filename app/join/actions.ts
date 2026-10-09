@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { signIn } from "@/auth";
 import { getCurrentContext } from "@/lib/context";
+import { isPlayerSide, personaOf } from "@/lib/persona";
 import { resolveJoinableTeam, joinTeamForProfile } from "@/lib/data/join";
 import { rateLimit, clientIp, RATE_LIMITED_MESSAGE } from "@/lib/ratelimit";
 import { USERNAME_RE, USERNAME_RULES, normalizeUsername } from "@/lib/login";
@@ -155,7 +156,7 @@ export async function joinTeamWithCode(
 ): Promise<JoinTeamState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "PLAYER") {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx))) {
     return { error: "Log in as a player to join a team." };
   }
   if (!ctx.profile) {

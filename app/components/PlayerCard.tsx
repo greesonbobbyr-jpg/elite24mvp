@@ -75,6 +75,10 @@ export type CardTeam = {
   secondaryColor?: string | null;
 };
 
+// The card frame for an athlete with no team (Personal Player Development):
+// the Elite24 brand itself, no team logo or colors.
+export const PERSONAL_CARD_TEAM: CardTeam = { name: "Elite24MVP" };
+
 function makeInitials(name: string): string {
   return (
     name

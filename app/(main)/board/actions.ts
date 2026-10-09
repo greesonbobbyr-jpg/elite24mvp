@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { ReactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { actingScope, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
+import { actingScope, actingTeamId, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { can } from "@/lib/authz";
 import { isOnboarded } from "@/lib/onboarding";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { isValidGifId } from "@/lib/gifs";
 import { rateLimit } from "@/lib/ratelimit";
 
@@ -22,12 +23,14 @@ export async function postMessage(
 ): Promise<BoardState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || (user.role !== "COACH" && !isOnboarded(user))) {
+  if (!ctx || !user || (!isStaffSide(personaOf(ctx)) && !isOnboarded(user))) {
     return { error: "Only a team member can post." };
   }
-  // 4f: posting requires an ACTIVE roster spot — a removed player (or one
-  // whose season rolled over) is no longer a member of this board.
-  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) {
+  // 4f: posting requires a team — a removed player (or one whose season
+  // rolled over, or one training on their own) has no board. The ACTING
+  // team: the same one the permission checks below use.
+  const teamId = actingTeamId(ctx);
+  if (teamId == null) {
     return { error: "Join a team to post." };
   }
   const body = String(formData.get("body") ?? "").trim();
@@ -51,7 +54,7 @@ export async function postMessage(
   const scope = actingScope(ctx);
   const maySpecial = scope
     ? can(ctx, "post_special_message", scope)
-    : user.role === "COACH";
+    : isStaffSide(personaOf(ctx));
   const rawType = String(formData.get("type") ?? "REGULAR");
   const type =
     maySpecial && SPECIAL_TYPES.has(rawType)
@@ -67,14 +70,14 @@ export async function postMessage(
       where: { id: rawReplyTo },
       select: { teamId: true, deletedAt: true },
     });
-    if (parent && !parent.deletedAt && parent.teamId === user.teamId) {
+    if (parent && !parent.deletedAt && parent.teamId === teamId) {
       replyToId = rawReplyTo;
     }
   }
 
   await prisma.teamMessage.create({
     data: {
-      teamId: user.teamId,
+      teamId,
       authorId: user.id,
       body,
       type,
@@ -104,14 +107,15 @@ export async function deleteMessage(formData: FormData): Promise<void> {
     select: { teamId: true, authorId: true, deletedAt: true },
   });
   if (!message || message.deletedAt) return;
-  if (message.teamId !== user.teamId) return; // never another team's board
+  const teamId = actingTeamId(ctx);
+  if (teamId == null || message.teamId !== teamId) return; // never another team's board
 
   // Matrix (4c): your own message, or moderate_board (HEAD_COACH/ORG_ADMIN —
   // assistants and GMs may NOT moderate). Legacy role check until Stage 6.
   const scope = actingScope(ctx);
   const mayModerate = scope
     ? can(ctx, "moderate_board", scope)
-    : user.role === "COACH";
+    : isStaffSide(personaOf(ctx));
   const allowed = mayModerate || message.authorId === user.id;
   if (!allowed) return;
 
@@ -138,9 +142,10 @@ const REACTION_TYPES = new Set([
 export async function toggleReaction(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || (user.role !== "COACH" && !isOnboarded(user))) return;
-  // 4f: reacting requires an active roster spot (see postMessage).
-  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) return;
+  if (!ctx || !user || (!isStaffSide(personaOf(ctx)) && !isOnboarded(user))) return;
+  // 4f: reacting requires a team (see postMessage).
+  const teamId = actingTeamId(ctx);
+  if (teamId == null) return;
 
   // Each tap re-renders the whole board — cap rapid-fire tapping per user.
   if (!(await rateLimit("react", String(user.id), 60, 60))) return;
@@ -155,7 +160,7 @@ export async function toggleReaction(formData: FormData): Promise<void> {
     select: { teamId: true, deletedAt: true },
   });
   if (!message || message.deletedAt) return;
-  if (message.teamId !== user.teamId) return; // never another team's board
+  if (message.teamId !== teamId) return; // never another team's board
 
   // One row per (message, user) — reactionType is what changes.
   const existing = await prisma.messageReaction.findUnique({

@@ -47,6 +47,7 @@ Everything else in the app is secondary to this loop working smoothly across mul
 - **Daily quests** + logging + **points** + single-**team leaderboard**.
 - **Coach notifications** with **read-confirmation** tracking.
 - **E24P reference library**: browsable, structured documentation of the process (placeholder content for now, clearly marked, easy to replace with the owner's real material).
+- **Personal Player Development** (owner, 2026-10-09): an athlete on no team gets the player loop on their own — check-in, journal, Pro Review, the Elite24 quest set, points — and **no team surfaces** (no Team Circle, rosters or team leaderboard). They join a team later only with a code. What anyone sees comes from their team roles (`lib/persona.ts`), never the login's fixed role.
 - A **player profile / "Your Brand"** page: basic basketball stats (height, points-per-game, rebounds, etc. as structured fields), the dream, points/leaderboard standing, and journal access.
 
 ## 5. Scope — what's OUT of the MVP (do not build unless explicitly asked)
@@ -59,7 +60,7 @@ Everything else in the app is secondary to this loop working smoothly across mul
 - Multi-team / conference / state / national leaderboard *views* (the data model supports growth; the UI does not show it yet).
 - Real push notifications infrastructure (in-app notifications only for now).
 - Payments / subscriptions.
-- The parent/individual track as a separate mode (build the coach+player team mode first; parents come later).
+- The parent track as a separate mode (parents come later). (The individual athlete track is IN — see §4.)
 
 ---
 

@@ -8,6 +8,7 @@ import { getCurrentUserId } from "@/lib/session";
 import { roleLabel } from "@/lib/format";
 import {
   DevUserSwitcher,
+  type SwitcherEntry,
   type SwitcherOrg,
 } from "@/app/components/DevUserSwitcher";
 import { HomeFooter } from "@/app/components/HomeFooter";
@@ -61,7 +62,7 @@ export const viewport: Viewport = {
 async function DevSwitcherSlot() {
   if (process.env.NODE_ENV === "production") return null;
   try {
-    const [rawOrgs, currentUserId] = await Promise.all([
+    const [rawOrgs, rawNoTeam, currentUserId] = await Promise.all([
       prisma.organization.findMany({
         orderBy: { id: "asc" },
         include: {
@@ -81,8 +82,30 @@ async function DevSwitcherSlot() {
           },
         },
       }),
+      // No active membership and no org-admin grant: a personal athlete, or
+      // a removed player.
+      prisma.profile.findMany({
+        where: {
+          userId: { not: null },
+          memberships: { none: { endedAt: null, season: { isCurrent: true } } },
+          roleAssignments: { none: { revokedAt: null } },
+        },
+        orderBy: { name: "asc" },
+        select: {
+          userId: true,
+          name: true,
+          setupCompletedAt: true,
+          memberships: { select: { id: true }, take: 1 },
+        },
+      }),
       getCurrentUserId(),
     ]);
+    const noTeam: SwitcherEntry[] = rawNoTeam.map((p) => ({
+      userId: p.userId!,
+      name: p.name,
+      label: p.memberships.length > 0 ? "Removed" : p.setupCompletedAt ? "Personal" : "New",
+      membershipId: null,
+    }));
     const orgs: SwitcherOrg[] = rawOrgs.map((o) => ({
       id: o.id,
       name: o.name,
@@ -108,7 +131,7 @@ async function DevSwitcherSlot() {
           })),
       })),
     }));
-    return <DevUserSwitcher orgs={orgs} currentUserId={currentUserId} />;
+    return <DevUserSwitcher orgs={orgs} noTeam={noTeam} currentUserId={currentUserId} />;
   } catch {
     return null;
   }

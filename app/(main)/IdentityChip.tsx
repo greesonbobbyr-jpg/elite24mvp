@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { PlayerCard } from "@/app/components/PlayerCard";
+import { PlayerCard, type CardTeam } from "@/app/components/PlayerCard";
 import { StaffCard } from "@/app/components/StaffCard";
 import { cutoutSrc, photoSrc } from "@/lib/photoUrl";
 
-// The header identity: just the avatar. A PLAYER's is their mini card (their
-// level's ring and card behind their cutout), from their Profile; a COACH's is
+// The header identity: just the avatar. A player's is their mini card (their
+// level's ring and card behind their cutout), from their Profile; staff get
 // the quiet staff ring, from User. Kept minimal for now (no name/label). A
 // player's avatar links to their Brand page; a coach's is a non-link.
 type Photo = { photoUrl: string | null; photoCutoutUrl: string | null; photoMeta: unknown };
@@ -12,18 +12,13 @@ type Photo = { photoUrl: string | null; photoCutoutUrl: string | null; photoMeta
 type ChipUser = Photo & {
   id: number;
   name: string;
-  role: string;
-  team: {
-    name: string;
-    logoUrl: string | null;
-    primaryColor: string | null;
-    secondaryColor: string | null;
-  };
+  staff: boolean;
+  team: CardTeam;
   profile: (Photo & { jerseyNumber: number | null; points: number }) | null;
 };
 
 export function IdentityChip({ user }: { user: ChipUser }) {
-  if (user.role !== "PLAYER") {
+  if (user.staff) {
     return (
       <div aria-label={user.name} className="shrink-0">
         <StaffCard

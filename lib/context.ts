@@ -29,8 +29,8 @@ export type ActiveMembership = Membership & {
 
 export type Ctx = {
   // Legacy user row (with team + PlayerProfile) — the compat shim's source.
-  // team is non-null exactly as in the legacy payload (User.teamId required).
-  user: User & { team: Team; profile: PlayerProfile | null };
+  // team is null for an account with no team (personal athlete, CEO).
+  user: User & { team: Team | null; profile: PlayerProfile | null };
   // The permanent person. Null only for logins created by the legacy signup
   // path after the Stage 1 backfill ran — they converge at the next backfill
   // re-run (Stage 4a) and via dual-write (Stage 3).
@@ -128,12 +128,25 @@ export function actingScope(
 }
 
 // The team a person is acting for on team surfaces: the acting membership's
-// team, or the legacy anchor for pre-backfill logins (dies at Stage 6). Every
-// read AND write on one surface must use this same team — mixing it with
-// user.teamId is what stranded a two-team athlete behind a TIME OUT they
-// couldn't acknowledge.
-export function actingTeamId(ctx: Pick<Ctx, "membership" | "user">): number {
-  return ctx.membership?.teamId ?? ctx.user.teamId;
+// team; for an org admin with no roster spot, or a pre-backfill login, the
+// legacy anchor (dies at Stage 6). Null = no team (a personal athlete, or a
+// removed player — who used to fall back to the old team's anchor and get
+// stuck behind its TIME OUT, which they could no longer acknowledge). Every
+// read AND write on one surface must use this same team.
+export function actingTeamId(
+  ctx: Pick<Ctx, "membership" | "user" | "profile" | "orgAdminOf">,
+): number | null {
+  if (ctx.membership) return ctx.membership.teamId;
+  if (!ctx.profile || ctx.orgAdminOf.length > 0) return ctx.user.teamId;
+  return null;
+}
+
+// The acting team's row (branding, names) — the same team actingTeamId picks.
+export function actingTeam(
+  ctx: Pick<Ctx, "membership" | "user" | "profile" | "orgAdminOf">,
+): Team | null {
+  if (ctx.membership) return ctx.membership.team;
+  return actingTeamId(ctx) != null ? ctx.user.team : null;
 }
 
 // Display-role snapshot stamped onto posts (Notification / TeamMessage): the

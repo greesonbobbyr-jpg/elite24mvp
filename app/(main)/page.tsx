@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { actingScope, getCurrentContext } from "@/lib/context";
+import { actingScope, actingTeam, actingTeamId, getCurrentContext } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { can } from "@/lib/authz";
 import { todayKey } from "@/lib/journal";
 import {
@@ -30,11 +31,26 @@ export default async function Home() {
   // Unauthenticated → login (middleware also enforces this; defense in depth).
   if (!ctx || !user) redirect("/login");
 
-  // Coaches get the team dashboard + roster (player-only daily loop lives below).
-  if (user.role === "COACH") {
+  // Staff get the team dashboard + roster (the player daily loop lives below).
+  const persona = personaOf(ctx);
+  const teamId = actingTeamId(ctx);
+  const team = actingTeam(ctx);
+  if (isStaffSide(persona)) {
+    // An org admin with no team yet runs things from Organization.
+    if (teamId == null || !team) {
+      return (
+        <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
+          <Card>
+            <h1 className="text-lg font-semibold">No team yet</h1>
+            <p className="mt-1 text-sm text-muted">Your organization&apos;s teams are set up from Organization.</p>
+            <Link href="/org" className="mt-3 inline-block text-sm font-semibold text-brand">Open Organization →</Link>
+          </Card>
+        </main>
+      );
+    }
     const scope = actingScope(ctx);
     const canSendTimeout = scope ? can(ctx, "send_timeout", scope) : true;
-    return <CoachHome user={user} canSendTimeout={canSendTimeout} />;
+    return <CoachHome teamId={teamId} team={team} canSendTimeout={canSendTimeout} />;
   }
 
   // Player (guaranteed onboarded by the (main) layout gate). Quests + points live
@@ -67,8 +83,9 @@ export default async function Home() {
 
   // Progress strip: streak / tier / rank — the "why come back" state, on the
   // first screen instead of buried in /quests and /leaderboard. Board = acting
-  // team; tier = careerPoints (4d; equals the legacy cache by invariant).
-  const ranking = await getTeamRanking(ctx.membership?.teamId ?? user.teamId);
+  // team; tier = careerPoints (4d; equals the legacy cache by invariant). No
+  // team, no rank: the third tile shows career points instead.
+  const ranking = teamId != null ? await getTeamRanking(teamId) : [];
   const myRank = ranking.find((r) => r.id === user.id)?.rank ?? 0;
   const points = ctx.profile?.careerPoints ?? profile?.points ?? 0;
   const level = starProgress(points);
@@ -116,9 +133,15 @@ export default async function Home() {
           </span>
           <span className="mt-1 text-[10px] font-black uppercase tracking-[0.16em] text-ink">Prospect</span>
         </StatTile>
-        <StatTile label="Team rank">
-          <p className="text-xl font-black leading-none text-ink">{myRank > 0 ? `#${myRank}` : "—"}</p>
-        </StatTile>
+        {teamId != null ? (
+          <StatTile label="Team rank">
+            <p className="text-xl font-black leading-none text-ink">{myRank > 0 ? `#${myRank}` : "—"}</p>
+          </StatTile>
+        ) : (
+          <StatTile label="Career points">
+            <p className="text-xl font-black leading-none text-ink">{points.toLocaleString()}</p>
+          </StatTile>
+        )}
       </div>
 
       {/* Daily check-in (the core loop) — the main act */}

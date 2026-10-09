@@ -4,7 +4,7 @@ import { resolveBrandAccess } from "@/lib/brand-access";
 import { getTeamRanking } from "@/lib/leaderboard";
 import { EditBrandForm } from "../EditBrandForm";
 import { Card } from "@/app/components/ui/Card";
-import { PlayerCard } from "@/app/components/PlayerCard";
+import { PERSONAL_CARD_TEAM, PlayerCard } from "@/app/components/PlayerCard";
 import { photoSrc, cutoutSrc } from "@/lib/photoUrl";
 import { formatHeight } from "@/lib/height";
 
@@ -41,7 +41,7 @@ export default async function BrandPage({
   // athlete's own progression). Equals the legacy cache by proven invariant.
   const careerPoints = target.profileRecord?.careerPoints ?? profile.points;
 
-  const ranking = await getTeamRanking(target.teamId);
+  const ranking = target.teamId != null ? await getTeamRanking(target.teamId) : [];
   const rank = ranking.findIndex((r) => r.id === target.id) + 1;
   const total = ranking.length;
 
@@ -67,7 +67,7 @@ export default async function BrandPage({
             cutoutUrl: cutoutSrc(target.id, profile.photoCutoutUrl),
             photoMeta: profile.photoMeta,
           }}
-          team={target.team}
+          team={target.team ?? PERSONAL_CARD_TEAM}
         />
       </div>
 

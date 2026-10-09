@@ -338,8 +338,12 @@ model User {
   photoCutoutUrl String?
   photoMeta      Json?
 
-  teamId Int
-  team   Team @relation(fields: [teamId], references: [id])
+  // Legacy team anchor (dies at Stage 6). Nullable since the person-first
+  // plan (2026-10-09): an account can exist with no team — a Personal Player
+  // Development athlete, or the CEO. Team surfaces read the acting membership
+  // (lib/context actingTeamId), never this column directly.
+  teamId Int?
+  team   Team? @relation(fields: [teamId], references: [id])
 
   // Players have a profile; coaches do not.
   profile PlayerProfile?

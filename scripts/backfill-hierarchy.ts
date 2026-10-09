@@ -191,8 +191,12 @@ async function execute() {
       // 3. Per user: Profile, Membership, coach ORG_ADMIN grant, then stamps.
       const users = await tx.user.findMany({ include: { profile: true } });
       for (const user of users) {
+        // An account with no team (person-first, 2026-10-09) was created in
+        // the new world — nothing legacy to backfill.
+        if (user.teamId == null) continue;
+        const teamId = user.teamId;
         const pp = user.profile; // legacy PlayerProfile (null for coaches / not-onboarded)
-        const orgId = orgByTeam.get(user.teamId)!;
+        const orgId = orgByTeam.get(teamId)!;
         const seasonId = seasonByOrg.get(orgId)!;
 
         let profile = await tx.profile.findUnique({ where: { userId: user.id } });
@@ -228,13 +232,13 @@ async function execute() {
         }
 
         let membership = await tx.membership.findFirst({
-          where: { profileId: profile.id, teamId: user.teamId, seasonId },
+          where: { profileId: profile.id, teamId, seasonId },
         });
         if (!membership) {
           membership = await tx.membership.create({
             data: {
               profileId: profile.id,
-              teamId: user.teamId,
+              teamId,
               seasonId,
               role: roleOf(user.role),
               startedAt: user.createdAt,

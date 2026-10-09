@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { actingScope, getCurrentContext } from "@/lib/context";
+import { actingScope, actingTeamId, getCurrentContext } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { can } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { JoinCodeCard } from "./JoinCodeCard";
@@ -20,27 +21,29 @@ export default async function TeamSettingsPage() {
   if (!ctx || !user) redirect("/");
 
   const scope = actingScope(ctx);
-  const isStaff = scope ? can(ctx, "view_roster", scope) && user.role === "COACH" : user.role === "COACH";
-  if (!isStaff) redirect("/");
+  const staffSide = isStaffSide(personaOf(ctx));
+  const isStaff = scope ? can(ctx, "view_roster", scope) && staffSide : staffSide;
+  const teamId = actingTeamId(ctx);
+  if (!isStaff || teamId == null) redirect("/");
   const canManageSettings = scope ? can(ctx, "team_settings", scope) : true;
   const canEndMembership = scope ? can(ctx, "end_membership", scope) : true;
   // create_season is ORG_ADMIN only — no legacy fallback grants it, but every
   // real coach holds an ORG_ADMIN grant from signup/backfill.
   const canStartSeason = scope ? can(ctx, "create_season", scope) : true;
 
-  const team = await prisma.team.findUnique({ where: { id: user.teamId } });
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
   if (!team) redirect("/");
 
   // Roster = ACTIVE PLAYER memberships in the current season (4e); legacy
   // user roster only for a pre-backfill team (dies at Stage 6).
   const memberships = await prisma.membership.findMany({
-    where: { teamId: user.teamId, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
+    where: { teamId, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
     select: { profile: { select: { userId: true, name: true, user: { select: { username: true } } } } },
     orderBy: { profile: { name: "asc" } },
   });
   const isPreBackfill =
     memberships.length === 0 &&
-    (await prisma.membership.count({ where: { teamId: user.teamId } })) === 0;
+    (await prisma.membership.count({ where: { teamId } })) === 0;
   const players =
     memberships.length > 0
       ? memberships
@@ -52,7 +55,7 @@ export default async function TeamSettingsPage() {
           }))
       : isPreBackfill
         ? await prisma.user.findMany({
-            where: { teamId: user.teamId, role: "PLAYER" },
+            where: { teamId, role: "PLAYER" },
             select: { id: true, name: true, username: true },
             orderBy: { name: "asc" },
           })

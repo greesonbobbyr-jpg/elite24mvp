@@ -202,9 +202,15 @@ async function report() {
   const [activeGlobals, activeClones, logsOnGlobals, logsOnGlobalsToday] = await Promise.all([
     prisma.quest.count({ where: { organizationId: null, active: true } }),
     prisma.quest.count({ where: { organizationId: { not: null }, active: true } }),
-    prisma.questLog.count({ where: { quest: { organizationId: null } } }),
+    // Team players only: an athlete with no team logs the shared Elite24 set
+    // by design (person-first plan, 2026-10-09).
+    prisma.questLog.count({ where: { quest: { organizationId: null }, user: { teamId: { not: null } } } }),
     prisma.questLog.count({
-      where: { quest: { organizationId: null }, day: { gte: DAY_FMT.format(new Date()) } },
+      where: {
+        quest: { organizationId: null },
+        user: { teamId: { not: null } },
+        day: { gte: DAY_FMT.format(new Date()) },
+      },
     }),
   ]);
   console.log(`STATE against ${hostOf(process.env.DATABASE_URL)}`);

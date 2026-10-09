@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { actingScope, getCurrentContext } from "@/lib/context";
+import { actingScope, actingTeam, actingTeamId, getCurrentContext } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { can } from "@/lib/authz";
 import { getPlayerCoachView } from "@/lib/coach";
 import { formatTime } from "@/lib/format";
@@ -21,7 +22,10 @@ export default async function CoachPlayerPage({
   const { playerId } = await params;
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || user.role !== "COACH") redirect("/");
+  if (!ctx || !user || !isStaffSide(personaOf(ctx))) redirect("/");
+  const teamId = actingTeamId(ctx);
+  const team = actingTeam(ctx);
+  if (teamId == null || !team) redirect("/");
 
   // Matrix (4e): the drill-in is view_player_detail (all staff roles);
   // adjust_points and view_takeaways gate their sections below.
@@ -33,7 +37,7 @@ export default async function CoachPlayerPage({
   const id = Number.parseInt(playerId, 10);
   if (!Number.isInteger(id)) redirect("/");
 
-  const view = await getPlayerCoachView(user.teamId, id, canSeeTakeaway);
+  const view = await getPlayerCoachView(teamId, id, canSeeTakeaway);
   if (!view) redirect("/"); // not a player on the staffer's team
 
   return (
@@ -55,7 +59,7 @@ export default async function CoachPlayerPage({
             cutoutUrl: cutoutSrc(view.id, view.photoCutoutUrl),
             photoMeta: view.photoMeta,
           }}
-          team={user.team}
+          team={team}
         />
         <div className="flex flex-wrap justify-center gap-2">
           <Chip

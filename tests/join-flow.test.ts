@@ -25,17 +25,25 @@ if (url) process.env.DATABASE_URL = url;
 const dbDescribe = url ? describe : describe.skip;
 
 describe("setup gate (pure)", () => {
-  it("players gate on Profile.setupCompletedAt; staff pass; legacy fallback works", async () => {
+  it("athletes gate on Profile.setupCompletedAt; staff pass; legacy fallback works", async () => {
     const { isSetUp } = await import("../lib/onboarding");
     const base = { profile: { onboardedAt: null } };
-    // New world: player with/without setup
-    expect(isSetUp({ user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: null } })).toBe(false);
-    expect(isSetUp({ user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: new Date() } })).toBe(true);
-    // Staff always pass
-    expect(isSetUp({ user: { role: "COACH", ...base }, profile: { setupCompletedAt: null } })).toBe(true);
-    // Legacy fallback (no Profile yet): the old onboardedAt rule
-    expect(isSetUp({ user: { role: "PLAYER", profile: { onboardedAt: new Date() } }, profile: null })).toBe(true);
-    expect(isSetUp({ user: { role: "PLAYER", profile: null }, profile: null })).toBe(false);
+    const player = { role: "PLAYER" } as never; // acting membership roles
+    const coach = { role: "HEAD_COACH" } as never;
+    const none = { membership: null, orgAdminOf: [] as number[] };
+    // Athlete on a team, with/without setup
+    expect(isSetUp({ ...none, membership: player, user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: null } })).toBe(false);
+    expect(isSetUp({ ...none, membership: player, user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: new Date() } })).toBe(true);
+    // Staff and org admins always pass
+    expect(isSetUp({ ...none, membership: coach, user: { role: "COACH", ...base }, profile: { setupCompletedAt: null } })).toBe(true);
+    expect(isSetUp({ ...none, orgAdminOf: [1], user: { role: "COACH", ...base }, profile: { setupCompletedAt: null } })).toBe(true);
+    // No team: set up = personal athlete; not yet = must write the Dream
+    expect(isSetUp({ ...none, user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: new Date() } })).toBe(true);
+    expect(isSetUp({ ...none, user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: null } })).toBe(false);
+    // Legacy fallback (no Profile yet): the old onboardedAt rule; coaches pass
+    expect(isSetUp({ ...none, user: { role: "PLAYER", profile: { onboardedAt: new Date() } }, profile: null })).toBe(true);
+    expect(isSetUp({ ...none, user: { role: "PLAYER", profile: null }, profile: null })).toBe(false);
+    expect(isSetUp({ ...none, user: { role: "COACH", profile: null }, profile: null })).toBe(true);
   });
 });
 

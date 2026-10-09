@@ -3,7 +3,8 @@
 import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { actingScope, getCurrentContext, type Ctx } from "@/lib/context";
+import { actingScope, actingTeamId, getCurrentContext, type Ctx } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { can, type Action } from "@/lib/authz";
 import { endMembershipForUser } from "@/lib/data/memberships";
 import { uniqueJoinCode } from "@/lib/joincode";
@@ -20,11 +21,12 @@ import { claimUsername } from "@/lib/login";
 
 export type TeamSettingsState = { error?: string; ok?: boolean };
 
-// Matrix guard for this file's actions (4e) — legacy role check remains only
-// for pre-backfill logins (dies at Stage 6).
+// Matrix guard for this file's actions (4e) — the persona check remains only
+// for pre-backfill logins (dies at Stage 6). Every action here works on the
+// ACTING team (the one the matrix check used), never the legacy anchor.
 function staffCan(ctx: Ctx, action: Action): boolean {
   const scope = actingScope(ctx);
-  return scope ? can(ctx, action, scope) : ctx.user.role === "COACH";
+  return scope ? can(ctx, action, scope) : isStaffSide(personaOf(ctx));
 }
 
 // Regenerate the coach's OWN team join code (team_settings; team from the
@@ -32,9 +34,10 @@ function staffCan(ctx: Ctx, action: Action): boolean {
 export async function regenerateJoinCode() {
   const ctx = await getCurrentContext();
   if (!ctx || !staffCan(ctx, "manage_join_code")) return;
-  const user = ctx.user;
+  const teamId = actingTeamId(ctx);
+  if (teamId == null) return;
   const joinCode = await uniqueJoinCode();
-  await prisma.team.update({ where: { id: user.teamId }, data: { joinCode } });
+  await prisma.team.update({ where: { id: teamId }, data: { joinCode } });
   revalidatePath("/team");
 }
 
@@ -45,7 +48,8 @@ export async function updateTeam(
 ): Promise<TeamSettingsState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || !staffCan(ctx, "team_settings")) {
+  const teamId = ctx ? actingTeamId(ctx) : null;
+  if (!ctx || !user || teamId == null || !staffCan(ctx, "team_settings")) {
     return { error: "Head coach only." };
   }
   const name = String(formData.get("name") ?? "").trim();
@@ -77,7 +81,7 @@ export async function updateTeam(
 
   // Offload uploads to Supabase Storage when configured (passthrough otherwise).
   const storedLogo = logoUrl
-    ? await storeImage(logoUrl, `teams/${user.teamId}`)
+    ? await storeImage(logoUrl, `teams/${teamId}`)
     : null;
   const storedPhoto = photoRes.url
     ? await storeImage(photoRes.url, `coaches/${user.id}`)
@@ -94,7 +98,7 @@ export async function updateTeam(
   };
 
   await prisma.team.update({
-    where: { id: user.teamId },
+    where: { id: teamId },
     data: {
       name,
       logoUrl: storedLogo,
@@ -129,7 +133,7 @@ export async function setMyUsername(
   formData: FormData,
 ): Promise<UsernameState> {
   const ctx = await getCurrentContext();
-  if (!ctx || ctx.user.role !== "COACH") return { error: "Staff only." };
+  if (!ctx || !isStaffSide(personaOf(ctx))) return { error: "Staff only." };
   const result = await claimUsername(ctx.user.id, String(formData.get("username") ?? ""));
   if (!result.ok) return { error: result.error };
   revalidatePath("/team");
@@ -162,17 +166,17 @@ async function resolveRosterTarget(playerIdRaw: unknown, coachTeamId: number) {
       profileRecord: {
         select: {
           memberships: {
-            where: { teamId: coachTeamId, endedAt: null },
+            where: { teamId: coachTeamId, endedAt: null, role: "PLAYER" },
             select: { id: true },
           },
         },
       },
     },
   });
-  if (!target || target.role !== "PLAYER") return null;
+  if (!target) return null;
   const onRoster = target.profileRecord
     ? target.profileRecord.memberships.length > 0
-    : target.teamId === coachTeamId;
+    : target.teamId === coachTeamId && target.role === "PLAYER";
   return onRoster ? target : null;
 }
 
@@ -187,16 +191,17 @@ export async function removePlayer(
 ): Promise<RosterActionState> {
   const ctx = await getCurrentContext();
   const coach = ctx?.user;
-  if (!ctx || !coach || !staffCan(ctx, "end_membership")) {
+  const teamId = ctx ? actingTeamId(ctx) : null;
+  if (!ctx || !coach || teamId == null || !staffCan(ctx, "end_membership")) {
     return { error: "You can't remove players." };
   }
 
-  const target = await resolveRosterTarget(formData.get("playerId"), coach.teamId);
+  const target = await resolveRosterTarget(formData.get("playerId"), teamId);
   if (!target) return { error: "Not a player on your team." };
 
   const result = await endMembershipForUser(
     target.id,
-    coach.teamId,
+    teamId,
     ctx.profile?.id ?? null,
   );
   if (!result.ok) {
@@ -226,11 +231,12 @@ export async function resetPlayerPassword(
   const coach = ctx?.user;
   // Account administration rides with team_settings (HC/ORG_ADMIN) — the
   // matrix has no dedicated row; assistants/GMs may not reset credentials.
-  if (!ctx || !coach || !staffCan(ctx, "team_settings")) {
+  const teamId = ctx ? actingTeamId(ctx) : null;
+  if (!ctx || !coach || teamId == null || !staffCan(ctx, "team_settings")) {
     return { error: "Head coach only." };
   }
 
-  const target = await resolveRosterTarget(formData.get("playerId"), coach.teamId);
+  const target = await resolveRosterTarget(formData.get("playerId"), teamId);
   if (!target) return { error: "Not a player on your team." };
 
   const w1 = PW_WORDS[randomInt(PW_WORDS.length)];

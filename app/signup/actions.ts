@@ -119,7 +119,10 @@ export async function signup(
             description: gq.description,
             points: gq.points,
             targetCount: gq.targetCount,
-            active: false, // inactive until the Stage 4a cutover flips them
+            // On: the org's own set is what its players are served (the
+            // Stage 4a converge already ran — copying them switched off left
+            // new orgs with an empty Quests page).
+            active: true,
             sortOrder: gq.sortOrder,
           },
         });

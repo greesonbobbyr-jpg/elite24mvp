@@ -1,5 +1,6 @@
 import type { Ctx } from "./context";
 import { can } from "./authz";
+import { isStaffSide, personaOf } from "./persona";
 import { prisma } from "./prisma";
 
 // WHO MAY SEE A PERSON'S BRAND PAGE / PHOTO (hierarchy rebuild Stage 4b).
@@ -47,7 +48,10 @@ export async function resolveBrandAccess(
 
   if (ctx.user.id === target.id) return { target, access: "self" };
 
-  const targetOrgId = target.team.organizationId;
+  // No team (Personal Player Development): the card is the person's own.
+  if (target.teamId == null) return { target, access: null };
+
+  const targetOrgId = target.team?.organizationId ?? null;
   if (ctx.profile && targetOrgId != null) {
     const scope = { organizationId: targetOrgId, teamId: target.teamId };
     if (can(ctx, "view_player_detail", scope)) return { target, access: "staff" };
@@ -57,7 +61,7 @@ export async function resolveBrandAccess(
 
   // Legacy fallback — same team only, exactly as before Stage 4b.
   if (ctx.user.teamId === target.teamId) {
-    return { target, access: ctx.user.role === "COACH" ? "staff" : "teammate" };
+    return { target, access: isStaffSide(personaOf(ctx)) ? "staff" : "teammate" };
   }
   return { target, access: null };
 }

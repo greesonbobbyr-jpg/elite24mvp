@@ -250,12 +250,20 @@ dbDescribe("Stage 4c board + notifications", () => {
     }
   });
 
-  it("actingTeamId: the acting membership's team, else the legacy anchor", async () => {
+  it("actingTeamId: the acting membership's team; anchor only for admins / pre-backfill; else none", async () => {
     const { actingTeamId } = await import("../lib/context");
-    const user = { teamId: 1 } as Parameters<typeof actingTeamId>[0]["user"];
-    const membership = { teamId: 2 } as NonNullable<Parameters<typeof actingTeamId>[0]["membership"]>;
-    expect(actingTeamId({ user, membership })).toBe(2);
-    expect(actingTeamId({ user, membership: null })).toBe(1);
+    type Arg = Parameters<typeof actingTeamId>[0];
+    const user = { teamId: 1 } as Arg["user"];
+    const membership = { teamId: 2 } as NonNullable<Arg["membership"]>;
+    const profile = { id: 9 } as NonNullable<Arg["profile"]>;
+    expect(actingTeamId({ user, membership, profile, orgAdminOf: [] })).toBe(2);
+    // Org admin with no roster spot: the legacy anchor (dies at Stage 6).
+    expect(actingTeamId({ user, membership: null, profile, orgAdminOf: [5] })).toBe(1);
+    // Pre-backfill login (no Profile): the legacy anchor.
+    expect(actingTeamId({ user, membership: null, profile: null, orgAdminOf: [] })).toBe(1);
+    // Removed player / athlete with no team: NO team — never the old anchor,
+    // whose TIME OUT they could no longer acknowledge.
+    expect(actingTeamId({ user, membership: null, profile, orgAdminOf: [] })).toBeNull();
   });
 
   it("author role snapshot survives promotion (Assistant Coach stays Assistant Coach)", async () => {

@@ -96,6 +96,7 @@ const THUNDER_PLAYERS: PlayerSeed[] = [
 // The matrix/switcher special cases (Mustang org).
 const CASEY: PlayerSeed = { name: "Casey Rivers", email: "casey.rivers@example.com", dream: "Play up a level and earn varsity minutes this year.", heightInches: 71, position: "Combo Guard", jerseyNumber: 3, ppg: 9.0, rpg: 3.2, apg: 4.0, favoritePlayer: "Tyrese Haliburton", favoriteTeam: "Indiana Pacers" };
 const DEVON: PlayerSeed = { name: "Devon Price", email: "devon.price@example.com", dream: "Get back on the roster and prove I belong.", heightInches: 74, position: "Forward", jerseyNumber: 32, ppg: 8.1, rpg: 5.5, apg: 1.6, favoritePlayer: "Paolo Banchero", favoriteTeam: "Orlando Magic" };
+const AVERY: PlayerSeed = { name: "Avery Collins", email: "avery.collins@example.com", dream: "Make my high school team next fall.", heightInches: 67, position: "Guard", jerseyNumber: 11, ppg: 0, rpg: 0, apg: 0, favoritePlayer: "Caitlin Clark", favoriteTeam: "Indiana Fever" };
 const KAI: PlayerSeed = { name: "Kai Bennett", email: "kai.bennett@example.com", dream: "Earn real minutes as a freshman.", heightInches: 68, position: "Guard", jerseyNumber: 2, ppg: 4.5, rpg: 1.8, apg: 2.2, favoritePlayer: "Jalen Brunson", favoriteTeam: "New York Knicks" };
 
 // Career points from seasons before this one (see seedEarlierSeasons), so the
@@ -265,8 +266,8 @@ type Person = {
   userId: number;
   profileId: number;
   membershipId: number | null; // primary/acting membership
-  teamId: number;
-  orgId: number;
+  teamId: number | null; // null = no team (Personal Player Development)
+  orgId: number | null;
 };
 const people = new Map<string, Person>(); // by email
 const personOf = (email: string) => {
@@ -326,14 +327,9 @@ async function createStaff(opts: {
   });
 }
 
-async function createPlayer(
-  p: PlayerSeed,
-  teamId: number,
-  orgId: number,
-  seasonId: number,
-  passwordHash: string,
-  joinedAt: Date = daysAgo(JOINED_DAYS_AGO),
-) {
+// The athlete's login + both profiles; no team yet. teamId = the legacy
+// anchor (null for an athlete with no team).
+async function createAthlete(p: PlayerSeed, teamId: number | null, passwordHash: string) {
   const onboarded = p.onboarded !== false;
   const user = await prisma.user.create({
     data: {
@@ -388,6 +384,18 @@ async function createPlayer(
         : {}),
     },
   });
+  return { user, profile };
+}
+
+async function createPlayer(
+  p: PlayerSeed,
+  teamId: number,
+  orgId: number,
+  seasonId: number,
+  passwordHash: string,
+  joinedAt: Date = daysAgo(JOINED_DAYS_AGO),
+) {
+  const { user, profile } = await createAthlete(p, teamId, passwordHash);
   const membership = await prisma.membership.create({
     data: { profileId: profile.id, teamId, seasonId, role: Role.PLAYER, startedAt: joinedAt },
   });
@@ -399,6 +407,14 @@ async function createPlayer(
     orgId,
   });
   return { user, profile, membership };
+}
+
+// PERSONAL PLAYER DEVELOPMENT: an athlete on no team — check-ins, quests
+// (the Elite24 set) and career points on their own; no team surfaces.
+async function createPersonalAthlete(p: PlayerSeed, passwordHash: string) {
+  const { user, profile } = await createAthlete(p, null, passwordHash);
+  people.set(p.email, { userId: user.id, profileId: profile.id, membershipId: null, teamId: null, orgId: null });
+  return { user, profile };
 }
 
 // ---------------------------------------------------- sample portraits ------
@@ -499,10 +515,11 @@ async function seedEarlierSeasons(email: string, amount: number) {
 }
 
 // Back-dated quest completions — pointed at the player's ORG CLONE (the
-// post-backfill state), stamped, with matching ledger rows.
+// post-backfill state), or the Elite24 set (key null) for an athlete with no
+// team, stamped, with matching ledger rows.
 async function seedQuestLogs(
   email: string,
-  cloneQuestsByOrg: Map<number, { id: number; title: string; points: number }[]>,
+  cloneQuestsByOrg: Map<number | null, { id: number; title: string; points: number }[]>,
   count: number,
   membershipOverride?: { membershipId: number; teamId: number; shift: number },
 ) {
@@ -835,6 +852,9 @@ async function main() {
   // coach's read receipts for alerts sent before he joined.
   await createPlayer(KAI, varsity.id, mustangOrg.id, mustangSeason.id, passwordHash, new Date());
 
+  // PERSONAL PLAYER DEVELOPMENT: Avery — on no team, training on their own.
+  await createPersonalAthlete(AVERY, passwordHash);
+
   // ---- The club ladder's people (after the named ones, so their usernames
   // stay plain) -------------------------------------------------------------
   const coachNames = [...CLUB_COACHES];
@@ -890,7 +910,8 @@ async function main() {
   // ---- Quests: 6 ACTIVE globals + INACTIVE clones per org (pre-converge) --
   const globalQuests = [];
   for (const q of QUESTS) globalQuests.push(await prisma.quest.create({ data: q }));
-  const cloneQuestsByOrg = new Map<number, { id: number; title: string; points: number }[]>();
+  const cloneQuestsByOrg = new Map<number | null, { id: number; title: string; points: number }[]>();
+  cloneQuestsByOrg.set(null, globalQuests); // the Elite24 set: athletes with no team
   for (const orgId of [mustangOrg.id, thunderOrg.id]) {
     const clones = [];
     for (const q of QUESTS) {
@@ -919,6 +940,7 @@ async function main() {
     { email: "isaiah.brooks@example.com", checkIns: 5, quests: 4 },
     { email: "noah.patel@example.com", checkIns: 3, quests: 2 },
     { email: "tyrese.walker@example.com", checkIns: 2, quests: 1 },
+    { email: "avery.collins@example.com", checkIns: 9, quests: 6 }, // no team: Elite24 set
   ];
   for (const a of activity) {
     const r = await seedCheckIns(a.email, a.checkIns);
@@ -1037,7 +1059,12 @@ async function main() {
   console.log("    Browse the whole club: log in as gary → ☰ menu → Organization → Browse");
   console.log("  Org admin (no team): alex@elite24.demo — org authority without a roster spot");
   console.log("  Two-team athlete:    casey — switch teams via the header switcher / dev tool");
-  console.log("  Removed player:      devon — logs in to the 'join a team' card (code MUSTNG restores)");
+  console.log("  Removed player:      devon — logs in to the 'join a team' card (code MUSTNG restores);");
+  console.log("                       Varsity's TIME OUT from today must NOT cover their screen");
+  console.log("");
+  console.log("PERSONAL PLAYER DEVELOPMENT   (no team)");
+  console.log("  avery — check-ins, the Elite24 quest set and career points on their own;");
+  console.log("          no Team Circle, no leaderboard (dev switcher → No team)");
   console.log("");
   console.log("OKC THUNDER   (join code THUNDR)");
   console.log("  Head coach: riley@elite24.demo");

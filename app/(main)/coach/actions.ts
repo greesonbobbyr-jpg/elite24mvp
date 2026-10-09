@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { actingScope, actingTeamId, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { can } from "@/lib/authz";
 import { performAdjustPoints } from "@/lib/data/points";
+import { isStaffSide, personaOf } from "@/lib/persona";
 
 export type CoachActionState = { error?: string; ok?: boolean };
 
@@ -26,7 +27,7 @@ export async function adjustPoints(
   const mayAdjust = ctx
     ? scope
       ? can(ctx, "adjust_points", scope)
-      : coach!.role === "COACH"
+      : isStaffSide(personaOf(ctx))
     : false;
   if (!ctx || !coach || !mayAdjust) return { error: "You can't adjust points." };
 
@@ -48,6 +49,8 @@ export async function adjustPoints(
 
   // Team-scoped (4e): a PLAYER with an ACTIVE membership on the acting team
   // (legacy teamId equality only for pre-backfill targets).
+  const teamId = actingTeamId(ctx);
+  if (teamId == null) return { error: "Not a player on your team." };
   const player = await prisma.user.findUnique({
     where: { id: playerId },
     include: {
@@ -55,7 +58,7 @@ export async function adjustPoints(
       profileRecord: {
         select: {
           memberships: {
-            where: { teamId: coach.teamId, endedAt: null },
+            where: { teamId, endedAt: null, role: "PLAYER" },
             select: { id: true },
           },
         },
@@ -64,8 +67,8 @@ export async function adjustPoints(
   });
   const onRoster = player?.profileRecord
     ? player.profileRecord.memberships.length > 0
-    : player?.teamId === coach.teamId;
-  if (!player || player.role !== "PLAYER" || !player.profile || !onRoster) {
+    : player?.teamId === teamId && player.role === "PLAYER";
+  if (!player || !player.profile || !onRoster) {
     return { error: "Not a player on your team." };
   }
 
@@ -78,7 +81,7 @@ export async function adjustPoints(
 
   // Ledger row + all caches in ONE transaction (lib/data/points — credits the
   // membership on the ADJUSTING STAFF'S team, the acting scope of this action).
-  await performAdjustPoints({ id: player.id, teamId: coach.teamId }, amount, finalReason);
+  await performAdjustPoints({ id: player.id, teamId }, amount, finalReason);
 
   revalidatePath(`/coach/player/${playerId}`);
   revalidatePath("/");
@@ -98,15 +101,17 @@ export async function sendCheckInReminder(formData: FormData): Promise<void> {
   const scope = actingScope(ctx);
   const mayPost = scope
     ? can(ctx, "post_notification", scope)
-    : coach.role === "COACH";
+    : isStaffSide(personaOf(ctx));
   if (!mayPost) return;
   const maySendTimeout = scope
     ? can(ctx, "send_timeout", scope)
-    : coach.role === "COACH";
+    : isStaffSide(personaOf(ctx));
   const isTimeout = formData.get("isTimeout") === "on" && maySendTimeout;
+  const teamId = actingTeamId(ctx); // same team the permission check used
+  if (teamId == null) return;
   await prisma.notification.create({
     data: {
-      teamId: actingTeamId(ctx), // same team the permission check used
+      teamId,
       authorId: coach.id,
       title: "Check-in reminder 🏀",
       body: "Get your daily check-in in — write today's plan and get after it. Your streak is counting on you.",

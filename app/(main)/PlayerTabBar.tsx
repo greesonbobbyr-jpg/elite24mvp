@@ -45,8 +45,11 @@ function isTabActive(href: string, pathname: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PlayerTabBar() {
+// `team` false = an athlete with no team (Personal Player Development): no
+// Team Circle tab.
+export function PlayerTabBar({ team }: { team: boolean }) {
   const pathname = usePathname();
+  const tabs = team ? TABS : TABS.filter((t) => t.href !== "/board");
 
   return (
     <nav
@@ -54,7 +57,7 @@ export function PlayerTabBar() {
       className="theme-dark fixed inset-x-0 bottom-0 z-40 border-t border-line bg-gradient-to-b from-canvas to-frame pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.5)]"
     >
       <ul className="mx-auto flex max-w-xl">
-        {TABS.map(({ href, label, Icon }) => {
+        {tabs.map(({ href, label, Icon }) => {
           const active = isTabActive(href, pathname);
           return (
             <li key={href} className="flex-1">

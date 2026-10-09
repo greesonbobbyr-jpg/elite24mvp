@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentContext } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { listActiveQuestsForOrg, getTodaysQuestLogs } from "@/lib/quests";
 import { listLedger, getPointsTotal } from "@/lib/points";
 import { todayKey } from "@/lib/journal";
@@ -18,8 +19,8 @@ export default async function QuestsPage() {
   const user = ctx?.user;
   if (!ctx || !user) redirect("/");
 
-  // Coaches don't log quests or earn points (player-only loop).
-  if (user.role === "COACH") {
+  // Staff don't log quests or earn points (player-only loop).
+  if (isStaffSide(personaOf(ctx))) {
     return (
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
         <h1 className="e24-eyebrow">Daily Quests</h1>

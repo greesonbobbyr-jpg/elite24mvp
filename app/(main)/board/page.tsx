@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { actingScope, getCurrentContext } from "@/lib/context";
+import { actingScope, actingTeam, actingTeamId, getCurrentContext } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { can } from "@/lib/authz";
 import {
   listTeamMessages,
@@ -51,15 +52,18 @@ export default async function BoardPage({
   const ctx = await getCurrentContext();
   const user = ctx?.user;
   if (!ctx || !user) redirect("/");
-  // Re-home (4f): a player with no roster spot this season has no team board —
-  // Home shows the join card. (Legacy fallback only for pre-backfill logins.)
-  if (user.role === "PLAYER" && ctx.profile && !ctx.membership) redirect("/");
+  // Re-home (4f): no team, no team board — Home shows the join card. The
+  // ACTING team throughout (the same one the board's actions use).
+  const teamId = actingTeamId(ctx);
+  const team = actingTeam(ctx);
+  if (teamId == null || !team) redirect("/");
+  const staff = isStaffSide(personaOf(ctx));
 
   // Coach arriving from a "Give a shoutout →" streak-milestone link: prefill a
   // SPOTLIGHT draft (fully editable — the coach writes/sends, never the app).
   const { spotlight, days, limit: limitParam } = await searchParams;
   const spotlightDraft =
-    user.role === "COACH" && spotlight
+    staff && spotlight
       ? `Coach's Spotlight: ${spotlight} is on a ${Number.parseInt(days ?? "", 10) || "hot"}-day check-in streak 🔥 That's how pros are built. Keep leading.`
       : null;
 
@@ -68,13 +72,13 @@ export default async function BoardPage({
     Number.parseInt(limitParam ?? "", 10) || BOARD_PAGE_SIZE,
     BOARD_MAX_LIMIT,
   );
-  const messages = await listTeamMessages(user.teamId, limit);
+  const messages = await listTeamMessages(teamId, limit);
   const hasEarlier = messages.length >= limit && limit < BOARD_MAX_LIMIT;
   // Moderation (delete anyone's message) — the matrix check deleteMessage
   // uses; legacy role check only for pre-backfill logins (dies at Stage 6).
   const scope = actingScope(ctx);
-  const mayModerate = scope ? can(ctx, "moderate_board", scope) : user.role === "COACH";
-  const logoUrl = user.team.logoUrl;
+  const mayModerate = scope ? can(ctx, "moderate_board", scope) : staff;
+  const logoUrl = team.logoUrl;
   const latestId = messages.length ? messages[messages.length - 1].id : 0;
 
   return (
@@ -92,7 +96,7 @@ export default async function BoardPage({
             <div className="min-w-0">
               <p className={kicker}>Team Circle</p>
               <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-ink">
-                {user.team.name}
+                {team.name}
               </h1>
             </div>
             {logoUrl ? (
@@ -102,7 +106,7 @@ export default async function BoardPage({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
-                alt={`${user.team.name} logo`}
+                alt={`${team.name} logo`}
                 className="h-14 w-14 shrink-0 rounded-xl bg-frame object-contain p-1"
               />
             ) : null}
@@ -226,7 +230,7 @@ export default async function BoardPage({
                                 jerseyNumber: message.authorProfile?.jerseyNumber ?? message.author.profile?.jerseyNumber ?? null,
                                 points: message.authorProfile?.careerPoints ?? message.author.profile?.points ?? 0,
                               }}
-                              team={user.team}
+                              team={team}
                             />
                           )}
                         </div>

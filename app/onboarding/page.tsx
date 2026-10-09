@@ -7,9 +7,10 @@ export default async function OnboardingPage() {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
 
-  // Only a player who hasn't completed setup should see this (4f: the gate
-  // reads Profile.setupCompletedAt). Everyone else goes back to the app.
-  if (!ctx || !user || user.role !== "PLAYER" || isSetUp(ctx)) {
+  // Only an athlete (on a team or on their own) who hasn't completed setup
+  // should see this (4f: the gate reads Profile.setupCompletedAt; staff are
+  // always set up). Everyone else goes back to the app.
+  if (!ctx || !user || isSetUp(ctx)) {
     redirect("/");
   }
 

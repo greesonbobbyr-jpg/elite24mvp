@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentContext } from "@/lib/context";
+import { isStaffSide, personaOf } from "@/lib/persona";
 import { can } from "@/lib/authz";
 import { getOrgViewData } from "@/lib/orgview";
 import { OrgTabs } from "../OrgTabs";
@@ -22,7 +23,7 @@ export default async function OrgViewPage() {
     orgId != null &&
     (ctx.profile
       ? can(ctx, "create_team", { organizationId: orgId })
-      : user.role === "COACH"); // pre-backfill fallback (dies at Stage 6)
+      : isStaffSide(personaOf(ctx))); // pre-backfill fallback (dies at Stage 6)
   if (!allowed || orgId == null) redirect("/");
 
   const data = await getOrgViewData(orgId);
