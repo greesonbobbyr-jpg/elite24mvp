@@ -31,6 +31,12 @@ export default async function MainLayout({
   // The setup gate (4f): reads the permanent Profile's setupCompletedAt
   // (dual-written 1:1 with the legacy onboardedAt; legacy fallback for
   // pre-backfill logins). Players write the Dream; staff complete at signup.
+  // Someone else chose this password (an account made by a script): a new
+  // one comes before anything else.
+  if (user?.mustChangePassword) {
+    redirect("/account/password");
+  }
+
   if (ctx && user && !isSetUp(ctx)) {
     redirect("/onboarding");
   }
@@ -62,6 +68,7 @@ export default async function MainLayout({
     userId: user?.id ?? 0,
     unread: unreadCount,
     isOrgAdmin,
+    ceo: ctx?.platformRole === "CEO",
   });
 
   return (
@@ -83,7 +90,7 @@ export default async function MainLayout({
               user={{
                 id: user.id,
                 name: user.name,
-                staff: persona != null && isStaffSide(persona),
+                staff: persona != null && (isStaffSide(persona) || persona === "ceo"),
                 photoUrl: user.photoUrl,
                 photoCutoutUrl: user.photoCutoutUrl,
                 photoMeta: user.photoMeta,

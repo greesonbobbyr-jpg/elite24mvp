@@ -41,6 +41,9 @@ export type Ctx = {
   org: Organization | null;
   season: Season | null;
   orgAdminOf: number[]; // orgs with an unrevoked ORG_ADMIN grant
+  // Authority above every org (PlatformGrant) — the CEO. Null for everyone
+  // else. Never read for journals/reflections: those stay the player's own.
+  platformRole: "CEO" | null;
 };
 
 // Picks the acting membership. The cookie is a HINT, never an authority: it
@@ -88,6 +91,10 @@ export async function resolveContextForUser(
           where: { role: "ORG_ADMIN", revokedAt: null },
           select: { organizationId: true },
         },
+        platformGrants: {
+          where: { revokedAt: null },
+          select: { role: true },
+        },
       },
     }),
   ]);
@@ -100,7 +107,7 @@ export async function resolveContextForUser(
   let profileOnly: Profile | null = null;
   if (profile) {
     // Strip the include payloads so ctx.profile is a plain Profile.
-    const { memberships: _m, roleAssignments: _r, ...rest } = profile;
+    const { memberships: _m, roleAssignments: _r, platformGrants: _g, ...rest } = profile;
     profileOnly = rest;
   }
 
@@ -113,6 +120,7 @@ export async function resolveContextForUser(
     org: team?.organization ?? null,
     season: membership?.season ?? null,
     orgAdminOf: profile?.roleAssignments.map((r) => r.organizationId) ?? [],
+    platformRole: profile?.platformGrants.some((g) => g.role === "CEO") ? "CEO" : null,
   };
 }
 

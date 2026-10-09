@@ -744,6 +744,8 @@ async function main() {
   await prisma.playerProfile.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.roleAssignment.deleteMany();
+  await prisma.platformGrant.deleteMany();
+  await prisma.auditEvent.deleteMany();
   await prisma.profileContact.deleteMany();
   await prisma.user.deleteMany();
   await prisma.profile.deleteMany();
@@ -829,6 +831,20 @@ async function main() {
   await createStaff({ name: "Coach Jamie", email: "jamie@elite24.demo", teamId: jv.id, membershipRole: Role.HEAD_COACH, orgAdmin: false, ...staffCommon });
   // Org authority WITHOUT a roster spot.
   await createStaff({ name: "Alex Vaughn", email: "alex@elite24.demo", teamId: varsity.id, membershipRole: null, orgAdmin: true, ...staffCommon });
+
+  // THE CEO (demo stand-in for Gary Harper — the real account is made only by
+  // scripts/grant-platform-role.ts): no team, CEO View as home. Its password
+  // is the demo one, so it isn't asked to change it.
+  const ceoUser = await prisma.user.create({
+    data: { name: "Gary Harper", email: "ceo@elite24.demo", role: Role.COACH, teamId: null, passwordHash },
+  });
+  const ceoProfile = await prisma.profile.create({
+    data: { userId: ceoUser.id, name: "Gary Harper", setupCompletedAt: new Date() },
+  });
+  await prisma.platformGrant.create({ data: { profileId: ceoProfile.id, role: "CEO", note: "seed" } });
+  await prisma.auditEvent.create({
+    data: { actorProfileId: ceoProfile.id, action: "ceo.view_org", organizationId: mustangOrg.id, detail: "Mustang Broncos", createdAt: hoursAgo(3) },
+  });
   await createStaff({ name: "Coach Riley", email: "riley@elite24.demo", teamId: thunder.id, membershipRole: Role.HEAD_COACH, orgAdmin: true, passwordHash, orgId: thunderOrg.id, seasonId: thunderSeason.id });
 
   // ---- Players ------------------------------------------------------------
@@ -1042,6 +1058,10 @@ async function main() {
   );
   console.log("");
   console.log(`=== DEMO LOGINS · password: "${DEV_PASSWORD}" ===`);
+  console.log("");
+  console.log("CEO   (above every organization)");
+  console.log("  ceo@elite24.demo — Gary Harper: CEO View (every org, team, coach, player;");
+  console.log("                     never journals or reflections)");
   console.log("");
   console.log("MUSTANG BRONCOS ORG   (a 12U–17U club: Varsity is its 17U team, JV its 16U team)");
   console.log("  Varsity (join code MUSTNG)");

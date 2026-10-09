@@ -33,6 +33,8 @@ export default async function Home() {
 
   // Staff get the team dashboard + roster (the player daily loop lives below).
   const persona = personaOf(ctx);
+  // The CEO's home is CEO View.
+  if (persona === "ceo") redirect("/ceo");
   const teamId = actingTeamId(ctx);
   const team = actingTeam(ctx);
   if (isStaffSide(persona)) {

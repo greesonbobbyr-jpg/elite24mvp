@@ -9,21 +9,24 @@ import type { Ctx } from "./context";
 //   athlete   acting membership is PLAYER
 //   staff     acting membership is a coach / GM role
 //   admin     org admin with no roster spot (org authority only)
+//   ceo       the CEO, when not acting on a team — CEO View is home
 //   personal  no team, set up — Personal Player Development: points, quests,
 //             check-in, journal, Pro Review; no team surfaces
 //   new       no team, not set up yet
 //
 // The legacy User.role column is read only for a pre-backfill login with no
 // Profile (dies at Stage 6).
-export type Persona = "athlete" | "staff" | "admin" | "personal" | "new";
+export type Persona = "athlete" | "staff" | "admin" | "ceo" | "personal" | "new";
 
 export type PersonaCtx = Pick<Ctx, "membership" | "orgAdminOf"> & {
   user: { role: Role };
   profile: { setupCompletedAt: Date | null } | null;
+  platformRole?: Ctx["platformRole"];
 };
 
 export function personaOf(ctx: PersonaCtx): Persona {
   if (ctx.membership) return ctx.membership.role === "PLAYER" ? "athlete" : "staff";
+  if (ctx.platformRole === "CEO") return "ceo";
   if (ctx.orgAdminOf.length > 0) return "admin";
   if (!ctx.profile) return ctx.user.role === "COACH" ? "staff" : "athlete";
   return ctx.profile.setupCompletedAt ? "personal" : "new";

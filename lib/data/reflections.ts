@@ -159,3 +159,17 @@ export function checkInCountForPlayer(playerId: number, sinceDay: string) {
     where: { userId: playerId, day: { gte: sinceDay } },
   });
 }
+
+// How many check-ins happened on one day, app-wide (CEO View overview — a
+// number only).
+export function checkInCountOnDay(day: string) {
+  return prisma.journalEntry.count({ where: { day } });
+}
+
+// How many Pro Reviews a player finished since `sinceDay` (done/not — a
+// number only, no text).
+export function reviewCountForPlayer(playerId: number, sinceDay: string) {
+  return prisma.dailyReview.count({
+    where: { userId: playerId, day: { gte: sinceDay } },
+  });
+}

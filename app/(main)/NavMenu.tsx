@@ -109,6 +109,13 @@ export function NavMenu({
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/account/password"
+            onClick={() => setOpen(false)}
+            className="block border-t border-line px-4 py-3 text-sm font-medium text-muted transition hover:bg-raised hover:text-brand-2"
+          >
+            Change password
+          </Link>
           <div className="border-t border-line px-4 py-3">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
               Appearance

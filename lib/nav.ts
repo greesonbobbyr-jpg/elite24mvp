@@ -13,7 +13,20 @@ export type TabBar = "player" | "player-solo" | "coach" | null;
 //             playbook — no team surfaces
 //   staff,    coach tabs; menu adds team settings, Organization (org admins
 //   admin     only), the team leaderboard, playbook
+//   ceo       no tabs; CEO View is home. The CEO View link also leads the
+//             menu whenever the CEO is acting on a team (opts.ceo).
 export function chromeFor(
+  persona: Persona | null,
+  opts: { userId: number; unread: number; isOrgAdmin: boolean; ceo?: boolean },
+): { links: NavLink[]; tabs: TabBar } {
+  const base = baseChrome(persona, opts);
+  if (opts.ceo && persona !== "ceo") {
+    return { ...base, links: [{ href: "/ceo", label: "CEO View" }, ...base.links] };
+  }
+  return base;
+}
+
+function baseChrome(
   persona: Persona | null,
   opts: { userId: number; unread: number; isOrgAdmin: boolean },
 ): { links: NavLink[]; tabs: TabBar } {
@@ -49,6 +62,14 @@ export function chromeFor(
           { href: "/team", label: "Team settings" },
           ...(opts.isOrgAdmin ? [{ href: "/org", label: "Organization" }] : []),
           { href: "/leaderboard", label: "Team leaderboard" },
+          { href: "/library", label: "Playbook" },
+        ],
+      };
+    case "ceo":
+      return {
+        tabs: null,
+        links: [
+          { href: "/ceo", label: "CEO View" },
           { href: "/library", label: "Playbook" },
         ],
       };

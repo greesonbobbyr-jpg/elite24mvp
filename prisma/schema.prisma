@@ -159,6 +159,7 @@ model Profile {
   contact               ProfileContact?
   memberships           Membership[]
   roleAssignments       RoleAssignment[]
+  platformGrants        PlatformGrant[]
   journalEntries        JournalEntry[]
   dailyReviews          DailyReview[]
   mindsetTakeaways      MindsetTakeaway[]
@@ -253,6 +254,43 @@ model RoleAssignment {
   @@index([profileId, revokedAt])
 }
 
+// Authority ABOVE every organization (owner, 2026-10-09): the CEO — Gary
+// Harper, the owner of the business. Sees every org, team, coach and player;
+// never a player's journal or reflections. Its own table so org grants
+// (RoleAssignment) stay org-bounded by construction. Granted ONLY by
+// scripts/grant-platform-role.ts — nothing in the app can create one.
+enum PlatformRole {
+  CEO
+}
+
+model PlatformGrant {
+  id        Int          @id @default(autoincrement())
+  profileId Int
+  profile   Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  role      PlatformRole
+  note      String?
+  createdAt DateTime     @default(now())
+  revokedAt DateTime?
+
+  @@index([profileId, revokedAt])
+}
+
+// What the CEO opened or changed, and when — the record each organization can
+// read about its own part (plain ids: an audit row outlives what it names).
+model AuditEvent {
+  id              Int      @id @default(autoincrement())
+  actorProfileId  Int
+  action          String // "ceo.view_org", "ceo.view_team", "ceo.view_person", "platform.grant"
+  organizationId  Int?
+  teamId          Int?
+  targetProfileId Int?
+  detail          String?
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([actorProfileId, createdAt])
+}
+
 // A team is the private space a coach runs for their players.
 //
 // `parentId` is a nullable self-relation: a team can later belong to a larger
@@ -329,6 +367,9 @@ model User {
   // re-migration. `passwordHash` is a bcrypt hash; null until a credential is set.
   passwordHash String?
   username     String? @unique
+  // Set when someone else chose this password (an account made by a script);
+  // the app asks for a new one before anything else.
+  mustChangePassword Boolean @default(false)
 
   // Optional profile photo — a size-capped `data:` URL. Coaches upload theirs in
   // Team Settings; players use PlayerProfile.photoUrl (via their Brand page). Both

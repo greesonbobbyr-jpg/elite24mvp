@@ -1,5 +1,7 @@
 // Build gate for the author-only reflections boundary (HIERARCHY_PLAN.md §4):
-// JournalEntry and DailyReview may be queried ONLY from lib/data/reflections.ts.
+// JournalEntry and DailyReview may be queried ONLY from lib/data/reflections.ts
+// — directly, through a relation (journalEntries / dailyReviews on a User or
+// Profile query), or through raw SQL. CEO View (lib/data/ceo.ts) relies on it.
 // Runs automatically before every build via the npm `prebuild` hook (locally
 // and on Vercel), so a violating change cannot ship.
 //
@@ -10,7 +12,8 @@ import { join, relative, sep } from "node:path";
 
 const ROOTS = ["app", "lib"];
 const ALLOWED = join("lib", "data", "reflections.ts");
-const PATTERN = /\b(?:prisma|tx)\.(?:journalEntry|dailyReview)\b/;
+const PATTERN =
+  /\b(?:prisma|tx)\.(?:journalEntry|dailyReview)\b|\b(?:journalEntries|dailyReviews)\s*:|\$(?:queryRaw|executeRaw)/;
 
 function* walk(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

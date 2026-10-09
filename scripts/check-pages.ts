@@ -70,6 +70,8 @@ const VISITS: { label: string; login?: string; start: string[]; menuOpen?: boole
   { label: "personal", login: "avery", start: ["/", "/quests", "/journal", "/library"] },
   { label: "removed", login: "devon", start: ["/"] },
   { label: "org-admin", login: "alex@elite24.demo", start: ["/"] },
+  // The CEO: CEO View and its detail pages (followed from these).
+  { label: "ceo", login: "ceo@elite24.demo", start: ["/ceo", "/ceo/orgs", "/ceo/people?q=jo", "/ceo/activity", "/account/password"] },
   // The ☰ menu open (it isn't a page of its own).
   { label: "menu", login: "tyler", start: ["/"], menuOpen: true, follow: false },
 ];

@@ -11,6 +11,7 @@ import { afterAll, describe, expect, it } from "vitest";
 //   devon  removed from Varsity — no longer stuck behind its TIME OUT, no
 //          team menu (the bug this phase fixes)
 //   avery  Personal Player Development — the no-team player loop
+//   ceo    the CEO — CEO View is home
 //
 // Same runner contract: localhost-only, self-skips without TEST_DATABASE_URL.
 
@@ -100,7 +101,7 @@ dbDescribe("persona parity — every seeded user sees what they saw before", () 
       // The setup gate never changes, for anyone.
       expect(isSetUp(ctx), `${email}: setup gate`).toBe(legacySetUp(ctx));
 
-      if (persona === "personal" || persona === "new") {
+      if (persona === "personal" || persona === "new" || persona === "ceo") {
         changed.push(email ?? String(id));
         continue;
       }
@@ -110,7 +111,7 @@ dbDescribe("persona parity — every seeded user sees what they saw before", () 
     }
 
     // Exactly the two intended no-team people, nobody else.
-    expect(changed.sort()).toEqual(["avery.collins@example.com", "devon.price@example.com"]);
+    expect(changed.sort()).toEqual(["avery.collins@example.com", "ceo@elite24.demo", "devon.price@example.com"]);
   });
 
   it("the removed player: personal, no team, so no TIME OUT and no team menu", async () => {

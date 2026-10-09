@@ -82,8 +82,8 @@ async function DevSwitcherSlot() {
           },
         },
       }),
-      // No active membership and no org-admin grant: a personal athlete, or
-      // a removed player.
+      // No active membership and no org-admin grant: the CEO, a personal
+      // athlete, or a removed player.
       prisma.profile.findMany({
         where: {
           userId: { not: null },
@@ -96,6 +96,7 @@ async function DevSwitcherSlot() {
           name: true,
           setupCompletedAt: true,
           memberships: { select: { id: true }, take: 1 },
+          platformGrants: { where: { revokedAt: null }, select: { role: true } },
         },
       }),
       getCurrentUserId(),
@@ -103,7 +104,14 @@ async function DevSwitcherSlot() {
     const noTeam: SwitcherEntry[] = rawNoTeam.map((p) => ({
       userId: p.userId!,
       name: p.name,
-      label: p.memberships.length > 0 ? "Removed" : p.setupCompletedAt ? "Personal" : "New",
+      label:
+        p.platformGrants.length > 0
+          ? "CEO"
+          : p.memberships.length > 0
+            ? "Removed"
+            : p.setupCompletedAt
+              ? "Personal"
+              : "New",
       membershipId: null,
     }));
     const orgs: SwitcherOrg[] = rawOrgs.map((o) => ({
