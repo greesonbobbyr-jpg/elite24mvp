@@ -238,7 +238,64 @@ Production runbook:
 
 Deliberately unchanged: profile photos stay in the database. `lib/photoStore.ts` now needs `PHOTO_STORAGE=supabase-public` to move them to a public bucket, so adding the Supabase keys for announcements can never do that by accident.
 
-**Next:** the owner's picture setup + a test announcement to staff (runbook step 5). Phase 6 cleanup after a soak. The separate game logs + KPIs plan (ask the owner).
+### Deployed 2026-10-10: Phase 6 — the legacy layer is out of the app (`person-first-p6`, 677118b)
+
+Deployed on the owner's "Move on to 6 and then when you complete, merge and deploy."
+
+**PRODUCTION DATABASE STATE — READ THIS BEFORE ANY `prisma migrate deploy`:**
+- `20261010020000_phase6_relax` is **applied** (User.role nullable; nothing removed).
+- `20261010030000_phase6_drop_legacy` is **PENDING ON PURPOSE**. It permanently drops
+  PlayerProfile, Program, Division and the legacy User / Team / Group columns. The
+  next `prisma migrate deploy` against production will run it.
+- Why it waits: the app has not been used by a real logged-in person on the new code
+  yet (deployed 02:48 CDT, nobody online; no production logins are used for testing).
+  While the old tables exist, the previous build (629f6df) can be restored instantly
+  in Vercel if something is wrong. After the drop, the only way is forward.
+- To finish, on the owner's word ("drop the old tables") once the app has been used
+  normally: `npx prisma migrate deploy`, then `npx prisma migrate status` must say
+  "Database schema is up to date!". The migration is one transaction with guards; if
+  it refuses, nothing changed. Afterwards delete `scripts/phase6-preflight.ts` (it
+  reads the dropped tables).
+- Do NOT re-run the pre-check's field-by-field lines as a gate now: PlayerProfile
+  stopped being updated at this deploy, so it will drift from Profile by design. The
+  definitive check was run right before the deploy (all clear).
+
+What changed:
+- The login (`User`) carries no role and no team. Who someone is comes from their
+  `Profile`, `Membership`s and grants only (`lib/context.ts`, `lib/persona.ts`).
+  `ctx.profile` is never null. `User.profileRecord` is now `User.profile`.
+- Removed from schema + code: User.role / teamId / photo columns, PlayerProfile,
+  Team.parentId, Program / Division / Team.divisionId, the Group legacy map columns,
+  the `COACH` role value, `lib/session.ts`, every "pre-backfill" fallback, and the
+  finished one-time scripts (backfill-hierarchy, backfill-structure, backfill-groups,
+  converge-quests, hotfix-stage1) with their tests.
+- Also in this deploy: the Phase 5 media-store header tweak (`apikey` + `Authorization`).
+
+Behaviour changes on purpose (0 people affected in production at deploy time):
+- An org admin with no roster spot has no "borrowed" team: home points to Organization View.
+- Brand page / photo access follows ACTIVE memberships; the full view comes only
+  through a team the person plays on; an org's admins' card info shows to that org.
+- An organization is served its own quests only (no fallback to the shared set).
+
+NOT done, on purpose:
+- **Username login stays.** One production account still has no email; ending the
+  fallback would lock it out. That person adds an email at their next login (the app
+  asks). Gary can see the count in CEO View. Re-check with
+  `SELECT count(*) FROM "User" WHERE email IS NULL` before ever removing `loginAllowed`.
+- Legacy `userId` columns on the content tables, NOT NULL on the person keys, a
+  person-deletion script: still open (see HIERARCHY_PLAN.md status).
+
+Checked before deploy: 330 tests (also 329 with only the relax step applied — the
+state production is in now); layout / contrast / outline page checks on all 13 user
+types; a 23-step real-browser walkthrough (sign up → Dream → check-in → quest + undo →
+join by code → leaderboard → coach adjusts points → teammate / other-org privacy →
+remove → TIME OUT → team switch → org admin → coach photo); Vercel preview build.
+After deploy: logged-out smoke test passed, both hourly jobs answered on the new code,
+no 5xx in the production logs.
+
+**Next:** (1) the owner's word to run the pending drop, after the app has been used
+normally; (2) the owner's picture setup for announcements + a test to staff; (3) the
+separate game logs + KPIs plan (ask the owner).
 
 - **Phase 1:**
   - `User.teamId` is nullable; screens read persona (`lib/persona.ts`), not `User.role`.
