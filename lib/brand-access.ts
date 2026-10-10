@@ -58,9 +58,13 @@ export function isAthlete(target: BrandTarget): boolean {
   return p.memberships.length === 0 && p.roleAssignments.length === 0 && p.platformGrants.length === 0;
 }
 
-// `team`: the team the page shows the person on — the viewer's own acting
-// team for themselves, otherwise the team the access came through (the
-// viewer's acting team first). Null for a person with no team.
+// `team`: the team the page shows the person on — one they PLAY on: their
+// own acting team for themselves, otherwise the team the access came through
+// (the viewer's acting team first). Null for a person with no team.
+//
+// The full view ("staff") only ever comes through a team the person PLAYS on:
+// being staff alongside someone gives no view of what they wrote as a player
+// somewhere else.
 export async function resolveBrandAccess(
   ctx: Ctx,
   targetUserId: number,
@@ -68,17 +72,20 @@ export async function resolveBrandAccess(
   const target = await loadBrandTarget(targetUserId);
   if (!target?.profile) return null;
 
-  if (ctx.user.id === target.id) return { target, access: "self", team: ctx.membership?.team ?? null };
-
   const actingTeamId = ctx.membership?.teamId;
   const places = target.profile.memberships
     .filter((m) => m.team.organizationId != null)
     .sort((a, b) => Number(b.teamId === actingTeamId) - Number(a.teamId === actingTeamId))
-    .map((m) => ({ team: m.team, scope: { organizationId: m.team.organizationId!, teamId: m.teamId } }));
-  const asStaff = places.find((p) => can(ctx, "view_player_detail", p.scope));
+    .map((m) => ({ team: m.team, plays: m.role === "PLAYER", scope: { organizationId: m.team.organizationId!, teamId: m.teamId } }));
+
+  if (ctx.user.id === target.id) {
+    return { target, access: "self", team: places.find((p) => p.plays)?.team ?? null };
+  }
+
+  const asStaff = places.find((p) => p.plays && can(ctx, "view_player_detail", p.scope));
   if (asStaff) return { target, access: "staff", team: asStaff.team };
   const asTeammate = places.find((p) => can(ctx, "view_roster", p.scope));
-  if (asTeammate) return { target, access: "teammate", team: asTeammate.team };
+  if (asTeammate) return { target, access: "teammate", team: asTeammate.plays ? asTeammate.team : null };
 
   const viewerOrgIds = new Set([
     ...ctx.memberships.map((m) => m.team.organizationId),

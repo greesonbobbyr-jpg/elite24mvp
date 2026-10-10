@@ -132,6 +132,16 @@ dbDescribe("Stage 4b brand/photo access", () => {
     expect(await accessOf(w.coachB.id, alex.id)).toBe(null);
   });
 
+  it("staff alongside someone get card info only — never the full view of a player they don't coach", async () => {
+    const { prisma } = await import("../lib/prisma");
+    const w = await world();
+    // Dana is an assistant coach on team A's staff with Coach A; she plays nowhere.
+    const dana = await prisma.user.findUniqueOrThrow({ where: { email: "dana@elite24.demo" } });
+    expect(await accessOf(w.coachA.id, dana.id)).toBe("teammate"); // her avatar loads; nothing more
+    expect(await accessOf(w.playerA1.id, dana.id)).toBe("teammate");
+    expect(await accessOf(w.playerB.id, dana.id)).toBe(null);
+  });
+
   it("the page shows the team the access came through (a two-team athlete)", async () => {
     const { prisma } = await import("../lib/prisma");
     const { resolveContextForUser } = await import("../lib/context");

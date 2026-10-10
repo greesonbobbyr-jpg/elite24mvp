@@ -44,7 +44,10 @@ export async function adjustPoints(
   // Team-scoped: a PLAYER with an ACTIVE membership on the acting team.
   const teamId = scope.teamId;
   const player = await prisma.profile.findFirst({
-    where: { userId: playerId, memberships: { some: { teamId, endedAt: null, role: "PLAYER" } } },
+    where: {
+      userId: playerId,
+      memberships: { some: { teamId, endedAt: null, role: "PLAYER", season: { isCurrent: true } } },
+    },
     select: { careerPoints: true },
   });
   if (!player) return { error: "Not a player on your team." };
@@ -58,7 +61,9 @@ export async function adjustPoints(
 
   // Ledger row + all caches in ONE transaction (lib/data/points — credits the
   // membership on the ADJUSTING STAFF'S team, the acting scope of this action).
-  await performAdjustPoints({ id: playerId, teamId }, amount, finalReason);
+  if (!(await performAdjustPoints({ id: playerId, teamId }, amount, finalReason))) {
+    return { error: "Not a player on your team." };
+  }
 
   revalidatePath(`/coach/player/${playerId}`);
   revalidatePath("/");
