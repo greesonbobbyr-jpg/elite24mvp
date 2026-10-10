@@ -321,6 +321,41 @@ model PlatformGrant {
   @@index([profileId, revokedAt])
 }
 
+// INVITES (person-first plan Phase 3, owner 2026-10-09) — a code or invite is
+// the ONLY way onto a team or into running an organization:
+//   ORG_CREATE  issued by the CEO only: lets one account start an organization
+//   STAFF       issued inside an org: makes the person staff (role) on a team,
+//               or an org admin — head coaches for their own team, group
+//               admins within their branch, org admins anywhere in the org
+// No email service: the inviter shares a short code, a link, or a QR code.
+// Only keyed hashes are stored (codeHash / tokenHash; lib/invites). Single
+// use; expires (staff 7 days, org 30 days); revocable.
+enum InviteKind {
+  ORG_CREATE
+  STAFF
+}
+
+model Invite {
+  id                 Int        @id @default(autoincrement())
+  kind               InviteKind
+  codeHash           String     @unique
+  tokenHash          String     @unique
+  codeHint           String // "K7QD-…" — enough to tell invites apart in a list
+  role               Role? // STAFF: HEAD_COACH | ASSISTANT_COACH | GENERAL_MANAGER | ORG_ADMIN
+  organizationId     Int?
+  teamId             Int?
+  label              String? // who it's for, as the inviter wrote it (only staff see it)
+  createdByProfileId Int
+  createdAt          DateTime   @default(now())
+  expiresAt          DateTime
+  usedAt             DateTime?
+  usedByProfileId    Int?
+  revokedAt          DateTime?
+
+  @@index([organizationId, createdAt])
+  @@index([kind, createdAt])
+}
+
 // What the CEO opened or changed, and when — the record each organization can
 // read about its own part (plain ids: an audit row outlives what it names).
 model AuditEvent {

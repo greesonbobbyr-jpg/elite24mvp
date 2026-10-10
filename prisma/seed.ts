@@ -50,6 +50,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join as pathJoin } from "node:path";
 import { todayKey as tzDayKey } from "../lib/daykey";
 import { advanceStreak, type StreakState } from "../lib/streaks";
+import { createInvite } from "../lib/invites";
 
 const prisma = new PrismaClient();
 
@@ -768,6 +769,7 @@ async function main() {
   await prisma.membership.deleteMany();
   await prisma.roleAssignment.deleteMany();
   await prisma.platformGrant.deleteMany();
+  await prisma.invite.deleteMany();
   await prisma.auditEvent.deleteMany();
   await prisma.profileContact.deleteMany();
   await prisma.user.deleteMany();
@@ -874,6 +876,9 @@ async function main() {
   for (const p of VARSITY_PLAYERS) await createPlayer(p, varsity.id, mustangOrg.id, mustangSeason.id, passwordHash);
   for (const p of JV_PLAYERS) await createPlayer(p, jv.id, mustangOrg.id, mustangSeason.id, passwordHash);
   for (const p of THUNDER_PLAYERS) await createPlayer(p, thunder.id, thunderOrg.id, thunderSeason.id, passwordHash);
+  // AN OLDER ACCOUNT with a username and no email (how players joined before
+  // email logins): logs in once by username, then must add an email.
+  await prisma.user.update({ where: { email: "tyrese.walker@example.com" }, data: { email: null } });
 
   // TWO-TEAM ATHLETE: Casey — Varsity (primary/acting) + JV memberships. The
   // JV membership is back-dated so the cookie-less default (most recent)
@@ -893,6 +898,13 @@ async function main() {
 
   // PERSONAL PLAYER DEVELOPMENT: Avery — on no team, training on their own.
   await createPersonalAthlete(AVERY, passwordHash);
+
+  // A BRAND-NEW ACCOUNT: Taylor signed up and hasn't picked a path yet —
+  // logs in to Step 2 (/welcome).
+  const taylor = await prisma.user.create({
+    data: { name: "Taylor Reed", email: "taylor.reed@example.com", role: Role.PLAYER, teamId: null, passwordHash },
+  });
+  await prisma.profile.create({ data: { userId: taylor.id, name: "Taylor Reed" } });
 
   // ---- The club ladder's people (after the named ones, so their usernames
   // stay plain) -------------------------------------------------------------
@@ -976,6 +988,7 @@ async function main() {
       passwordHash,
     );
   };
+  const girlsTeamIds: number[] = [];
   for (const g of GIRLS_TEAMS) {
     const team = await prisma.team.create({
       data: {
@@ -988,6 +1001,7 @@ async function main() {
         groupId: girlsAge.get(g.age),
       },
     });
+    girlsTeamIds.push(team.id);
     const email = `${g.coach.split(" ")[0].toLowerCase()}@elite24.demo`;
     await createStaff({ name: g.coach, email, teamId: team.id, membershipRole: Role.HEAD_COACH, orgAdmin: false, ...staffCommon });
     if (g.groupAdmin) {
@@ -1111,6 +1125,38 @@ async function main() {
     data: { endedAt: daysAgo(2), endedByProfileId: personOf("gary@elite24.demo").profileId },
   });
 
+  // ---- Invites + org codes (person-first Phase 3) --------------------------
+  // Keyed with AUTH_SECRET (lib/invites) — the same one the dev server reads
+  // from .env, so the printed code and link work in the running app.
+  if (!process.env.AUTH_SECRET && existsSync(".env")) {
+    const m = readFileSync(".env", "utf8").match(/^AUTH_SECRET\s*=\s*"?([^"\r\n]+)"?/m);
+    if (m) process.env.AUTH_SECRET = m[1];
+  }
+  const garyProfileId = personOf("gary@elite24.demo").profileId;
+  const club14Black = clubTeams.find((t) => t.spec.age === 14 && t.spec.color === "Black")!.team;
+  const club12Red = clubTeams.find((t) => t.spec.age === 12 && t.spec.color === "Red")!.team;
+  const club13Red = clubTeams.find((t) => t.spec.age === 13 && t.spec.color === "Red")!.team;
+  const openInvite = await createInvite(
+    { kind: "STAFF", role: Role.ASSISTANT_COACH, organizationId: mustangOrg.id, teamId: club14Black.id, label: "Coach Marcus", createdByProfileId: garyProfileId },
+    prisma,
+  );
+  const usedInvite = await createInvite(
+    { kind: "STAFF", role: Role.HEAD_COACH, organizationId: mustangOrg.id, teamId: girlsTeamIds[0], label: "Gina", createdByProfileId: garyProfileId },
+    prisma,
+  );
+  await prisma.invite.update({ where: { id: usedInvite.invite.id }, data: { usedAt: daysAgo(20), usedByProfileId: personOf("gina@elite24.demo").profileId } });
+  const expiredInvite = await createInvite(
+    { kind: "STAFF", role: Role.GENERAL_MANAGER, organizationId: mustangOrg.id, teamId: club12Red.id, label: "Team mom", createdByProfileId: garyProfileId },
+    prisma,
+  );
+  await prisma.invite.update({ where: { id: expiredInvite.invite.id }, data: { expiresAt: daysAgo(1) } });
+  const cancelledInvite = await createInvite(
+    { kind: "STAFF", role: Role.ASSISTANT_COACH, organizationId: mustangOrg.id, teamId: club13Red.id, label: "Wrong person", createdByProfileId: garyProfileId },
+    prisma,
+  );
+  await prisma.invite.update({ where: { id: cancelledInvite.invite.id }, data: { revokedAt: daysAgo(2) } });
+  const orgCode = await createInvite({ kind: "ORG_CREATE", label: "Westside Hoops Academy", createdByProfileId: ceoProfile.id }, prisma);
+
   // ---- Comms (author snapshots + stamped reads/reactions) -----------------
   const totalNotifications =
     (await seedNotifications("gary@elite24.demo", varsity.id, Role.HEAD_COACH, VARSITY_NOTIFICATIONS)) +
@@ -1200,6 +1246,13 @@ async function main() {
   console.log("  Two-team athlete:    casey — switch teams via the header switcher / dev tool");
   console.log("  Removed player:      devon — logs in to the 'join a team' card (code MUSTNG restores);");
   console.log("                       Varsity's TIME OUT from today must NOT cover their screen");
+  console.log("");
+  console.log("SIGN-UP + INVITES   (Phase 3)");
+  console.log("  New account, no path yet:  taylor.reed@example.com → Step 2 (/welcome)");
+  console.log("  Username-only (old) login: tyrese → asked to add an email first");
+  console.log(`  Open coach invite (14U Mustang Black): code ${openInvite.code} · link /invite/${openInvite.token}`);
+  console.log(`  Open organization code (Westside Hoops Academy): ${orgCode.code} · link /invite/${orgCode.token}`);
+  console.log("  Mustang also has a used, an expired and a cancelled invite (Organization View → Invites)");
   console.log("");
   console.log("PERSONAL PLAYER DEVELOPMENT   (no team)");
   console.log("  avery — check-ins, the Elite24 quest set and career points on their own;");

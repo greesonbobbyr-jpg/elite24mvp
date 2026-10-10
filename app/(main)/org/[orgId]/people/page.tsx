@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { descendantsOf, groupLabel, loadOrgGroups } from "@/lib/groups";
+import { descendantsOf, groupLabel, loadOrgGroups, pathOf } from "@/lib/groups";
+import { can } from "@/lib/authz";
 import { roleLabel } from "@/lib/format";
 import { cardDefault } from "@/app/components/ui/Card";
 import { fieldClass } from "@/app/components/ui/Field";
 import { chipClass, pillClass } from "@/app/components/ui/Pill";
 import { requireOrgAccess } from "../access";
+import { ChangeRole } from "./ChangeRole";
 
 // ORGANIZATION VIEW · PEOPLE — everyone in the organization (or a group
 // admin's branch): their teams and roles, and who runs what. Names and roles
@@ -24,6 +26,8 @@ type Person = {
   userId: number | null;
   name: string;
   roles: { label: string; tone: "neutral" | "accent"; player: boolean }[];
+  // Team spots whose role the viewer may change (Change role).
+  changeable: { id: number; team: string; role: "PLAYER" | "HEAD_COACH" | "ASSISTANT_COACH" | "GENERAL_MANAGER" }[];
 };
 
 export default async function PeoplePage({
@@ -33,7 +37,7 @@ export default async function PeoplePage({
   params: Promise<{ orgId: string }>;
   searchParams: Promise<{ show?: string; q?: string }>;
 }) {
-  const { access } = await requireOrgAccess(params);
+  const { ctx, access } = await requireOrgAccess(params);
   const orgId = access.orgId;
   const { show = "all", q = "" } = await searchParams;
   const filter: Filter = FILTERS.some((f) => f.key === show) ? (show as Filter) : "all";
@@ -48,8 +52,9 @@ export default async function PeoplePage({
         team: inBranch ? { organizationId: orgId, groupId: { in: [...inBranch] } } : { organizationId: orgId },
       },
       select: {
+        id: true,
         role: true,
-        team: { select: { name: true } },
+        team: { select: { id: true, name: true, groupId: true } },
         profile: { select: { id: true, userId: true, name: true } },
       },
     }),
@@ -73,7 +78,7 @@ export default async function PeoplePage({
   const personFor = (p: { id: number; userId: number | null; name: string }) => {
     const existing = people.get(p.id);
     if (existing) return existing;
-    const fresh: Person = { profileId: p.id, userId: p.userId, name: p.name, roles: [] };
+    const fresh: Person = { profileId: p.id, userId: p.userId, name: p.name, roles: [], changeable: [] };
     people.set(p.id, fresh);
     return fresh;
   };
@@ -85,6 +90,10 @@ export default async function PeoplePage({
     });
   }
   for (const m of memberships) {
+    const target = { organizationId: orgId, teamId: m.team.id, groupPath: pathOf(groups, m.team.groupId) };
+    if (m.profile.id !== access.profileId && can(ctx, "change_member_role", target) && m.role !== "ORG_ADMIN" && m.role !== "GROUP_ADMIN" && m.role !== "COACH") {
+      personFor(m.profile).changeable.push({ id: m.id, team: m.team.name, role: m.role });
+    }
     personFor(m.profile).roles.push({
       label: `${roleLabel(m.role) ?? "Player"} · ${m.team.name}`,
       tone: m.role === "PLAYER" ? "neutral" : "accent",
@@ -143,12 +152,9 @@ export default async function PeoplePage({
             </>
           );
           return (
-            <li key={p.profileId}>
-              {link ? (
-                <Link href={link} className={`${cardDefault} block p-3`}>{body}</Link>
-              ) : (
-                <div className={`${cardDefault} p-3`}>{body}</div>
-              )}
+            <li key={p.profileId} className={`${cardDefault} p-3`}>
+              {link ? <Link href={link} className="block">{body}</Link> : body}
+              {p.changeable.length > 0 && <ChangeRole orgId={orgId} firstName={p.name.split(" ")[0]} memberships={p.changeable} />}
             </li>
           );
         })}

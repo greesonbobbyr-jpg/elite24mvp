@@ -1,5 +1,6 @@
 import type { GroupKind } from "@prisma/client";
 import { prisma } from "./prisma";
+import { MAX_GROUP_DEPTH } from "./group-limits";
 
 // THE GROUP TREE (person-first plan Phase 2, owner 2026-10-09) — replaces
 // lib/structure's fixed Program → Division layers. An organization shapes its
@@ -11,7 +12,7 @@ import { prisma } from "./prisma";
 // so tests drive it without a database. The tree is for display and rollups,
 // and it is the reach of a GROUP_ADMIN grant (lib/authz, via groupPath).
 
-export const MAX_GROUP_DEPTH = 4;
+export { MAX_GROUP_DEPTH };
 
 // How each kind reads on a chip. Kinds only label a group — no rule depends
 // on them (an org can nest them any way that matches how it runs).

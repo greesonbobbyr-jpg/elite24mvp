@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { pillClass } from "@/app/components/ui/Pill";
 
-// Tree | Structure | People | Activity — Activity is the whole org's record,
-// so a group admin (one branch) doesn't get it.
+// Tree | Structure | People | Invites | Activity — Activity is the whole
+// org's record, so a group admin (one branch) doesn't get it.
 export function OrgViewTabs({ orgId, showActivity }: { orgId: number; showActivity: boolean }) {
   const pathname = usePathname();
   const base = `/org/${orgId}`;
@@ -13,6 +13,7 @@ export function OrgViewTabs({ orgId, showActivity }: { orgId: number; showActivi
     { href: base, label: "Tree" },
     { href: `${base}/structure`, label: "Structure" },
     { href: `${base}/people`, label: "People" },
+    { href: `${base}/invites`, label: "Invites" },
     ...(showActivity ? [{ href: `${base}/activity`, label: "Activity" }] : []),
   ];
   return (

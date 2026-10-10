@@ -1,40 +1,11 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { JoinForm } from "./JoinForm";
+import { normalizeCode } from "@/lib/invites";
 
-// Player self-join with the coach's team code. Outside the (main) layout;
-// already-authenticated users skip into the app.
-export default async function JoinPage() {
-  const user = await getCurrentUser();
-  if (user) redirect("/");
-
-  return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-8 px-6 py-16">
-      <div className="text-center">
-        <span
-          role="img"
-          aria-label="Elite24MVP"
-          className="text-2xl font-black italic tracking-tight text-ink"
-          style={{ fontFamily: "var(--font-barlow)" }}
-        >
-          Elite<span className="text-logo">24</span>MVP
-        </span>
-        <p className="mt-2 text-sm text-subtle">Join your team</p>
-      </div>
-
-      <section className="e24-surface rounded-2xl p-6">
-        <div className="relative z-10">
-          <JoinForm />
-        </div>
-      </section>
-
-      <p className="text-center text-sm text-subtle">
-        Already have an account?{" "}
-        <Link href="/login" className="font-medium text-brand hover:underline">
-          Log in
-        </Link>
-      </p>
-    </main>
-  );
+// Old printed links (/join?code=MUSTJV) keep working: create an account
+// first, then the code is waiting on the next screen.
+export default async function JoinPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
+  const code = normalizeCode((await searchParams).code);
+  const q = code ? `?code=${code}` : "";
+  redirect((await getCurrentUser()) ? `/welcome${q}` : `/signup${q}`);
 }

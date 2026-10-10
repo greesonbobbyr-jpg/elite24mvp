@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
+import { safeNext } from "@/lib/safe-next";
 import { LoginForm } from "./LoginForm";
 
-// Coach credential login. Sits OUTSIDE the (main) layout (no app header / tab
-// bar / onboarding gate). Already-authenticated users skip straight into the app.
-export default async function LoginPage() {
-  const user = await getCurrentUser();
-  if (user) redirect("/");
+// Login (everyone, by email). Outside the (main) layout. `next` brings someone
+// back to where they were headed — e.g. an invite link — after logging in.
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const next = safeNext((await searchParams).next);
+  if (await getCurrentUser()) redirect(next ?? "/");
+  const signupHref = `/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-8 px-6 py-16">
@@ -25,24 +27,16 @@ export default async function LoginPage() {
 
       <section className="e24-surface rounded-2xl p-6">
         <div className="relative z-10">
-          <LoginForm />
+          <LoginForm next={next} />
         </div>
       </section>
 
-      <div className="flex flex-col gap-2 text-center text-sm text-subtle">
-        <p>
-          Have a team code?{" "}
-          <Link href="/join" className="font-medium text-brand hover:underline">
-            Join your team
-          </Link>
-        </p>
-        <p>
-          Coach, new here?{" "}
-          <Link href="/signup" className="font-medium text-brand hover:underline">
-            Create a team
-          </Link>
-        </p>
-      </div>
+      <p className="text-center text-sm text-subtle">
+        New here?{" "}
+        <Link href={signupHref} className="font-medium text-brand hover:underline">
+          Create your account
+        </Link>
+      </p>
     </main>
   );
 }

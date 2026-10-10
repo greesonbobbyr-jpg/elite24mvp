@@ -2,78 +2,51 @@
 
 import { useActionState } from "react";
 import { signup, type SignupState } from "./actions";
-import { TeamBrandingFields } from "@/app/components/TeamBrandingFields";
+import { Button } from "@/app/components/ui/Button";
+import { checkClass, fieldClass, labelClass } from "@/app/components/ui/Field";
 
 const initialState: SignupState = {};
-const field =
-  "w-full rounded-lg border border-field-line bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-accent-edge";
-const label = "mb-1 block text-xs font-medium text-muted";
 
-export function SignupForm() {
+// Step 1: one account for everyone — players, parents, coaches, organizers.
+export function SignupForm({ next, code }: { next: string | null; code: string | null }) {
   const [state, formAction, pending] = useActionState(signup, initialState);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
-          You (coach)
+      {next && <input type="hidden" name="next" value={next} />}
+      {code && <input type="hidden" name="code" value={code} />}
+      <div>
+        <label htmlFor="name" className={labelClass}>Your name</label>
+        <input id="name" name="name" required maxLength={60} autoComplete="name" className={fieldClass} />
+      </div>
+      <div>
+        <label htmlFor="email" className={labelClass}>Email</label>
+        <input id="email" name="email" type="email" autoComplete="email" required className={fieldClass} />
+        <p className="mt-1 text-xs text-subtle">
+          You&apos;ll log in with it. Using a parent&apos;s email? Add +name before the @ (parent+jordan@gmail.com) so each
+          kid gets their own account.
         </p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="name" className={label}>Your name</label>
-          <input id="name" name="name" required placeholder="Coach name" className={field} />
+          <label htmlFor="password" className={labelClass}>Password</label>
+          <input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} className={fieldClass} />
         </div>
         <div>
-          <label htmlFor="email" className={label}>Email</label>
-          <input id="email" name="email" type="email" autoComplete="email" required className={field} />
-        </div>
-        <div>
-          <label htmlFor="username" className={label}>
-            Username <span className="text-subtle">(optional — log in with it or your email)</span>
-          </label>
-          <input
-            id="username"
-            name="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            autoComplete="username"
-            maxLength={21}
-            placeholder="e.g. coachgary"
-            className={field}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="password" className={label}>Password</label>
-            <input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} className={field} />
-          </div>
-          <div>
-            <label htmlFor="confirm" className={label}>Confirm</label>
-            <input id="confirm" name="confirm" type="password" autoComplete="new-password" required minLength={8} className={field} />
-          </div>
+          <label htmlFor="confirm" className={labelClass}>Again</label>
+          <input id="confirm" name="confirm" type="password" autoComplete="new-password" required minLength={8} className={fieldClass} />
         </div>
       </div>
+      <label className="flex items-start gap-2 text-sm text-ink-mid">
+        <input type="checkbox" name="ageOk" required className={`${checkClass} mt-0.5`} />
+        <span>I&apos;m 13 or older, or I&apos;m a parent or guardian setting this up.</span>
+      </label>
 
-      <div className="flex flex-col gap-3 border-t border-line pt-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
-          Your team
-        </p>
-        <div>
-          <label htmlFor="teamName" className={label}>Team name</label>
-          <input id="teamName" name="teamName" required placeholder="Team name" className={field} />
-        </div>
-        <TeamBrandingFields />
-      </div>
+      {state.error && <p className="text-sm font-semibold text-brand">{state.error}</p>}
 
-      {state.error && <p className="text-sm text-brand">{state.error}</p>}
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-1 w-full rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent transition hover:bg-accent-hover active:scale-[0.99] disabled:bg-raised-3 disabled:text-muted"
-      >
-        {pending ? "Creating your team…" : "Create team & sign in"}
-      </button>
+      <Button type="submit" disabled={pending} className="w-full">
+        {pending ? "Creating your account…" : "Create account"}
+      </Button>
     </form>
   );
 }

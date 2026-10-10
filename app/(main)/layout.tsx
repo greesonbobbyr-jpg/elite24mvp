@@ -36,9 +36,16 @@ export default async function MainLayout({
   if (user?.mustChangePassword) {
     redirect("/account/password");
   }
+  // Email is the only login (owner, 2026-10-09): an older username-only
+  // account adds one, once.
+  if (user && !user.email) {
+    redirect("/account/email");
+  }
 
+  // Not set up yet: no team at all → Step 2 (start an org / join / train
+  // solo); on a team but no Dream yet → write it.
   if (ctx && user && !isSetUp(ctx)) {
-    redirect("/onboarding");
+    redirect(personaOf(ctx) === "new" ? "/welcome" : "/onboarding");
   }
 
   // What this person sees comes from their team roles (lib/persona), not the

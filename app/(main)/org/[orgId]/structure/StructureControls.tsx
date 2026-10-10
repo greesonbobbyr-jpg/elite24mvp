@@ -3,8 +3,8 @@
 import { useActionState, useEffect, useState, type ReactNode } from "react";
 import type { GroupKind } from "@prisma/client";
 import { Button } from "@/app/components/ui/Button";
-import { checkClass, fieldBase, labelClass } from "@/app/components/ui/Field";
-import { pillClass } from "@/app/components/ui/Pill";
+import { fieldBase } from "@/app/components/ui/Field";
+import { ShapeFields } from "@/app/components/ShapeFields";
 import {
   addGroup,
   addGroupAdmin,
@@ -193,71 +193,11 @@ export function GroupAdminRemove({ orgId, grantId, name }: { orgId: number; gran
   );
 }
 
-const SHAPES = [
-  { key: "club", label: "Club", sub: "Boys / Girls → age groups" },
-  { key: "school", label: "School", sub: "Junior High · High School" },
-  { key: "district", label: "District", sub: "Schools → their levels" },
-] as const;
-const AGES = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
-
 /** Start from a shape — shown only while the org has no groups. */
 export function TemplatePicker({ orgId }: { orgId: number }) {
-  const [shape, setShape] = useState<(typeof SHAPES)[number]["key"]>("club");
   return (
     <ShapeForm action={applyTemplate} orgId={orgId} className="flex flex-col gap-4">
-      <input type="hidden" name="template" value={shape} />
-      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Shape">
-        {SHAPES.map((s) => (
-          <button key={s.key} type="button" role="radio" aria-checked={shape === s.key} onClick={() => setShape(s.key)} className={pillClass(shape === s.key, "sm")}>
-            {s.label}
-          </button>
-        ))}
-      </div>
-      <p className="text-xs text-subtle">{SHAPES.find((s) => s.key === shape)!.sub}</p>
-
-      {shape === "club" && (
-        <>
-          <div className="flex gap-4">
-            {(["Boys", "Girls"] as const).map((g) => (
-              <label key={g} className="flex items-center gap-2 text-sm text-ink">
-                <input type="checkbox" name={g} defaultChecked className={checkClass} /> {g}
-              </label>
-            ))}
-          </div>
-          <div>
-            <p className={labelClass}>Age groups</p>
-            <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-              {AGES.map((a) => (
-                <label key={a} className="flex items-center gap-1.5 text-sm text-ink">
-                  <input type="checkbox" name="age" value={a} defaultChecked={a >= 12} className={checkClass} /> {a}U
-                </label>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {shape === "district" && (
-        <div>
-          <label htmlFor="schools" className={labelClass}>Schools, one per line</label>
-          <textarea id="schools" name="schools" rows={3} placeholder={"Lincoln High\nLincoln Middle"} className={`${fieldBase} w-full px-3 py-2 text-sm`} />
-        </div>
-      )}
-
-      {(shape === "school" || shape === "district") && (
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm text-ink">
-            <input type="checkbox" name="juniorHigh" defaultChecked className={checkClass} /> Junior High (7th, 8th)
-          </label>
-          <label className="flex items-center gap-2 text-sm text-ink">
-            <input type="checkbox" name="highSchool" defaultChecked className={checkClass} /> High School (Freshman, JV, Varsity)
-          </label>
-          <label className="flex items-center gap-2 text-sm text-ink">
-            <input type="checkbox" name="splitGenders" className={checkClass} /> Separate Boys and Girls
-          </label>
-        </div>
-      )}
-
+      <ShapeFields shapes={["club", "school", "district"]} />
       <Button type="submit" className="self-start">Create these groups</Button>
     </ShapeForm>
   );

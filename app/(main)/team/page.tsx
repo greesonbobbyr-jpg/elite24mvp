@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { actingScope, actingTeamId, getCurrentContext } from "@/lib/context";
 import { isStaffSide, personaOf } from "@/lib/persona";
@@ -7,8 +8,10 @@ import { JoinCodeCard } from "./JoinCodeCard";
 import { TeamSettingsForm } from "./TeamSettingsForm";
 import { RosterManager } from "./RosterManager";
 import { StartSeasonForm } from "./StartSeasonForm";
-import { LoginUsernameForm } from "./LoginUsernameForm";
 import { Card } from "@/app/components/ui/Card";
+import { StaffInviteForm } from "@/app/components/StaffInviteForm";
+import { loadOrgGroups, pathOf } from "@/lib/groups";
+import { invitableRoles } from "@/lib/orgaccess";
 
 // Staff team page (4e: matrix-gated per section). ALL staff see the roster
 // (view_roster); the join code, team settings, and password resets are
@@ -61,6 +64,12 @@ export default async function TeamSettingsPage() {
           })
         : []; // migrated + empty roster (post-rollover): players re-join by code
 
+  // Invite staff to THIS team (head coaches: assistants and GMs).
+  const inviteRoles =
+    team.organizationId != null
+      ? invitableRoles(ctx, team.organizationId, { id: team.id, groupPath: pathOf(await loadOrgGroups(team.organizationId), team.groupId) })
+      : [];
+
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-6 py-8">
       <header>
@@ -81,6 +90,15 @@ export default async function TeamSettingsPage() {
           canResetPassword={canManageSettings}
         />
       </section>
+
+      {inviteRoles.length > 0 && team.organizationId != null && (
+        <section>
+          <p className="e24-eyebrow mb-2">Invite staff</p>
+          <Card>
+            <StaffInviteForm orgId={team.organizationId} teams={[{ id: team.id, name: team.name, roles: inviteRoles }]} allowOrgAdmin={false} />
+          </Card>
+        </section>
+      )}
 
       {canStartSeason && ctx.season && (
         <section>
@@ -112,8 +130,11 @@ export default async function TeamSettingsPage() {
       {/* Every staffer's own login (not team-wide, so no matrix gate). */}
       <section>
         <p className="e24-eyebrow mb-2">Your login</p>
-        <Card>
-          <LoginUsernameForm email={user.email} username={user.username} />
+        <Card className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-ink">
+            You log in with <span className="font-semibold">{user.email}</span>
+          </p>
+          <Link href="/account/password" className="text-sm font-semibold text-brand">Change password</Link>
         </Card>
       </section>
     </main>

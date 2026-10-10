@@ -57,11 +57,11 @@ const AXE_PATH = join(process.cwd(), "node_modules", "axe-core", "axe.min.js");
 // followed (same origin, no API/logout), so dynamic routes like
 // /brand/[id] and /coach/player/[id] are covered without hard-coding ids.
 const VISITS: { label: string; login?: string; start: string[]; menuOpen?: boolean; follow?: boolean }[] = [
-  { label: "logged-out", start: ["/login", "/signup", "/join"] },
+  { label: "logged-out", start: ["/login", "/signup", "/invite/not-a-real-invite-link"] },
   // Menu pages listed too: a TIME OUT takeover can cover the ☰ button.
   {
     label: "player",
-    login: "jordan",
+    login: "jordan.carter@example.com",
     start: ["/", "/journal", "/leaderboard", "/notifications", "/library"],
   },
   // The org pages are listed: the page cap can end the crawl before the ☰
@@ -70,15 +70,18 @@ const VISITS: { label: string; login?: string; start: string[]; menuOpen?: boole
   // Organization View as a group admin (one branch) and a district admin.
   { label: "group-admin", login: "gina@elite24.demo", start: ["/org"] },
   { label: "district-admin", login: "vince@elite24.demo", start: ["/org"] },
-  { label: "new-player", login: "andre", start: ["/onboarding"] },
+  { label: "new-player", login: "andre.washington@example.com", start: ["/onboarding"] },
   // No team: Personal Player Development, a removed player, an org admin.
-  { label: "personal", login: "avery", start: ["/", "/quests", "/journal", "/library"] },
-  { label: "removed", login: "devon", start: ["/"] },
+  { label: "personal", login: "avery.collins@example.com", start: ["/", "/quests", "/journal", "/library"] },
+  { label: "removed", login: "devon.price@example.com", start: ["/"] },
   { label: "org-admin", login: "alex@elite24.demo", start: ["/"] },
   // The CEO: CEO View and its detail pages (followed from these).
-  { label: "ceo", login: "ceo@elite24.demo", start: ["/ceo", "/ceo/orgs", "/ceo/people?q=jo", "/ceo/activity", "/account/password"] },
+  { label: "ceo", login: "ceo@elite24.demo", start: ["/ceo", "/ceo/orgs", "/ceo/orgs/new", "/ceo/codes", "/ceo/people?q=jo", "/ceo/activity", "/account/password"] },
+  // Sign-up Step 2, and an older username-only account adding its email.
+  { label: "new-account", login: "taylor.reed@example.com", start: ["/welcome"], follow: false },
+  { label: "username-only", login: "tyrese", start: ["/account/email"], follow: false },
   // The ☰ menu open (it isn't a page of its own).
-  { label: "menu", login: "tyler", start: ["/"], menuOpen: true, follow: false },
+  { label: "menu", login: "tyler.nguyen@example.com", start: ["/"], menuOpen: true, follow: false },
 ];
 
 type Culprit = { tag: string; cls: string; text: string; right: number };

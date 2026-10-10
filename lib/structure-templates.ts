@@ -1,5 +1,5 @@
 import type { GroupKind } from "@prisma/client";
-import { MAX_GROUP_DEPTH } from "./groups";
+import { MAX_GROUP_DEPTH } from "./group-limits";
 
 // STARTING SHAPES for an organization's group tree (owner, 2026-10-09: "every
 // possible level" — Boys/Girls, age groups, JH/JV/Varsity, sub-orgs/schools).
@@ -101,4 +101,43 @@ export function templateGroups(choice: TemplateChoice): { ok: true; groups: Temp
   if (templateDepth(groups) > MAX_GROUP_DEPTH) return { ok: false, error: `That's more than ${MAX_GROUP_DEPTH} levels deep.` };
   if (countGroups(groups) > MAX_GROUPS) return { ok: false, error: `That's more than ${MAX_GROUPS} groups.` };
   return { ok: true, groups };
+}
+
+/** A shape choice from form fields (the same names the shape picker uses):
+ * template, Boys, Girls, age (repeated), juniorHigh, highSchool,
+ * splitGenders, schools (one per line). */
+export function choiceFromForm(formData: FormData): TemplateChoice | null {
+  const template = String(formData.get("template"));
+  const levels = {
+    juniorHigh: formData.get("juniorHigh") === "on",
+    highSchool: formData.get("highSchool") === "on",
+    splitGenders: formData.get("splitGenders") === "on",
+  };
+  switch (template) {
+    case "one-team":
+    case "custom":
+      return { template };
+    case "club":
+      return {
+        template,
+        genders: (["Boys", "Girls"] as const).filter((g) => formData.get(g) === "on"),
+        ages: formData.getAll("age").map((a) => Number(a)),
+      };
+    case "school":
+      return { template, ...levels };
+    case "district":
+      return { template, schools: String(formData.get("schools") ?? "").split(/\r?\n|,/), ...levels };
+    default:
+      return null;
+  }
+}
+
+/** Every group a template makes, as a place a team can go: "0.2" = the third
+ * group inside the first top-level one; label "Boys · 14U". */
+export function templatePlaces(nodes: readonly TemplateNode[], prefix: number[] = [], names: string[] = []): { path: string; label: string }[] {
+  return nodes.flatMap((n, i) => {
+    const path = [...prefix, i];
+    const label = [...names, n.name];
+    return [{ path: path.join("."), label: label.join(" · ") }, ...templatePlaces(n.children ?? [], path, label)];
+  });
 }

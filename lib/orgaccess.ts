@@ -1,4 +1,5 @@
-import { can } from "./authz";
+import { can, type AuthzCtx } from "./authz";
+import type { InviteRole, StaffRole } from "./invites";
 import type { Ctx } from "./context";
 import { pathOf, type GroupRow } from "./groups";
 
@@ -57,4 +58,31 @@ export function canShapeAt(
       ? { organizationId: access.orgId }
       : { organizationId: access.orgId, groupPath: pathOf(groups, groupId) },
   );
+}
+
+const ALL_STAFF: StaffRole[] = ["HEAD_COACH", "ASSISTANT_COACH", "GENERAL_MANAGER"];
+
+/** The staff roles this person may invite to a team (empty = none). A head
+ * coach invites assistants and GMs to their own team; group admins (in their
+ * branch), org admins and the CEO invite any staff role. */
+export function invitableRoles(
+  ctx: AuthzCtx,
+  orgId: number,
+  team: { id: number; groupPath: readonly number[] },
+): StaffRole[] {
+  const target = { organizationId: orgId, teamId: team.id, groupPath: team.groupPath };
+  if (!can(ctx, "invite_staff", target)) return [];
+  const orgWide = ctx.platformRole === "CEO" || ctx.orgAdminOf.includes(orgId);
+  const branch = (ctx.groupAdminOf ?? []).some((g) => g.organizationId === orgId && team.groupPath.includes(g.groupId));
+  return orgWide || branch ? ALL_STAFF : ["ASSISTANT_COACH", "GENERAL_MANAGER"];
+}
+
+/** Only an org admin or the CEO may invite another org admin. */
+export function mayInviteOrgAdmin(ctx: AuthzCtx, orgId: number): boolean {
+  return ctx.platformRole === "CEO" || ctx.orgAdminOf.includes(orgId);
+}
+
+export function mayInviteRole(ctx: AuthzCtx, orgId: number, team: { id: number; groupPath: readonly number[] } | null, role: InviteRole): boolean {
+  if (role === "ORG_ADMIN") return team == null && mayInviteOrgAdmin(ctx, orgId);
+  return team != null && invitableRoles(ctx, orgId, team).includes(role);
 }

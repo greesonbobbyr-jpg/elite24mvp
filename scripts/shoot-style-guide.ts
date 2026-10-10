@@ -40,7 +40,7 @@ async function shoot(mode: "light" | "dark"): Promise<Buffer> {
     });
     const page = await context.newPage();
     await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
-    await page.fill("#identifier", "jordan");
+    await page.fill("#identifier", "jordan.carter@example.com");
     await page.fill("#password", "password123");
     await page.click('button[type="submit"]');
     await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 60_000 });

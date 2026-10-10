@@ -2,55 +2,44 @@
 
 import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
+import { Button } from "@/app/components/ui/Button";
+import { fieldClass, labelClass } from "@/app/components/ui/Field";
 
 const initialState: LoginState = {};
-const field =
-  "w-full rounded-lg border border-field-line bg-field px-3 py-2.5 text-sm text-ink outline-none transition focus:border-accent-edge";
 
-export function LoginForm() {
+// Email is the only login (owner, 2026-10-09). An older account that still
+// has only a username can type it here once; the app then asks for an email.
+export function LoginForm({ next }: { next: string | null }) {
   const [state, formAction, pending] = useActionState(login, initialState);
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
+      {next && <input type="hidden" name="next" value={next} />}
       <div>
-        <label htmlFor="identifier" className="mb-1 block text-xs font-medium text-muted">
-          Email or username
-        </label>
+        <label htmlFor="identifier" className={labelClass}>Email</label>
         <input
           id="identifier"
           name="identifier"
           type="text"
-          autoComplete="username"
+          inputMode="email"
+          autoComplete="email"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
           required
-          className={field}
+          className={fieldClass}
         />
       </div>
       <div>
-        <label htmlFor="password" className="mb-1 block text-xs font-medium text-muted">
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          className={field}
-        />
+        <label htmlFor="password" className={labelClass}>Password</label>
+        <input id="password" name="password" type="password" autoComplete="current-password" required className={fieldClass} />
       </div>
 
-      {state.error && <p className="text-sm text-brand">{state.error}</p>}
+      {state.error && <p className="text-sm font-semibold text-brand">{state.error}</p>}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-1 w-full rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent transition hover:bg-accent-hover active:scale-[0.99] disabled:bg-raised-3 disabled:text-muted"
-      >
+      <Button type="submit" disabled={pending} className="mt-1 w-full">
         {pending ? "Signing in…" : "Sign in"}
-      </button>
+      </Button>
     </form>
   );
 }

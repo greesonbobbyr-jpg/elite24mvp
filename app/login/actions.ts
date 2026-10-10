@@ -2,18 +2,16 @@
 
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
+import { safeNext } from "@/lib/safe-next";
 import { rateLimit, clientIp, RATE_LIMITED_MESSAGE } from "@/lib/ratelimit";
 
 export type LoginState = { error?: string };
 
-// Credential login for both roles: `identifier` is an email (coach) or a
-// username (player) — auth.ts resolves which. On success signIn throws a
-// redirect (to "/") which must propagate; only a credentials failure is caught
-// and surfaced as a generic message (no user-enumeration, nothing logged).
-export async function login(
-  _prev: LoginState,
-  formData: FormData,
-): Promise<LoginState> {
+// Email + password login (auth.ts). On success signIn throws a redirect —
+// home, or back to where they were headed (an invite link) — which must
+// propagate; only a credentials failure is caught, with one generic message
+// (no user enumeration, nothing logged).
+export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const identifier = String(formData.get("identifier") ?? "");
   const password = String(formData.get("password") ?? "");
 
@@ -24,11 +22,11 @@ export async function login(
   }
 
   try {
-    await signIn("credentials", { identifier, password, redirectTo: "/" });
+    await signIn("credentials", { identifier, password, redirectTo: safeNext(formData.get("next")) ?? "/" });
     return {};
   } catch (error) {
     if (error instanceof AuthError) {
-      return { error: "Incorrect login or password." };
+      return { error: "Incorrect email or password." };
     }
     throw error; // NEXT_REDIRECT (success) and other errors must bubble up
   }

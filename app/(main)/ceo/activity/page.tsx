@@ -7,6 +7,20 @@ const VERB: Record<string, string> = {
   "ceo.view_team": "Opened team",
   "ceo.view_person": "Opened person",
   "platform.grant": "CEO access granted",
+  "ceo.org_code.created": "Made an organization code for",
+  "ceo.org_code.revoked": "Cancelled the organization code for",
+  "ceo.org.created": "Started an organization:",
+  "ceo.invite.created": "Made an invite:",
+  "ceo.org.change_role": "Changed a role:",
+  "ceo.org.add_group": "Added a group:",
+  "ceo.org.edit_group": "Changed a group:",
+  "ceo.org.move_group": "Moved a group:",
+  "ceo.org.delete_group": "Deleted a group:",
+  "ceo.org.add_team": "Added a team:",
+  "ceo.org.move_team": "Moved a team:",
+  "ceo.org.apply_template": "Started a structure from the shape:",
+  "ceo.org.add_group_admin": "Made a group admin:",
+  "ceo.org.remove_group_admin": "Removed a group admin:",
 };
 
 // CEO View · Activity — everything the CEO opened, newest first. The same

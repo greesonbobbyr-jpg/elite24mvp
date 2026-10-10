@@ -22,6 +22,11 @@ const VERB: Record<string, string> = {
   "org.apply_template": "started the structure from the shape",
   "org.add_group_admin": "made a group admin:",
   "org.remove_group_admin": "removed a group admin:",
+  "org.created": "started the organization:",
+  "org.change_role": "changed a role —",
+  "invite.created": "made an invite:",
+  "invite.revoked": "cancelled invite",
+  "invite.accepted": "joined by invite as",
 };
 
 export default async function ActivityPage({ params }: { params: Promise<{ orgId: string }> }) {

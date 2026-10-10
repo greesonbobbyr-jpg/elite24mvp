@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentContext, type Ctx } from "@/lib/context";
 import { canAddUnder, canMove, depthsAfterMove, GROUP_KINDS, groupLabel, loadOrgGroups, type GroupRow } from "@/lib/groups";
 import { canShapeAt, orgAccessFor, type OrgAccess } from "@/lib/orgaccess";
-import { templateGroups, type TemplateChoice, type TemplateNode } from "@/lib/structure-templates";
+import { choiceFromForm, templateGroups, type TemplateNode } from "@/lib/structure-templates";
 import { uniqueJoinCode } from "@/lib/joincode";
 
 // ORGANIZATION VIEW · STRUCTURE ACTIONS (person-first plan Phase 2). Every
@@ -176,24 +176,7 @@ export async function applyTemplate(_p: ShapeState, formData: FormData): Promise
   const s = await shaper(formData);
   if (!s || !may(s, null)) return DENIED;
   if (s.groups.length > 0) return { error: "This organization already has groups — change them below." };
-  const template = String(formData.get("template"));
-  const levels = {
-    juniorHigh: formData.get("juniorHigh") === "on",
-    highSchool: formData.get("highSchool") === "on",
-    splitGenders: formData.get("splitGenders") === "on",
-  };
-  const choice: TemplateChoice | null =
-    template === "club"
-      ? {
-          template,
-          genders: (["Boys", "Girls"] as const).filter((g) => formData.get(g) === "on"),
-          ages: formData.getAll("age").map((a) => Number(a)),
-        }
-      : template === "school"
-        ? { template, ...levels }
-        : template === "district"
-          ? { template, schools: String(formData.get("schools") ?? "").split(/\r?\n|,/), ...levels }
-          : null;
+  const choice = choiceFromForm(formData);
   if (!choice) return { error: "Pick a shape." };
   const result = templateGroups(choice);
   if (!result.ok) return { error: result.error };
@@ -210,7 +193,7 @@ export async function applyTemplate(_p: ShapeState, formData: FormData): Promise
     };
     await create(result.groups, null, 1);
   });
-  return done(s, "org.apply_template", template);
+  return done(s, "org.apply_template", choice.template);
 }
 
 // GROUP ADMINS — set by whoever shapes the whole org. The person must already

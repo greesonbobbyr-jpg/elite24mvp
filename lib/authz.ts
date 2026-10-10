@@ -26,7 +26,8 @@ import type { Role } from "@prisma/client";
 // - HEAD_COACH no longer changes member roles (only an organization promotes
 //   a player to staff) and may invite staff to their own team.
 // - The CEO (PlatformGrant) reaches every organization for CEO_ACTIONS only —
-//   viewing and shaping structure. Never journals: no action exists for that.
+//   viewing and shaping structure, inviting staff, changing member roles.
+//   Never journals: no action exists for that.
 
 export type Action =
   | "view_roster"
@@ -88,7 +89,7 @@ const ALL_ACTIONS: readonly Action[] = [
 // What the CEO may do in ANY organization (on top of whatever their own
 // memberships allow). Test-locked: nothing here reaches a player's words.
 export const CEO_ACTIONS: ReadonlySet<Action> = new Set<Action>([
-  "view_org", "manage_structure", "create_team",
+  "view_org", "manage_structure", "create_team", "invite_staff", "change_member_role",
 ]);
 
 const NOT_FOR_GROUP_ADMINS: readonly Action[] = [

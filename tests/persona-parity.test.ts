@@ -12,6 +12,7 @@ import { afterAll, describe, expect, it } from "vitest";
 //          team menu (the bug this phase fixes)
 //   avery  Personal Player Development — the no-team player loop
 //   ceo    the CEO — CEO View is home
+//   taylor a brand-new account that hasn't picked a path yet (Step 2)
 //
 // Same runner contract: localhost-only, self-skips without TEST_DATABASE_URL.
 
@@ -113,7 +114,7 @@ dbDescribe("persona parity — every seeded user sees what they saw before", () 
     }
 
     // Exactly the two intended no-team people, nobody else.
-    expect(changed.sort()).toEqual(["avery.collins@example.com", "ceo@elite24.demo", "devon.price@example.com"]);
+    expect(changed.sort()).toEqual(["avery.collins@example.com", "ceo@elite24.demo", "devon.price@example.com", "taylor.reed@example.com"]);
   });
 
   it("the removed player: personal, no team, so no TIME OUT and no team menu", async () => {

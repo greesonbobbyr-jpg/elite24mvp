@@ -40,7 +40,12 @@ Everything else in the app is secondary to this loop working smoothly across mul
 
 ## 4. Scope — what's IN the MVP
 
-- Auth with two roles: **Coach** (team admin) and **Player**.
+- **One account for everyone** (owner, 2026-10-09): Step 1 is name + email + password, with a required "I'm 13 or older, or a parent/guardian setting this up" box. Kids may use a parent's email, one email per account. Step 2 is one of three paths:
+  - **Start an Organization**, with an org code only the CEO issues.
+  - **Joining a Team**, with a team code (player) or a staff invite (code / link / QR; the person confirms they're 18+).
+  - **Personal Player Development**.
+
+  A code is the only way onto a team. A player becomes staff only when the organization promotes them (adult confirmed, recorded). What someone sees comes from their team roles (`lib/persona.ts`).
 - A set of seeded **fake users** + a **dev user switcher** so the owner can test multi-user UX fast (see §7).
 - **Onboarding + Dream** capture.
 - The **daily check-in** (quote → "what will you work on today" → typed reflection) + dated **journal timeline**.
@@ -70,7 +75,7 @@ Everything else in the app is secondary to this loop working smoothly across mul
 - **Framework:** Next.js (App Router) + **TypeScript**.
 - **Styling:** Tailwind CSS. Keep components simple and readable; mobile-first layouts (this will mostly be used on phones).
 - **Database:** **Postgres via Prisma** — Supabase Postgres in production; an embedded local Postgres for development and tests (`scripts/localpg.ts`, port 5433, one database per branch). Keep the data layer swappable.
-- **Auth:** Auth.js v5 (credentials + JWT) with bcrypt — a vetted library; do **not** hand-roll password hashing or session crypto. Login is by email or username; the dev user switcher works in development only. Keep auth logic isolated so it can be hardened before any real launch.
+- **Auth:** Auth.js v5 (credentials + JWT) with bcrypt — a vetted library; do **not** hand-roll password hashing or session crypto. Login is by **email only**: an older username-only account may use its username once, then must add an email (`lib/login.ts` `loginAllowed`). The dev user switcher works in development only. Keep auth logic isolated so it can be hardened before any real launch.
 - **Notifications:** in-app alerts, plus Web Push (VAPID) daily check-in reminders sent by an hourly GitHub Actions cron.
 - **Hosting:** Vercel. **Every push to `main` deploys production** — never push `main` without the owner's explicit go.
 - **State/data:** Server components + server actions / route handlers where natural. Avoid unnecessary client-side complexity.

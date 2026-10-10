@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
-import { parseLoginIdentifier } from "@/lib/login";
+import { loginAllowed, parseLoginIdentifier } from "@/lib/login";
 import authConfig from "./auth.config";
 
 // Real auth (Auth.js / NextAuth v5). Credentials + JWT session so our existing
@@ -21,11 +21,11 @@ const providers = [
       const lookup = parseLoginIdentifier(String(creds?.identifier ?? ""));
       const password = String(creds?.password ?? "");
       if (!lookup || !password) return null;
-      // One login for everyone: an email or a username (see lib/login). No
-      // account, or a credential-less account, fails the same way (no
+      // Email is the login (a username only for an older account with no
+      // email yet — lib/login). Every failure looks the same (no
       // enumeration). Never return the hash.
       const user = await prisma.user.findUnique({ where: lookup });
-      if (!user?.passwordHash) return null;
+      if (!user?.passwordHash || !loginAllowed(lookup, user)) return null;
       const ok = await verifyPassword(password, user.passwordHash);
       return ok ? { id: String(user.id) } : null;
     },
