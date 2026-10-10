@@ -48,13 +48,6 @@ export async function changeMemberRole(_p: RoleState, formData: FormData): Promi
 
   await prisma.$transaction(async (tx) => {
     await tx.membership.update({ where: { id: membershipId }, data: { role } });
-    // The legacy login mirror (dies at Stage 6): a player while they play anywhere.
-    if (m.profile.userId != null) {
-      const playing = await tx.membership.count({
-        where: { profileId: m.profileId, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
-      });
-      await tx.user.update({ where: { id: m.profile.userId }, data: { role: playing > 0 ? "PLAYER" : "COACH" } });
-    }
     const viaCeo = ctx.platformRole === "CEO" && !ctx.orgAdminOf.includes(orgId);
     await tx.auditEvent.create({
       data: {

@@ -104,9 +104,9 @@ app/
     switch-user.ts       Server actions backing the switcher
 lib/
   prisma.ts            Shared Prisma client
-  session.ts           Dev "current user" session (cookie-based; not prod auth)
+  context.ts           Who is acting: login → person → their team roles
 prisma/
-  schema.prisma        Team, User, PlayerProfile
+  schema.prisma        Organization, Team, User (login), Profile (person), Membership
   seed.ts              Fake Team A / Team B data
   migrations/          Migration history
 .env.example           Template for .env (copy to .env)

@@ -40,10 +40,8 @@ dbDescribe("reminderRecipientIds", () => {
       data: { name: "__rm_other__", organizationId: org.id, joinCode: "RMTM02" },
     });
 
-    async function player(key: string, opts: { legacyTeamId: number; ended?: boolean; push?: boolean }) {
-      const user = await prisma.user.create({
-        data: { name: `__rm_${key}__`, role: "PLAYER", teamId: opts.legacyTeamId },
-      });
+    async function player(key: string, opts: { ended?: boolean; push?: boolean } = {}) {
+      const user = await prisma.user.create({ data: { name: `__rm_${key}__` } });
       const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
       await prisma.membership.create({
         data: {
@@ -62,11 +60,11 @@ dbDescribe("reminderRecipientIds", () => {
       return { userId: user.id, profileId: profile.id };
     }
 
-    const active = await player("active", { legacyTeamId: team.id });
-    const removed = await player("removed", { legacyTeamId: team.id, ended: true });
-    const noPush = await player("nopush", { legacyTeamId: team.id, push: false });
-    const checkedIn = await player("checkedin", { legacyTeamId: team.id });
-    const twoTeam = await player("twoteam", { legacyTeamId: other.id });
+    const active = await player("active");
+    const removed = await player("removed", { ended: true });
+    const noPush = await player("nopush", { push: false });
+    const checkedIn = await player("checkedin");
+    const twoTeam = await player("twoteam");
     await prisma.journalEntry.create({
       data: { userId: checkedIn.userId, profileId: checkedIn.profileId, day: TODAY, reflection: "x" },
     });

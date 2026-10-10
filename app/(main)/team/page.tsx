@@ -13,7 +13,7 @@ import { StaffInviteForm } from "@/app/components/StaffInviteForm";
 import { loadOrgGroups, pathOf } from "@/lib/groups";
 import { invitableRoles } from "@/lib/orgaccess";
 
-// Staff team page (4e: matrix-gated per section). ALL staff see the roster
+// Staff team page (matrix-gated per section). ALL staff see the roster
 // (view_roster); the join code, team settings, and password resets are
 // team_settings (HEAD_COACH / ORG_ADMIN); the Remove control is
 // end_membership (HC / GM / ORG_ADMIN — not assistants). Team comes from the
@@ -24,45 +24,31 @@ export default async function TeamSettingsPage() {
   if (!ctx || !user) redirect("/");
 
   const scope = actingScope(ctx);
-  const staffSide = isStaffSide(personaOf(ctx));
-  const isStaff = scope ? can(ctx, "view_roster", scope) && staffSide : staffSide;
+  const isStaff = scope != null && can(ctx, "view_roster", scope) && isStaffSide(personaOf(ctx));
   const teamId = actingTeamId(ctx);
   if (!isStaff || teamId == null) redirect("/");
-  const canManageSettings = scope ? can(ctx, "team_settings", scope) : true;
-  const canEndMembership = scope ? can(ctx, "end_membership", scope) : true;
-  // create_season is ORG_ADMIN only — no legacy fallback grants it, but every
-  // real coach holds an ORG_ADMIN grant from signup/backfill.
-  const canStartSeason = scope ? can(ctx, "create_season", scope) : true;
+  const canManageSettings = scope != null && can(ctx, "team_settings", scope);
+  const canEndMembership = scope != null && can(ctx, "end_membership", scope);
+  // create_season is ORG_ADMIN only.
+  const canStartSeason = scope != null && can(ctx, "create_season", scope);
 
   const team = await prisma.team.findUnique({ where: { id: teamId } });
   if (!team) redirect("/");
 
-  // Roster = ACTIVE PLAYER memberships in the current season (4e); legacy
-  // user roster only for a pre-backfill team (dies at Stage 6).
+  // Roster = ACTIVE PLAYER memberships in the current season. Empty right
+  // after a season rollover: players re-join by code.
   const memberships = await prisma.membership.findMany({
     where: { teamId, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
     select: { profile: { select: { userId: true, name: true, user: { select: { username: true } } } } },
     orderBy: { profile: { name: "asc" } },
   });
-  const isPreBackfill =
-    memberships.length === 0 &&
-    (await prisma.membership.count({ where: { teamId } })) === 0;
-  const players =
-    memberships.length > 0
-      ? memberships
-          .filter((m) => m.profile.userId != null)
-          .map((m) => ({
-            id: m.profile.userId!,
-            name: m.profile.name,
-            username: m.profile.user?.username ?? null,
-          }))
-      : isPreBackfill
-        ? await prisma.user.findMany({
-            where: { teamId, role: "PLAYER" },
-            select: { id: true, name: true, username: true },
-            orderBy: { name: "asc" },
-          })
-        : []; // migrated + empty roster (post-rollover): players re-join by code
+  const players = memberships
+    .filter((m) => m.profile.userId != null)
+    .map((m) => ({
+      id: m.profile.userId!,
+      name: m.profile.name,
+      username: m.profile.user?.username ?? null,
+    }));
 
   // Invite staff to THIS team (head coaches: assistants and GMs).
   const inviteRoles =
@@ -119,9 +105,9 @@ export default async function TeamSettingsPage() {
                 secondaryColor: team.secondaryColor,
                 checkInReminderHour: team.checkInReminderHour,
               }}
-              coachPhotoUrl={user.photoUrl}
-              coachCutoutUrl={user.photoCutoutUrl}
-              coachPhotoMeta={user.photoMeta ? JSON.stringify(user.photoMeta) : null}
+              coachPhotoUrl={ctx.profile.photoUrl}
+              coachCutoutUrl={ctx.profile.photoCutoutUrl}
+              coachPhotoMeta={ctx.profile.photoMeta ? JSON.stringify(ctx.profile.photoMeta) : null}
             />
           </Card>
         </section>

@@ -56,7 +56,7 @@ dbDescribe("invites + starting an organization", () => {
     const team = await prisma.team.create({ data: { name: "__inv_team__", organizationId: org.id } });
     const people = [];
     for (const n of ["a", "b", "c", "d"]) {
-      const user = await prisma.user.create({ data: { name: `__inv_${n}__`, email: `__inv_${n}__@example.test`, role: "PLAYER" } });
+      const user = await prisma.user.create({ data: { name: `__inv_${n}__`, email: `__inv_${n}__@example.test` } });
       const profile = await prisma.profile.create({ data: { userId: user.id, name: `__inv_${n}__` } });
       people.push({ profileId: profile.id, userId: user.id });
     }
@@ -72,7 +72,6 @@ dbDescribe("invites + starting an organization", () => {
     await prisma.membership.deleteMany({ where: { team: { organizationId: { in: orgs } } } });
     await prisma.roleAssignment.deleteMany({ where: { organizationId: { in: orgs } } });
     await prisma.quest.deleteMany({ where: { organizationId: { in: orgs } } });
-    await prisma.user.updateMany({ where: { id: { in: w.people.map((p) => p.userId) } }, data: { teamId: null } });
     await prisma.team.deleteMany({ where: { organizationId: { in: orgs } } });
     for (const d of [4, 3, 2, 1]) await prisma.group.deleteMany({ where: { organizationId: { in: orgs }, depth: d } });
     await prisma.season.deleteMany({ where: { organizationId: { in: orgs } } });
@@ -103,7 +102,10 @@ dbDescribe("invites + starting an organization", () => {
     const winner = results[0].ok ? w.people[1] : w.people[2];
     const m = await prisma.membership.findFirstOrThrow({ where: { profileId: winner.profileId, teamId: w.teamId } });
     expect(m.role).toBe("ASSISTANT_COACH");
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: winner.userId } })).role).toBe("COACH");
+    // What they see follows the membership: staff, on that team.
+    const { resolveContextForUser } = await import("../lib/context");
+    const { personaOf } = await import("../lib/persona");
+    expect(personaOf((await resolveContextForUser(winner.userId, null))!)).toBe("staff");
     const used = await prisma.invite.findUniqueOrThrow({ where: { id: invite.id } });
     expect(used.usedByProfileId).toBe(winner.profileId);
   });

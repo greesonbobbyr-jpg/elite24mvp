@@ -61,9 +61,7 @@ export default async function NotificationsPage() {
     // The TIME OUT toggle is hidden from staff without send_timeout (the
     // server also enforces it; matrix: HEAD_COACH / ORG_ADMIN only).
     const scope = actingScope(ctx);
-    const canSendTimeout = scope
-      ? can(ctx, "send_timeout", scope)
-      : staff;
+    const canSendTimeout = scope != null && can(ctx, "send_timeout", scope);
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
         <header>

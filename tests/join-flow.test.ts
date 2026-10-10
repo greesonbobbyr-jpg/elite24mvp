@@ -1,17 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-// STAGE 4f PROOFS — signup/join/onboarding on the new world:
+// JOINING A TEAM, SEASONS, AND THE SETUP GATE:
 //   1. An org with NO current season fails the join with a clear reason —
 //      never a silent membership skip.
 //   2. A returning athlete joining a DIFFERENT team gets a fresh membership on
 //      their EXISTING profile: career/journal carry, that board starts 0, and
-//      the legacy login re-points to the new team.
+//      they are now acting on the new team.
 //   3. Re-joining the SAME team + season REACTIVATES the exact membership
 //      (board points return); joining while already active is a no-op.
 //   4. Season rollover carries STAFF memberships, not players; exactly one
 //      current season holds; a player then re-joins into the new season fresh.
 //   5. The setup gate reads Profile.setupCompletedAt (players gate until the
-//      Dream; staff pass; legacy fallback for profile-less logins).
+//      Dream; staff pass).
 //
 // Same runner contract: localhost-only, self-skips without TEST_DATABASE_URL.
 
@@ -25,29 +25,27 @@ if (url) process.env.DATABASE_URL = url;
 const dbDescribe = url ? describe : describe.skip;
 
 describe("setup gate (pure)", () => {
-  it("athletes gate on Profile.setupCompletedAt; staff pass; legacy fallback works", async () => {
+  it("athletes gate on Profile.setupCompletedAt; staff, admins and the CEO pass", async () => {
     const { isSetUp } = await import("../lib/onboarding");
-    const base = { profile: { onboardedAt: null } };
     const player = { role: "PLAYER" } as never; // acting membership roles
     const coach = { role: "HEAD_COACH" } as never;
     const none = { membership: null, orgAdminOf: [] as number[] };
+    const notYet = { setupCompletedAt: null };
+    const done = { setupCompletedAt: new Date() };
     // Athlete on a team, with/without setup
-    expect(isSetUp({ ...none, membership: player, user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: null } })).toBe(false);
-    expect(isSetUp({ ...none, membership: player, user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: new Date() } })).toBe(true);
-    // Staff and org admins always pass
-    expect(isSetUp({ ...none, membership: coach, user: { role: "COACH", ...base }, profile: { setupCompletedAt: null } })).toBe(true);
-    expect(isSetUp({ ...none, orgAdminOf: [1], user: { role: "COACH", ...base }, profile: { setupCompletedAt: null } })).toBe(true);
-    // No team: set up = personal athlete; not yet = must write the Dream
-    expect(isSetUp({ ...none, user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: new Date() } })).toBe(true);
-    expect(isSetUp({ ...none, user: { role: "PLAYER", ...base }, profile: { setupCompletedAt: null } })).toBe(false);
-    // Legacy fallback (no Profile yet): the old onboardedAt rule; coaches pass
-    expect(isSetUp({ ...none, user: { role: "PLAYER", profile: { onboardedAt: new Date() } }, profile: null })).toBe(true);
-    expect(isSetUp({ ...none, user: { role: "PLAYER", profile: null }, profile: null })).toBe(false);
-    expect(isSetUp({ ...none, user: { role: "COACH", profile: null }, profile: null })).toBe(true);
+    expect(isSetUp({ ...none, membership: player, profile: notYet })).toBe(false);
+    expect(isSetUp({ ...none, membership: player, profile: done })).toBe(true);
+    // Staff, org admins and the CEO always pass
+    expect(isSetUp({ ...none, membership: coach, profile: notYet })).toBe(true);
+    expect(isSetUp({ ...none, orgAdminOf: [1], profile: notYet })).toBe(true);
+    expect(isSetUp({ ...none, platformRole: "CEO", profile: notYet })).toBe(true);
+    // No team: set up = personal athlete; not yet = must pick a path / write the Dream
+    expect(isSetUp({ ...none, profile: done })).toBe(true);
+    expect(isSetUp({ ...none, profile: notYet })).toBe(false);
   });
 });
 
-dbDescribe("Stage 4f — join flow + season rollover", () => {
+dbDescribe("join flow + season rollover", () => {
   const w = {} as {
     orgId: number; seasonId: number;
     teamXId: number; teamYId: number; codeX: string; codeY: string;
@@ -74,14 +72,9 @@ dbDescribe("Stage 4f — join flow + season rollover", () => {
       data: { name: "__jf_darkteam__", organizationId: orgDark.id, joinCode: "JFDARK" },
     });
     // The athlete: on team X with history (points + journal), then removed.
-    const user = await prisma.user.create({
-      data: { name: "__jf_athlete__", role: "PLAYER", teamId: teamX.id },
-    });
-    await prisma.playerProfile.create({
-      data: { userId: user.id, dream: "t", onboardedAt: new Date() },
-    });
+    const user = await prisma.user.create({ data: { name: "__jf_athlete__" } });
     const profile = await prisma.profile.create({
-      data: { userId: user.id, name: user.name, setupCompletedAt: new Date() },
+      data: { userId: user.id, name: user.name, dream: "t", setupCompletedAt: new Date() },
     });
     const mX = await prisma.membership.create({
       data: { profileId: profile.id, teamId: teamX.id, seasonId: season.id, role: "PLAYER" },
@@ -93,9 +86,7 @@ dbDescribe("Stage 4f — join flow + season rollover", () => {
     });
     void mX;
     // A staff member on team X (to prove rollover carry).
-    const coach = await prisma.user.create({
-      data: { name: "__jf_coach__", role: "COACH", teamId: teamX.id },
-    });
+    const coach = await prisma.user.create({ data: { name: "__jf_coach__" } });
     const coachProfile = await prisma.profile.create({
       data: { userId: coach.id, name: coach.name, setupCompletedAt: new Date() },
     });
@@ -132,18 +123,18 @@ dbDescribe("Stage 4f — join flow + season rollover", () => {
     expect(await resolveJoinableTeam("NOPE99")).toEqual({ ok: false, reason: "bad_code" });
   });
 
-  it("returning athlete → DIFFERENT team: fresh membership on the SAME profile; history carries; login re-points", async () => {
+  it("returning athlete → DIFFERENT team: fresh membership on the SAME profile; history carries; they act on the new team", async () => {
     const { prisma } = await import("../lib/prisma");
     const { endMembershipForUser } = await import("../lib/data/memberships");
     const { resolveJoinableTeam, joinTeamForProfile } = await import("../lib/data/join");
     const { getTeamRanking } = await import("../lib/leaderboard");
 
-    // Coach removes them from X (4e), then they join Y by code.
+    // Coach removes them from X, then they join Y by code.
     await endMembershipForUser(w.userId, w.teamXId, w.coachProfileId);
     const joinable = await resolveJoinableTeam(w.codeY);
     expect(joinable.ok).toBe(true);
     if (!joinable.ok) return;
-    const result = await joinTeamForProfile(w.profileId, w.userId, joinable.team.id, joinable.seasonId);
+    const result = await joinTeamForProfile(w.profileId, joinable.team.id, joinable.seasonId);
     expect(result.reactivated).toBe(false);
     expect(result.alreadyActive).toBe(false);
 
@@ -152,8 +143,10 @@ dbDescribe("Stage 4f — join flow + season rollover", () => {
     const profile = await prisma.profile.findUniqueOrThrow({ where: { id: w.profileId } });
     expect(profile.careerPoints).toBe(30); // career carries
     expect(await prisma.journalEntry.count({ where: { userId: w.userId } })).toBe(1); // journal carries
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: w.userId } });
-    expect(user.teamId).toBe(w.teamYId); // legacy login re-pointed (dual-write)
+    const { resolveContextForUser } = await import("../lib/context");
+    const ctx = (await resolveContextForUser(w.userId, null))!;
+    expect(ctx.membership?.teamId).toBe(w.teamYId); // acting on the team they just joined
+    expect(ctx.memberships).toHaveLength(1); // the ended one on X is not active
   });
 
   it("re-join SAME team + season reactivates (board points return); active join is a no-op", async () => {
@@ -166,7 +159,7 @@ dbDescribe("Stage 4f — join flow + season rollover", () => {
     await endMembershipForUser(w.userId, w.teamYId, null);
     const joinable = await resolveJoinableTeam(w.codeX);
     if (!joinable.ok) throw new Error("unexpected");
-    const back = await joinTeamForProfile(w.profileId, w.userId, joinable.team.id, joinable.seasonId);
+    const back = await joinTeamForProfile(w.profileId, joinable.team.id, joinable.seasonId);
     expect(back.reactivated).toBe(true); // the SAME membership, revived
 
     const boardX = await getTeamRanking(w.teamXId);
@@ -177,7 +170,7 @@ dbDescribe("Stage 4f — join flow + season rollover", () => {
     expect(sum._sum.amount).toBe(30); // invariant intact through the round trip
 
     // Joining again while active: no-op.
-    const again = await joinTeamForProfile(w.profileId, w.userId, joinable.team.id, joinable.seasonId);
+    const again = await joinTeamForProfile(w.profileId, joinable.team.id, joinable.seasonId);
     expect(again.alreadyActive).toBe(true);
     expect(again.membershipId).toBe(back.membershipId);
   });
@@ -205,7 +198,7 @@ dbDescribe("Stage 4f — join flow + season rollover", () => {
     const joinable = await resolveJoinableTeam(w.codeX);
     if (!joinable.ok) throw new Error("unexpected");
     expect(joinable.seasonId).toBe(season.id); // the code resolves into the NEW season
-    const rejoin = await joinTeamForProfile(w.profileId, w.userId, joinable.team.id, joinable.seasonId);
+    const rejoin = await joinTeamForProfile(w.profileId, joinable.team.id, joinable.seasonId);
     expect(rejoin.reactivated).toBe(false); // fresh season = fresh membership
 
     const board = await getTeamRanking(w.teamXId);

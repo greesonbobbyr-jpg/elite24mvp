@@ -27,9 +27,9 @@ declare const ceoBrand: unique symbol;
 export type CeoAccess = { readonly profileId: number; readonly [ceoBrand]: true };
 
 export function ceoAccessFrom(
-  ctx: { platformRole: "CEO" | null; profile: { id: number } | null } | null,
+  ctx: { platformRole: "CEO" | null; profile: { id: number } } | null,
 ): CeoAccess | null {
-  if (ctx?.platformRole !== "CEO" || !ctx.profile) return null;
+  if (ctx?.platformRole !== "CEO") return null;
   return { profileId: ctx.profile.id } as CeoAccess;
 }
 

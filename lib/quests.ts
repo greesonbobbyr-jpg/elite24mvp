@@ -1,29 +1,14 @@
 import { prisma } from "./prisma";
 import { todayKey } from "./journal";
 
-// Active quest definitions, in display order — ORG-SCOPED since Stage 4a
-// (each org owns its quest set; the Stage 1 backfill cloned the global six
-// per org, and the converge step activates the clones and retires the
-// globals).
-//
-// FALLBACK (dies at Stage 6): if the org has no active quests yet, the shared
-// database hasn't run the converge flip — serve the legacy global set. This
-// makes the new code correct in BOTH database states, so the converge flip
-// and the deploy don't need to be simultaneous; there is no wrong-list window
-// in either order. Also covers a signed-in user with no org (legacy-only
-// login) the same way the old code did.
+// Active quest definitions, in display order. Each organization owns its
+// quest set (cloned from the shared six when the org is made); a person with
+// no team gets the shared Elite24 set (organizationId null).
 export async function listActiveQuestsForOrg(
   organizationId: number | null | undefined,
 ) {
-  if (organizationId != null) {
-    const orgQuests = await prisma.quest.findMany({
-      where: { organizationId, active: true },
-      orderBy: { sortOrder: "asc" },
-    });
-    if (orgQuests.length > 0) return orgQuests;
-  }
   return prisma.quest.findMany({
-    where: { organizationId: null, active: true },
+    where: { organizationId: organizationId ?? null, active: true },
     orderBy: { sortOrder: "asc" },
   });
 }

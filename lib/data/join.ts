@@ -51,11 +51,9 @@ export type JoinResult = {
 };
 
 // Put a profile on a team's roster for the given season — reactivate-or-
-// create — and point the legacy login at that team (the legacy half of the
-// dual-write; user.teamId dies at Stage 6). One transaction.
+// create. One transaction.
 export async function joinTeamForProfile(
   profileId: number,
-  userId: number | null,
   teamId: number,
   seasonId: number,
 ): Promise<JoinResult> {
@@ -85,9 +83,6 @@ export async function joinTeamForProfile(
       membershipId = created.id;
     }
 
-    if (userId != null) {
-      await tx.user.update({ where: { id: userId }, data: { teamId } });
-    }
     return { membershipId, reactivated, alreadyActive };
   });
 }

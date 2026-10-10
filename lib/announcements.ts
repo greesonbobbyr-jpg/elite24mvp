@@ -34,8 +34,7 @@ export type Viewer = {
   groupAdminOf: { orgId: number; path: number[] }[];
 };
 
-export async function viewerOf(ctx: Ctx): Promise<Viewer | null> {
-  if (!ctx.profile) return null;
+export async function viewerOf(ctx: Ctx): Promise<Viewer> {
   const orgIds = [
     ...new Set([
       ...ctx.memberships.map((m) => m.team.organizationId).filter((x): x is number => x != null),
@@ -108,7 +107,6 @@ export type InboxItem = Announcement & {
 /** Everything this person should see now, newest first. */
 export async function inboxFor(ctx: Ctx, take = 30): Promise<InboxItem[]> {
   const v = await viewerOf(ctx);
-  if (!v) return [];
   const now = new Date();
   const orgIds = [...new Set([...v.teams.map((t) => t.orgId), ...v.orgAdminOf, ...v.groupAdminOf.map((g) => g.orgId)])];
   const candidates = await prisma.announcement.findMany({
@@ -149,7 +147,6 @@ export async function inboxFor(ctx: Ctx, take = 30): Promise<InboxItem[]> {
  * question — anything live, unread and possibly for me? — and only works
  * out exactly who each one is for when there is. */
 export async function unreadAnnouncements(ctx: Ctx): Promise<number> {
-  if (!ctx.profile) return 0;
   const orgIds = [
     ...new Set([
       ...ctx.memberships.map((m) => m.team.organizationId).filter((x): x is number => x != null),
@@ -217,18 +214,16 @@ export async function orgLooks(orgIds: number[]) {
  * have sent it there (the sent list). Once it has disappeared, nobody —
  * its pictures stop being served at once, before the cleanup deletes them. */
 export async function canSeeAnnouncement(ctx: Ctx, a: Announcement): Promise<boolean> {
-  if (!ctx.profile || a.deletedAt) return false;
+  if (a.deletedAt) return false;
   if (a.expiresAt && a.expiresAt <= new Date()) return false;
   if (a.authorProfileId === ctx.profile.id) return true;
   if (await maySend(ctx, targetOf(a))) return true;
   const v = await viewerOf(ctx);
-  if (!v) return false;
   const places = await placesOf([a]);
   return audienceIncludes(a.audience, rolesIn(v, { ...a, targetPath: places.get(a.id)?.path }));
 }
 
 export async function markRead(ctx: Ctx, announcementId: number): Promise<boolean> {
-  if (!ctx.profile) return false;
   const a = await prisma.announcement.findUnique({ where: { id: announcementId } });
   if (!a || !(await canSeeAnnouncement(ctx, a))) return false;
   await prisma.announcementRead.upsert({
@@ -278,7 +273,6 @@ export function targetOf(a: Pick<Announcement, "scope" | "organizationId" | "gro
 /** May this person delete it? Its sender; the CEO; or someone who could
  * have sent it there — but an organization never deletes the CEO's. */
 export async function mayDelete(ctx: Ctx, a: Pick<Announcement, "authorProfileId" | "authorRole" | "scope" | "organizationId" | "groupId" | "teamId">) {
-  if (!ctx.profile) return false;
   if (a.authorProfileId === ctx.profile.id || ctx.platformRole === "CEO") return true;
   return a.authorRole !== "CEO" && (await maySend(ctx, targetOf(a)));
 }

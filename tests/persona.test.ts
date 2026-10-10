@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isPlayerSide, isStaffSide, personaOf, type PersonaCtx } from "../lib/persona";
 import { chromeFor } from "../lib/nav";
 
-// What someone sees comes from their team roles, not the login's fixed role
+// What someone sees comes from their team roles — the login carries no role
 // (person-first plan, 2026-10-09).
 
 const base = { membership: null, orgAdminOf: [] as number[] };
@@ -11,26 +11,23 @@ const setUp = { setupCompletedAt: new Date() };
 
 describe("personaOf", () => {
   it("the acting membership decides: PLAYER → athlete, any staff role → staff", () => {
-    expect(personaOf({ ...base, membership: membership("PLAYER"), user: { role: "PLAYER" }, profile: setUp })).toBe("athlete");
+    expect(personaOf({ ...base, membership: membership("PLAYER"), profile: setUp })).toBe("athlete");
     for (const role of ["HEAD_COACH", "ASSISTANT_COACH", "GENERAL_MANAGER"]) {
-      expect(personaOf({ ...base, membership: membership(role), user: { role: "COACH" }, profile: setUp })).toBe("staff");
+      expect(personaOf({ ...base, membership: membership(role), profile: setUp })).toBe("staff");
     }
   });
 
-  it("the login role never overrides the team role (a player who coaches elsewhere)", () => {
-    expect(personaOf({ ...base, membership: membership("HEAD_COACH"), user: { role: "PLAYER" }, profile: setUp })).toBe("staff");
-    expect(personaOf({ ...base, membership: membership("PLAYER"), user: { role: "COACH" }, profile: setUp })).toBe("athlete");
+  it("the team role wins over an admin grant or the CEO grant while acting on a team", () => {
+    expect(personaOf({ ...base, membership: membership("PLAYER"), orgAdminOf: [3], profile: setUp })).toBe("athlete");
+    expect(personaOf({ ...base, membership: membership("HEAD_COACH"), platformRole: "CEO", profile: setUp })).toBe("staff");
   });
 
-  it("no team: org admin → admin; set up → personal; not yet → new", () => {
-    expect(personaOf({ ...base, orgAdminOf: [3], user: { role: "COACH" }, profile: setUp })).toBe("admin");
-    expect(personaOf({ ...base, user: { role: "PLAYER" }, profile: setUp })).toBe("personal");
-    expect(personaOf({ ...base, user: { role: "PLAYER" }, profile: { setupCompletedAt: null } })).toBe("new");
-  });
-
-  it("pre-backfill login (no Profile): the legacy role, until Stage 6", () => {
-    expect(personaOf({ ...base, user: { role: "COACH" }, profile: null })).toBe("staff");
-    expect(personaOf({ ...base, user: { role: "PLAYER" }, profile: null })).toBe("athlete");
+  it("no team: the CEO → ceo; an org or group admin → admin; set up → personal; not yet → new", () => {
+    expect(personaOf({ ...base, platformRole: "CEO", profile: setUp })).toBe("ceo");
+    expect(personaOf({ ...base, orgAdminOf: [3], profile: setUp })).toBe("admin");
+    expect(personaOf({ ...base, groupAdminOf: [{ organizationId: 3, groupId: 9 }], profile: setUp })).toBe("admin");
+    expect(personaOf({ ...base, profile: setUp })).toBe("personal");
+    expect(personaOf({ ...base, profile: { setupCompletedAt: null } })).toBe("new");
   });
 
   it("sides", () => {

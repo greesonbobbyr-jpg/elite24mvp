@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import { LIBRARY_ENTRIES } from "@/lib/library";
 import { PdfViewerLoader } from "./PdfViewerLoader";
 import { cardDefault } from "@/app/components/ui/Card";
@@ -7,8 +7,7 @@ import { cardDefault } from "@/app/components/ui/Card";
 // The team's reference library. Under (main) so the onboarding gate + footer
 // apply; both coaches and players can view (it's the team's shared method).
 export default async function LibraryPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/");
+  if (!(await getCurrentContext())) redirect("/");
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">

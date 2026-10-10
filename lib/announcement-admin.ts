@@ -64,7 +64,7 @@ export async function sentList(ctx: Ctx, orgId: number | null): Promise<SentItem
     include: { media: { where: { deletedAt: null }, select: { id: true, width: true, height: true }, orderBy: { createdAt: "asc" } } },
   });
   const mine = (
-    await Promise.all(rows.map(async (a) => ((await maySend(ctx, targetOf(a))) || a.authorProfileId === ctx.profile?.id ? a : null)))
+    await Promise.all(rows.map(async (a) => ((await maySend(ctx, targetOf(a))) || a.authorProfileId === ctx.profile.id ? a : null)))
   ).filter((a): a is (typeof rows)[number] => a != null);
 
   const [orgs, authors, places] = await Promise.all([

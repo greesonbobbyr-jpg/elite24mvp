@@ -4,7 +4,6 @@ import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { actingScope, actingTeamId, getCurrentContext, type Ctx } from "@/lib/context";
-import { isStaffSide, personaOf } from "@/lib/persona";
 import { can, type Action } from "@/lib/authz";
 import { endMembershipForUser } from "@/lib/data/memberships";
 import { uniqueJoinCode } from "@/lib/joincode";
@@ -20,12 +19,11 @@ import { Prisma } from "@prisma/client";
 
 export type TeamSettingsState = { error?: string; ok?: boolean };
 
-// Matrix guard for this file's actions (4e) — the persona check remains only
-// for pre-backfill logins (dies at Stage 6). Every action here works on the
-// ACTING team (the one the matrix check used), never the legacy anchor.
+// Matrix guard for this file's actions. Every action here works on the
+// ACTING team — the one the matrix check used.
 function staffCan(ctx: Ctx, action: Action): boolean {
   const scope = actingScope(ctx);
-  return scope ? can(ctx, action, scope) : isStaffSide(personaOf(ctx));
+  return scope != null && can(ctx, action, scope);
 }
 
 // Regenerate the coach's OWN team join code (team_settings; team from the
@@ -106,17 +104,8 @@ export async function updateTeam(
       checkInReminderHour,
     },
   });
-  await prisma.user.update({
-    where: { id: user.id },
-    data: photoFields,
-  });
-  // Dual-write: the coach's photo lives on the permanent Profile too.
-  if (ctx.profile) {
-    await prisma.profile.update({
-      where: { id: ctx.profile.id },
-      data: photoFields,
-    });
-  }
+  // The coach's photo lives on their Profile.
+  await prisma.profile.update({ where: { id: ctx.profile.id }, data: photoFields });
   revalidatePath("/team");
   revalidatePath("/"); // team name + coach photo show on the dashboard/header
   return { ok: true };
@@ -133,33 +122,17 @@ export type RosterActionState = {
 };
 
 // Resolve a roster target safely: a PLAYER with an ACTIVE membership on the
-// coach's OWN team (4e — membership is the roster truth; legacy teamId
-// equality only for pre-backfill targets, dies at Stage 6).
+// coach's OWN team (membership is the roster truth).
 async function resolveRosterTarget(playerIdRaw: unknown, coachTeamId: number) {
   const playerId = Number.parseInt(String(playerIdRaw ?? ""), 10);
   if (!Number.isInteger(playerId)) return null;
-  const target = await prisma.user.findUnique({
-    where: { id: playerId },
-    select: {
-      id: true,
-      name: true,
-      role: true,
-      teamId: true,
-      profileRecord: {
-        select: {
-          memberships: {
-            where: { teamId: coachTeamId, endedAt: null, role: "PLAYER" },
-            select: { id: true },
-          },
-        },
-      },
+  return prisma.user.findFirst({
+    where: {
+      id: playerId,
+      profile: { memberships: { some: { teamId: coachTeamId, endedAt: null, role: "PLAYER" } } },
     },
+    select: { id: true, name: true },
   });
-  if (!target) return null;
-  const onRoster = target.profileRecord
-    ? target.profileRecord.memberships.length > 0
-    : target.teamId === coachTeamId && target.role === "PLAYER";
-  return onRoster ? target : null;
 }
 
 // REMOVE = END THE MEMBERSHIP (Stage 4e; locked decision #2). NOTHING is
@@ -181,15 +154,8 @@ export async function removePlayer(
   const target = await resolveRosterTarget(formData.get("playerId"), teamId);
   if (!target) return { error: "Not a player on your team." };
 
-  const result = await endMembershipForUser(
-    target.id,
-    teamId,
-    ctx.profile?.id ?? null,
-  );
-  if (!result.ok) {
-    // Pre-backfill data only — nothing is ever deleted as a "fallback".
-    return { error: "This player's roster record isn't migrated yet — try again after the next sync." };
-  }
+  const result = await endMembershipForUser(target.id, teamId, ctx.profile.id);
+  if (!result.ok) return { error: "Not a player on your team." };
   revalidatePath("/team");
   revalidatePath("/");
   revalidatePath("/leaderboard");

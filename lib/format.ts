@@ -50,8 +50,6 @@ export function roleLabel(role: string | null | undefined): string | null {
       return "General Manager";
     case "ORG_ADMIN":
       return "Org Admin";
-    case "COACH": // legacy value on pre-rebuild rows
-      return "Coach";
     default:
       return null;
   }

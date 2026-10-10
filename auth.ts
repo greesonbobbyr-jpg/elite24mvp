@@ -5,9 +5,9 @@ import { verifyPassword } from "@/lib/password";
 import { loginAllowed, parseLoginIdentifier } from "@/lib/login";
 import authConfig from "./auth.config";
 
-// Real auth (Auth.js / NextAuth v5). Credentials + JWT session so our existing
-// Int-PK User (role/teamId/relations) is untouched — the session just carries
-// the numeric id, which lib/session.ts resolves to the full User. Shared config
+// Real auth (Auth.js / NextAuth v5). Credentials + JWT session: the session
+// just carries the login's numeric id, which lib/context.ts resolves to the
+// login, its person and what they do. Shared config
 // (callbacks/pages/session) lives in auth.config.ts (edge-safe); the providers
 // below need Node (prisma + bcrypt) so they live here. AUTH_SECRET from the env.
 

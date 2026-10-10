@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 
 // Save/remove the CURRENT user's own Web Push subscription rows. The endpoint
 // is the identity; keys come from the browser's PushSubscription.toJSON().
@@ -10,7 +10,7 @@ export async function savePushSubscription(sub: {
   endpoint: string;
   keys?: { p256dh?: string; auth?: string };
 }): Promise<{ ok: boolean }> {
-  const user = await getCurrentUser();
+  const user = (await getCurrentContext())?.user;
   if (!user) return { ok: false };
 
   const endpoint = String(sub?.endpoint ?? "");
@@ -31,7 +31,7 @@ export async function savePushSubscription(sub: {
 export async function removePushSubscription(
   endpoint: string,
 ): Promise<{ ok: boolean }> {
-  const user = await getCurrentUser();
+  const user = (await getCurrentContext())?.user;
   if (!user) return { ok: false };
   // Only the owner's own rows are deletable.
   await prisma.pushSubscription.deleteMany({

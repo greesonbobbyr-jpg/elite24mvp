@@ -31,8 +31,8 @@ export default async function CoachPlayerPage({
   // adjust_points and view_takeaways gate their sections below.
   const scope = actingScope(ctx);
   if (scope && !can(ctx, "view_player_detail", scope)) redirect("/");
-  const canAdjust = scope ? can(ctx, "adjust_points", scope) : true;
-  const canSeeTakeaway = scope ? can(ctx, "view_takeaways", scope) : true;
+  const canAdjust = scope != null && can(ctx, "adjust_points", scope);
+  const canSeeTakeaway = scope != null && can(ctx, "view_takeaways", scope);
 
   const id = Number.parseInt(playerId, 10);
   if (!Number.isInteger(id)) redirect("/");

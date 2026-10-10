@@ -19,13 +19,13 @@ import { todayKey } from "../daykey";
 // that a reflection happened and when — never what was written. Every select
 // there is content-free; keep it that way.
 //
-// Stage 3 (dual-write): creates stamp profileId alongside the legacy userId
-// when the caller's ctx carries a Profile (null for legacy-only logins — they
-// converge at the Stage 4a backfill re-run). Reads stay keyed by the legacy
-// user id until Stage 4a.
+// Every row carries the login that wrote it (userId — reads key on it) and
+// the person (profileId).
 
-// The slice of ctx we need — the caller's own identity, nothing else.
-type OwnCtx = { user: { id: number }; profile?: { id: number } | null };
+// The slice of ctx we need — the caller's own identity, nothing else. Reads
+// need only the login; writes also stamp the person.
+type OwnCtx = { user: { id: number } };
+type OwnWriteCtx = OwnCtx & { profile: { id: number } };
 
 // ---------------------------------------------------------------- content ---
 // Author-only. No function here takes a profile/user parameter.
@@ -61,17 +61,12 @@ export async function hasMyEntryFor(ctx: OwnCtx, day: string): Promise<boolean> 
 // orchestration stays with the action).
 export function createMyEntryInTx(
   tx: Prisma.TransactionClient,
-  ctx: OwnCtx,
+  ctx: OwnWriteCtx,
   reflection: string,
   day: string,
 ) {
   return tx.journalEntry.create({
-    data: {
-      userId: ctx.user.id,
-      reflection,
-      day,
-      profileId: ctx.profile?.id ?? null, // dual-write stamp
-    },
+    data: { userId: ctx.user.id, profileId: ctx.profile.id, reflection, day },
   });
 }
 
@@ -100,7 +95,7 @@ export function getMyLatestReviewNote(ctx: OwnCtx) {
 // The unexecuted create for today's review — returned as a PrismaPromise so
 // the action can run it inside its array transaction with the points award.
 export function createMyReviewOp(
-  ctx: OwnCtx,
+  ctx: OwnWriteCtx,
   data: {
     day: string;
     outcome: "YES" | "PARTIAL" | "NO";
@@ -109,7 +104,7 @@ export function createMyReviewOp(
   },
 ) {
   return prisma.dailyReview.create({
-    data: { userId: ctx.user.id, profileId: ctx.profile?.id ?? null, ...data },
+    data: { userId: ctx.user.id, profileId: ctx.profile.id, ...data },
   });
 }
 
@@ -120,7 +115,7 @@ export function createMyReviewOp(
 // `noteToTomorrow`, or `outcome`).
 
 // Check-in times for a set of players on one day (roster status column —
-// keyed by the ACTIVE roster's user ids since 4e, so a removed player's
+// keyed by the ACTIVE roster's user ids, so a removed player's
 // activity never counts against a team they're no longer on).
 export function checkInTimesForUsers(userIds: number[], day: string) {
   return prisma.journalEntry.findMany({

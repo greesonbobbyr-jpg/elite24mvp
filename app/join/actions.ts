@@ -12,7 +12,7 @@ const NO_SEASON_MESSAGE =
 
 export type JoinTeamState = { error?: string; ok?: boolean; teamName?: string };
 
-// RETURNING ATHLETE (Stage 4f): a logged-in player with no active membership
+// RETURNING ATHLETE: a logged-in player with no active membership
 // (removed, or the season rolled over) joins a team by code from INSIDE the
 // app — a membership on their EXISTING profile, so career points, journal,
 // and streaks carry. Same team + same season reactivates the exact ended
@@ -25,10 +25,6 @@ export async function joinTeamWithCode(
   const user = ctx?.user;
   if (!ctx || !user || !isPlayerSide(personaOf(ctx))) {
     return { error: "Log in as a player to join a team." };
-  }
-  if (!ctx.profile) {
-    // Pre-backfill login — converges at the next backfill run.
-    return { error: "Your account isn't migrated yet — try again later." };
   }
   if (ctx.membership) {
     return { error: "You're already on a team this season." };
@@ -47,12 +43,7 @@ export async function joinTeamWithCode(
     };
   }
 
-  await joinTeamForProfile(
-    ctx.profile.id,
-    user.id,
-    joinable.team.id,
-    joinable.seasonId,
-  );
+  await joinTeamForProfile(ctx.profile.id, joinable.team.id, joinable.seasonId);
   revalidatePath("/");
   return { ok: true, teamName: joinable.team.name };
 }

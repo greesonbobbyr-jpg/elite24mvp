@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentContext } from "@/lib/context";
-import { resolveBrandAccess } from "@/lib/brand-access";
+import { isAthlete, resolveBrandAccess } from "@/lib/brand-access";
 import { getTeamRanking } from "@/lib/leaderboard";
 import { EditBrandForm } from "../EditBrandForm";
 import { Card } from "@/app/components/ui/Card";
@@ -9,10 +9,10 @@ import { photoSrc, cutoutSrc } from "@/lib/photoUrl";
 import { formatHeight } from "@/lib/height";
 
 // A player's team-facing "Your Brand" profile. Access is org-bounded via
-// lib/brand-access (Stage 4b): the owner sees everything and can edit; org
-// STAFF get the full read-only view (unchanged from before); a TEAMMATE gets
-// CARD INFO ONLY — the Dream and per-game stats are deliberately no longer
-// teammate-visible (§2.10 ruling: the Dream lives on the athlete's own Home).
+// lib/brand-access: the owner sees everything and can edit; org STAFF get the
+// full read-only view; a TEAMMATE gets CARD INFO ONLY — the Dream and
+// per-game stats are not teammate-visible (§2.10 ruling: the Dream lives on
+// the athlete's own Home).
 // Anyone else — including all of other organizations — is refused.
 export default async function BrandPage({
   params,
@@ -28,20 +28,20 @@ export default async function BrandPage({
 
   const resolved = await resolveBrandAccess(ctx, targetId);
   if (!resolved || resolved.access === null) redirect("/");
-  const { target, access } = resolved;
-  // Brand pages exist only for onboarded players.
-  if (target.role !== "PLAYER" || !target.profile) redirect("/");
+  const { target, access, team } = resolved;
+  const profile = target.profile;
+  // Brand pages exist only for athletes who have set up (written their Dream).
+  if (!profile || !isAthlete(target) || profile.setupCompletedAt == null) redirect("/");
 
   const isOwner = access === "self";
   // Card info only for teammates — Dream + per-game stats are staff/self.
   const fullView = access === "self" || access === "staff";
-  const profile = target.profile;
   const height = formatHeight(profile.heightInches);
-  // Card tier/points = CAREER points (4d; crosses orgs by design — it's the
-  // athlete's own progression). Equals the legacy cache by proven invariant.
-  const careerPoints = target.profileRecord?.careerPoints ?? profile.points;
+  // Card tier/points = CAREER points (crosses orgs by design — it's the
+  // athlete's own progression).
+  const careerPoints = profile.careerPoints;
 
-  const ranking = target.teamId != null ? await getTeamRanking(target.teamId) : [];
+  const ranking = team != null ? await getTeamRanking(team.id) : [];
   const rank = ranking.findIndex((r) => r.id === target.id) + 1;
   const total = ranking.length;
 
@@ -67,7 +67,7 @@ export default async function BrandPage({
             cutoutUrl: cutoutSrc(target.id, profile.photoCutoutUrl),
             photoMeta: profile.photoMeta,
           }}
-          team={target.team ?? PERSONAL_CARD_TEAM}
+          team={team ?? PERSONAL_CARD_TEAM}
         />
       </div>
 

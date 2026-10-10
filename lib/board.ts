@@ -18,20 +18,11 @@ export async function listTeamMessages(
     orderBy: { createdAt: "desc" },
     take,
     include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          role: true,
-          photoUrl: true,
-          photoCutoutUrl: true,
-          photoMeta: true,
-          profile: { select: { photoUrl: true, photoCutoutUrl: true, photoMeta: true, jerseyNumber: true, points: true } },
-        },
-      },
-      // Display author (Stage 4c): permanent Profile + role SNAPSHOT taken at
-      // write time — a later role change never relabels old messages. The
-      // avatar is the author's mini card: cutout, placement, number, level.
+      // The login that wrote it: its id for links and photo addresses.
+      author: { select: { id: true, name: true } },
+      // Display author: permanent Profile + role SNAPSHOT taken at write
+      // time — a later role change never relabels old messages. The avatar
+      // is the author's mini card: cutout, placement, number, level.
       authorProfile: {
         select: { name: true, photoUrl: true, photoCutoutUrl: true, photoMeta: true, jerseyNumber: true, careerPoints: true },
       },

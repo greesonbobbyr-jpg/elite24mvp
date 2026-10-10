@@ -64,7 +64,7 @@ export type GrantPlan =
 export async function planGrant(db: PrismaClient, email: string, name?: string): Promise<GrantPlan> {
   const user = await db.user.findUnique({
     where: { email },
-    select: { id: true, profileRecord: { select: { id: true, platformGrants: { where: { revokedAt: null } } } } },
+    select: { id: true, profile: { select: { id: true, platformGrants: { where: { revokedAt: null } } } } },
   });
   const ceos = await db.platformGrant.findMany({
     where: { role: "CEO", revokedAt: null },
@@ -77,8 +77,8 @@ export async function planGrant(db: PrismaClient, email: string, name?: string):
     if (!name) return { kind: "refused", reason: "No account has that email — pass --name to create it." };
     return { kind: "create-account", email, name };
   }
-  if (user.profileRecord?.platformGrants.some((g) => g.role === "CEO")) return { kind: "already-ceo", email };
-  return { kind: "grant-existing", email, userId: user.id, hasProfile: user.profileRecord != null };
+  if (user.profile?.platformGrants.some((g) => g.role === "CEO")) return { kind: "already-ceo", email };
+  return { kind: "grant-existing", email, userId: user.id, hasProfile: user.profile != null };
 }
 
 export async function applyGrant(db: PrismaClient, plan: GrantPlan, initialPassword?: string) {
@@ -91,17 +91,9 @@ export async function applyGrant(db: PrismaClient, plan: GrantPlan, initialPassw
   return db.$transaction(async (tx) => {
     let profileId: number;
     if (plan.kind === "create-account") {
-      // No team; the legacy login role is COACH only because the column is
-      // required — nothing reads it for an account with a Profile (lib/persona).
+      // A login and its person; the CEO grant below is what makes it the CEO.
       const user = await tx.user.create({
-        data: {
-          name: plan.name,
-          email: plan.email,
-          role: "COACH",
-          teamId: null,
-          passwordHash,
-          mustChangePassword: true,
-        },
+        data: { name: plan.name, email: plan.email, passwordHash, mustChangePassword: true },
       });
       profileId = (
         await tx.profile.create({ data: { userId: user.id, name: plan.name, setupCompletedAt: new Date() } })

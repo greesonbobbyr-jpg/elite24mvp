@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
-import { getCurrentUserId } from "@/lib/session";
+import { getCurrentUserId } from "@/lib/context";
 import { roleLabel } from "@/lib/format";
 import {
   DevUserSwitcher,

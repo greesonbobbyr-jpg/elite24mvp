@@ -51,14 +51,14 @@ export default async function Home() {
       );
     }
     const scope = actingScope(ctx);
-    const canSendTimeout = scope ? can(ctx, "send_timeout", scope) : true;
+    const canSendTimeout = scope != null && can(ctx, "send_timeout", scope);
     return <CoachHome teamId={teamId} team={team} canSendTimeout={canSendTimeout} />;
   }
 
   // Player (guaranteed onboarded by the (main) layout gate). Quests + points live
   // on /quests; profile basics live on the Brand page. This page stays focused on
   // the Dream, the daily Mindset story, and the check-in/journal.
-  const profile = user.profile;
+  const profile = ctx.profile;
   const todaysEntry = await getMyTodaysEntry({ user });
   const takeaway = await getTodaysTakeaway(user.id);
   const story = storyForDay(todayKey());
@@ -85,23 +85,23 @@ export default async function Home() {
 
   // Progress strip: streak / tier / rank — the "why come back" state, on the
   // first screen instead of buried in /quests and /leaderboard. Board = acting
-  // team; tier = careerPoints (4d; equals the legacy cache by invariant). No
-  // team, no rank: the third tile shows career points instead.
+  // team; tier = careerPoints. No team, no rank: the third tile shows career
+  // points instead.
   const ranking = teamId != null ? await getTeamRanking(teamId) : [];
   const myRank = ranking.find((r) => r.id === user.id)?.rank ?? 0;
-  const points = ctx.profile?.careerPoints ?? profile?.points ?? 0;
+  const points = profile.careerPoints;
   const level = starProgress(points);
-  const streak = profile?.currentStreak ?? 0;
-  const shieldReady = !(profile?.streakGraceUsed ?? false);
+  const streak = profile.currentStreak;
+  const shieldReady = !profile.streakGraceUsed;
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
       {/* No active roster spot (removed / season rolled over): the join card
           leads; the daily loop below keeps working (offseason — career only). */}
-      {ctx.profile && !ctx.membership && <JoinTeamCard />}
+      {!ctx.membership && <JoinTeamCard />}
 
       {/* The Dream — the material hero */}
-      {profile?.dream && (
+      {profile.dream && (
         <Card variant="material">
           <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-accent" />
           <div className="relative z-10">

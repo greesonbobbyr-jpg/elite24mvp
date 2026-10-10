@@ -46,13 +46,13 @@ async function main() {
   }
 
   const users = await prisma.user.findMany({
-    orderBy: [{ teamId: "asc" }, { role: "asc" }, { name: "asc" }],
-    select: { id: true, name: true, role: true, email: true, username: true },
+    orderBy: [{ name: "asc" }],
+    select: { id: true, name: true, email: true, username: true },
   });
 
   const lines: string[] = [
     `Rotated ${users.length} passwords on ${dbHost} at ${new Date().toISOString()}`,
-    `login = email (coach) / username (player)`,
+    `login = email (or the username, for an older account with no email yet)`,
     "",
   ];
   for (const u of users) {
@@ -61,10 +61,8 @@ async function main() {
       where: { id: u.id },
       data: { passwordHash: await bcrypt.hash(password, 12) },
     });
-    const login = u.role === "COACH" ? u.email : u.username;
-    lines.push(
-      `${u.role.padEnd(6)}  ${u.name.padEnd(22)}  ${String(login).padEnd(26)}  ${password}`,
-    );
+    const login = u.email ?? u.username;
+    lines.push(`${u.name.padEnd(22)}  ${String(login).padEnd(34)}  ${password}`);
   }
 
   const out = lines.join("\n") + "\n";

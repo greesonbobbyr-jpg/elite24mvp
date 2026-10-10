@@ -2,13 +2,13 @@ import type { Role } from "@prisma/client";
 import { prisma } from "./prisma";
 import { roleLabel } from "./format";
 
-// Team notifications (hierarchy rebuild Stage 4c):
+// Team notifications:
 // - AUTHORS display from the permanent Profile + the ROLE SNAPSHOT taken at
 //   write time ("Coach Gary · Head Coach") — a later promotion/demotion never
-//   rewrites history. Legacy author fields fill for anything unstamped.
+//   rewrites history.
 // - READ RECEIPTS count against the team's ACTIVE membership roster (current
 //   season, not ended) — an ended membership neither inflates nor deflates
-//   "Read by X of Y". Legacy user-roster fallback until Stage 6.
+//   "Read by X of Y".
 // - TIME OUT is scoped by the CALLER to the acting membership's team (see the
 //   (main) layout) — a two-team athlete only ever gets their acting team's
 //   takeover.
@@ -28,19 +28,19 @@ const AUTHOR_INCLUDE = {
   authorProfile: { select: { name: true } },
 } as const;
 
-// "Coach Gary" + "Head Coach" — snapshot first, legacy fallback.
+// "Coach Gary" + "Head Coach" — the person, and the role snapshot taken when
+// it was posted ("Coach" for a post with no snapshot).
 export function authorDisplay(n: AuthorFields): {
   authorName: string;
   authorRoleLabel: string | null;
 } {
   return {
     authorName: n.authorProfile?.name ?? n.author.name,
-    authorRoleLabel: roleLabel(n.authorRole ?? "COACH"),
+    authorRoleLabel: n.authorRole ? roleLabel(n.authorRole) : "Coach",
   };
 }
 
-// `since` = the player's acting membership start. Null (a legacy login with no
-// membership yet) = no lower bound, as before.
+// `since` = the player's acting membership start; null = no lower bound.
 function postedSince(since: Date | null) {
   return since ? { createdAt: { gte: since } } : {};
 }
@@ -91,8 +91,8 @@ export async function getActiveTimeout(
 
 // Staff read-status: each team notification plus who has confirmed reading it.
 // Y = the team's ACTIVE PLAYER memberships in the current season that had
-// started when the notification was sent. Read matching prefers the profile
-// stamp and falls back to the legacy user id.
+// started when the notification was sent. A read matches by the person
+// (profile stamp) or the login that made it.
 export async function getTeamReadStatus(teamId: number) {
   const [notifications, memberships] = await Promise.all([
     prisma.notification.findMany({
@@ -114,38 +114,22 @@ export async function getTeamReadStatus(teamId: number) {
     }),
   ]);
 
-  // Roster = active memberships; legacy user roster only if the team has no
-  // memberships yet (pre-backfill data — dies at Stage 6; no join date).
-  type RosterMember = {
-    profileId: number | null;
-    userId: number | null;
-    name: string;
-    joinedAt: Date | null;
-  };
-  let roster: RosterMember[] = memberships.map((m) => ({
+  type RosterMember = { profileId: number; userId: number | null; name: string; joinedAt: Date };
+  const roster: RosterMember[] = memberships.map((m) => ({
     profileId: m.profile.id,
     userId: m.profile.userId,
     name: m.profile.name,
     joinedAt: m.startedAt,
   }));
-  if (roster.length === 0) {
-    const players = await prisma.user.findMany({
-      where: { teamId, role: "PLAYER" },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    });
-    roster = players.map((p) => ({ profileId: null, userId: p.id, name: p.name, joinedAt: null }));
-  }
 
   return notifications.map((n) => {
-    const onTeamWhenSent = roster.filter((m) => m.joinedAt == null || m.joinedAt <= n.createdAt);
+    const onTeamWhenSent = roster.filter((m) => m.joinedAt <= n.createdAt);
     const readProfileIds = new Set(
       n.reads.map((r) => r.profileId).filter((id): id is number => id != null),
     );
     const readUserIds = new Set(n.reads.map((r) => r.userId));
     const hasRead = (member: RosterMember) =>
-      (member.profileId != null && readProfileIds.has(member.profileId)) ||
-      (member.userId != null && readUserIds.has(member.userId));
+      readProfileIds.has(member.profileId) || (member.userId != null && readUserIds.has(member.userId));
 
     const read = onTeamWhenSent.filter(hasRead).map((m) => m.name);
     const notYet = onTeamWhenSent.filter((m) => !hasRead(m)).map((m) => m.name);

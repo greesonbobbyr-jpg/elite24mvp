@@ -91,7 +91,7 @@ export default async function PeoplePage({
   }
   for (const m of memberships) {
     const target = { organizationId: orgId, teamId: m.team.id, groupPath: pathOf(groups, m.team.groupId) };
-    if (m.profile.id !== access.profileId && can(ctx, "change_member_role", target) && m.role !== "ORG_ADMIN" && m.role !== "GROUP_ADMIN" && m.role !== "COACH") {
+    if (m.profile.id !== access.profileId && can(ctx, "change_member_role", target) && m.role !== "ORG_ADMIN" && m.role !== "GROUP_ADMIN") {
       personFor(m.profile).changeable.push({ id: m.id, team: m.team.name, role: m.role });
     }
     personFor(m.profile).roles.push({

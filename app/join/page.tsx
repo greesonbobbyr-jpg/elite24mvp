@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import { normalizeCode } from "@/lib/invites";
 
 // Old printed links (/join?code=MUSTJV) keep working: create an account
@@ -7,5 +7,5 @@ import { normalizeCode } from "@/lib/invites";
 export default async function JoinPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
   const code = normalizeCode((await searchParams).code);
   const q = code ? `?code=${code}` : "";
-  redirect((await getCurrentUser()) ? `/welcome${q}` : `/signup${q}`);
+  redirect((await getCurrentContext()) ? `/welcome${q}` : `/signup${q}`);
 }

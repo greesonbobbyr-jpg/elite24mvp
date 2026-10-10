@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import { safeNext } from "@/lib/safe-next";
 import { normalizeCode } from "@/lib/invites";
 import { SignupForm } from "./SignupForm";
@@ -16,7 +16,7 @@ export default async function SignupPage({
   const { next: rawNext, code: rawCode } = await searchParams;
   const next = safeNext(rawNext);
   const code = normalizeCode(rawCode) || null;
-  if (await getCurrentUser()) redirect(next ?? (code ? `/welcome?code=${code}` : "/"));
+  if (await getCurrentContext()) redirect(next ?? (code ? `/welcome?code=${code}` : "/"));
   const loginHref = `/login${next ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   return (

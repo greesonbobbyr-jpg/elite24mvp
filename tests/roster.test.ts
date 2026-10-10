@@ -74,15 +74,13 @@ dbDescribe("Stage 4e — endMembership + coach surfaces", () => {
       .filter((t) => !t.name.startsWith("__"))
       .slice(0, 2);
     const [tA, tB] = teams;
-    const coachA = await prisma.user.findFirstOrThrow({ where: { teamId: tA.id, role: "COACH" } });
-    const user = await prisma.user.create({
-      data: { name: "__ro_twoteam__", role: "PLAYER", teamId: tA.id },
+    const coachA = await prisma.user.findFirstOrThrow({
+      where: { profile: { memberships: { some: { teamId: tA.id, role: "HEAD_COACH", endedAt: null } } } },
+      orderBy: { id: "asc" },
     });
-    await prisma.playerProfile.create({
-      data: { userId: user.id, dream: "t", onboardedAt: new Date(), points: 0, currentStreak: 4, bestStreak: 9 },
-    });
+    const user = await prisma.user.create({ data: { name: "__ro_twoteam__" } });
     const profile = await prisma.profile.create({
-      data: { userId: user.id, name: user.name, currentStreak: 4, bestStreak: 9 },
+      data: { userId: user.id, name: user.name, dream: "t", setupCompletedAt: new Date(), currentStreak: 4, bestStreak: 9 },
     });
     const mA = await prisma.membership.create({
       data: { profileId: profile.id, teamId: tA.id, seasonId: tA.organization!.seasons[0].id, role: "PLAYER" },
@@ -222,9 +220,7 @@ dbDescribe("Stage 4e — endMembership + coach surfaces", () => {
     const { can } = await import("../lib/authz");
 
     async function staff(role: "ASSISTANT_COACH" | "GENERAL_MANAGER" | "HEAD_COACH") {
-      const user = await prisma.user.create({
-        data: { name: `__ro_${role}__`, role: "COACH", teamId: w.teamA },
-      });
+      const user = await prisma.user.create({ data: { name: `__ro_${role}__` } });
       const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
       await prisma.membership.create({
         data: { profileId: profile.id, teamId: w.teamA, seasonId: w.seasonA, role },

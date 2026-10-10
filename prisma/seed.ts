@@ -1,10 +1,9 @@
 /**
- * Elite24MVP — database seed v2 (hierarchy rebuild Stage 5).
+ * Elite24MVP — database seed.
  *
- * NEW-WORLD-FIRST: builds Organization → Season → Team → Profile → Membership
- * (+ RoleAssignment) with the legacy columns dual-written, exactly the state
- * the app runs on mid-migration. Exercises the WHOLE permission matrix and
- * the acting-membership switcher:
+ * Builds Organization → Season → Team, and for each person a login (User),
+ * the person (Profile) and their Memberships / RoleAssignments. Exercises
+ * the WHOLE permission matrix and the acting-membership switcher:
  *
  *   ORG "Mustang Broncos" — a club on the group tree: Boys → 12U–17U
  *     (Varsity is 17U, JV 16U, plus 12 generated teams, CLUB_TEAMS) and
@@ -23,15 +22,16 @@
  *     (no team), Leon Park GROUP_ADMIN of Lincoln Middle.
  *   No team: Avery Collins (Personal Player Development); the CEO.
  *
- * DailyReview rows are seeded (the long-standing gap), quests exist as the 6
- * ACTIVE globals + INACTIVE org clones (the production pre-converge state):
- * back-dated quest logs point at the org clones, today's at the globals.
+ * DailyReview rows are seeded. Quests: the 6 shared ones (the Elite24 set,
+ * for athletes with no team) plus each org's own active copies — team
+ * players' quest logs point at their org's copies.
  * Every ledger row is stamped (profileId + membershipId) — except one
  * "earlier seasons" row per player, stamped to the profile only so it lifts
- * the card level without touching any team board — and all three point
- * caches equal their ledger sums.
+ * the card level without touching any team board — and both point caches
+ * (Profile.careerPoints, Membership.points) equal their ledger sums.
  *
- * Players log in by USERNAME, staff by EMAIL; one shared demo password.
+ * Everyone logs in by EMAIL (one older account, tyrese, by username until
+ * he adds an email); one shared demo password.
  * Safe to re-run (wipe + reseed, SEED_CONFIRM-guarded).
  * Run with: npm run seed
  */
@@ -316,13 +316,7 @@ async function createStaff(opts: {
   orgAdmin: boolean;
 }) {
   const user = await prisma.user.create({
-    data: {
-      name: opts.name,
-      email: opts.email,
-      role: Role.COACH, // legacy login role for ALL staff (dies at Stage 6)
-      teamId: opts.teamId,
-      passwordHash: opts.passwordHash,
-    },
+    data: { name: opts.name, email: opts.email, passwordHash: opts.passwordHash },
   });
   const profile = await prisma.profile.create({
     data: { userId: user.id, name: opts.name, setupCompletedAt: new Date() },
@@ -354,42 +348,13 @@ async function createStaff(opts: {
   });
 }
 
-// The athlete's login + both profiles; no team yet. teamId = the legacy
-// anchor (null for an athlete with no team).
-async function createAthlete(p: PlayerSeed, teamId: number | null, passwordHash: string) {
+// The athlete's login + their Profile; no team yet. Setup completes when
+// the Dream is written (an athlete seeded as not onboarded has none).
+async function createAthlete(p: PlayerSeed, passwordHash: string) {
   const onboarded = p.onboarded !== false;
   const user = await prisma.user.create({
-    data: {
-      name: p.name,
-      email: p.email,
-      username: makeUsername(p.name),
-      role: Role.PLAYER,
-      teamId,
-      passwordHash,
-      // Legacy PlayerProfile only once onboarded (legacy gate parity).
-      ...(onboarded
-        ? {
-            profile: {
-              create: {
-                dream: p.dream,
-                heightInches: p.heightInches,
-                position: p.position,
-                jerseyNumber: p.jerseyNumber,
-                pointsPerGame: p.ppg,
-                reboundsPerGame: p.rpg,
-                assistsPerGame: p.apg,
-                favoritePlayer: p.favoritePlayer,
-                favoriteTeam: p.favoriteTeam,
-                highlightUrl: p.highlightUrl ?? null,
-                onboardedAt: new Date(),
-              },
-            },
-          }
-        : {}),
-    },
+    data: { name: p.name, email: p.email, username: makeUsername(p.name), passwordHash },
   });
-  // Everyone gets a permanent Profile (locked decision #6); setup completes
-  // when the Dream is written.
   const profile = await prisma.profile.create({
     data: {
       userId: user.id,
@@ -422,7 +387,7 @@ async function createPlayer(
   passwordHash: string,
   joinedAt: Date = daysAgo(JOINED_DAYS_AGO),
 ) {
-  const { user, profile } = await createAthlete(p, teamId, passwordHash);
+  const { user, profile } = await createAthlete(p, passwordHash);
   const membership = await prisma.membership.create({
     data: { profileId: profile.id, teamId, seasonId, role: Role.PLAYER, startedAt: joinedAt },
   });
@@ -439,7 +404,7 @@ async function createPlayer(
 // PERSONAL PLAYER DEVELOPMENT: an athlete on no team — check-ins, quests
 // (the Elite24 set) and career points on their own; no team surfaces.
 async function createPersonalAthlete(p: PlayerSeed, passwordHash: string) {
-  const { user, profile } = await createAthlete(p, null, passwordHash);
+  const { user, profile } = await createAthlete(p, passwordHash);
   people.set(p.email, { userId: user.id, profileId: profile.id, membershipId: null, teamId: null, orgId: null });
   return { user, profile };
 }
@@ -480,14 +445,8 @@ async function seedSamplePortraits(withoutPhoto: number[]): Promise<number> {
     photoCutoutUrl: cutout,
     photoMeta,
   };
-  const [players, users, profiles] = await Promise.all([
-    prisma.playerProfile.updateMany({ where: { userId: { notIn: withoutPhoto } }, data: photoFields }),
-    prisma.user.updateMany({ where: { id: { notIn: withoutPhoto } }, data: photoFields }),
-    prisma.profile.updateMany({ where: { userId: { notIn: withoutPhoto } }, data: photoFields }),
-  ]);
-  void users;
-  void profiles;
-  return players.count;
+  const profiles = await prisma.profile.updateMany({ where: { userId: { notIn: withoutPhoto } }, data: photoFields });
+  return profiles.count;
 }
 
 // ------------------------------------------------------------- activity ------
@@ -541,9 +500,9 @@ async function seedEarlierSeasons(email: string, amount: number) {
   });
 }
 
-// Back-dated quest completions — pointed at the player's ORG CLONE (the
-// post-backfill state), or the Elite24 set (key null) for an athlete with no
-// team, stamped, with matching ledger rows.
+// Back-dated quest completions — pointed at the player's ORG's quests, or
+// the Elite24 set (key null) for an athlete with no team, stamped, with
+// matching ledger rows.
 async function seedQuestLogs(
   email: string,
   cloneQuestsByOrg: Map<number | null, { id: number; title: string; points: number }[]>,
@@ -570,10 +529,10 @@ async function seedQuestLogs(
   return offsets.length;
 }
 
-// Today's live activity — logs point at the GLOBAL quests (pre-converge
-// production state), stamped like the dual-write path writes them.
+// Today's live activity — stamped the way the app writes it; quest logs
+// point at the player's org's quests.
 async function seedTodayActivity(
-  globalQuests: { id: number; title: string; points: number }[],
+  cloneQuestsByOrg: Map<number | null, { id: number; title: string; points: number }[]>,
 ) {
   const date = daysAgo(0);
   const day = dayKeyOf(date);
@@ -597,7 +556,7 @@ async function seedTodayActivity(
     checkIns++;
   }
   const jordan = personOf("jordan.carter@example.com");
-  for (const quest of globalQuests.slice(0, 2)) {
+  for (const quest of cloneQuestsByOrg.get(jordan.orgId)!.slice(0, 2)) {
     await prisma.questLog.create({
       data: { userId: jordan.userId, profileId: jordan.profileId, membershipId: jordan.membershipId, questId: quest.id, day, createdAt: date },
     });
@@ -771,7 +730,6 @@ async function main() {
   await prisma.teamMessage.deleteMany();
   await prisma.journalEntry.deleteMany();
   await prisma.dailyReview.deleteMany();
-  await prisma.playerProfile.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.roleAssignment.deleteMany();
   await prisma.platformGrant.deleteMany();
@@ -784,8 +742,6 @@ async function main() {
   await prisma.team.deleteMany();
   // Deepest first: a group can't go while groups still sit under it.
   for (const depth of [4, 3, 2, 1]) await prisma.group.deleteMany({ where: { depth } });
-  await prisma.division.deleteMany();
-  await prisma.program.deleteMany();
   await prisma.season.deleteMany();
   await prisma.organization.deleteMany();
 
@@ -867,7 +823,7 @@ async function main() {
   // scripts/grant-platform-role.ts): no team, CEO View as home. Its password
   // is the demo one, so it isn't asked to change it.
   const ceoUser = await prisma.user.create({
-    data: { name: "Gary Harper", email: "ceo@elite24.demo", role: Role.COACH, teamId: null, passwordHash },
+    data: { name: "Gary Harper", email: "ceo@elite24.demo", passwordHash },
   });
   const ceoProfile = await prisma.profile.create({
     data: { userId: ceoUser.id, name: "Gary Harper", setupCompletedAt: new Date() },
@@ -888,7 +844,7 @@ async function main() {
 
   // TWO-TEAM ATHLETE: Casey — Varsity (primary/acting) + JV memberships. The
   // JV membership is back-dated so the cookie-less default (most recent)
-  // resolves to Varsity, matching the legacy teamId anchor.
+  // resolves to Varsity.
   const casey = await createPlayer(CASEY, varsity.id, mustangOrg.id, mustangSeason.id, passwordHash);
   const caseyJv = await prisma.membership.create({
     data: { profileId: casey.profile.id, teamId: jv.id, seasonId: mustangSeason.id, role: Role.PLAYER, startedAt: daysAgo(30) },
@@ -908,7 +864,7 @@ async function main() {
   // A BRAND-NEW ACCOUNT: Taylor signed up and hasn't picked a path yet —
   // logs in to Step 2 (/welcome).
   const taylor = await prisma.user.create({
-    data: { name: "Taylor Reed", email: "taylor.reed@example.com", role: Role.PLAYER, teamId: null, passwordHash },
+    data: { name: "Taylor Reed", email: "taylor.reed@example.com", passwordHash },
   });
   await prisma.profile.create({ data: { userId: taylor.id, name: "Taylor Reed" } });
 
@@ -1060,7 +1016,7 @@ async function main() {
   }
   await createStaff({ name: "Vince Holt", email: "vince@elite24.demo", teamId: lincolnTeams[0].id, membershipRole: null, orgAdmin: true, ...lincolnCommon });
 
-  // ---- Quests: 6 ACTIVE globals + INACTIVE clones per org (pre-converge) --
+  // ---- Quests: the 6 shared ones (the Elite24 set) + each org's own copies --
   const globalQuests = [];
   for (const q of QUESTS) globalQuests.push(await prisma.quest.create({ data: q }));
   const cloneQuestsByOrg = new Map<number | null, { id: number; title: string; points: number }[]>();
@@ -1070,7 +1026,7 @@ async function main() {
     for (const q of QUESTS) {
       clones.push(
         await prisma.quest.create({
-          data: { ...q, organizationId: orgId, active: false },
+          data: { ...q, organizationId: orgId },
         }),
       );
     }
@@ -1120,7 +1076,7 @@ async function main() {
   }
   for (const [email, amount] of Object.entries(EARLIER_SEASONS)) await seedEarlierSeasons(email, amount);
 
-  const today = await seedTodayActivity(globalQuests);
+  const today = await seedTodayActivity(cloneQuestsByOrg);
   totalCheckIns += today.checkIns;
   totalQuestLogs += today.questLogs;
 
@@ -1238,9 +1194,8 @@ async function main() {
   }
   await prisma.announcementRead.create({ data: { announcementId: plans.id, profileId: personOf("dana@elite24.demo").profileId } });
 
-  // ---- Recompute ALL THREE point caches + streaks from the ledger ---------
+  // ---- Recompute both point caches + streaks from the ledger --------------
   for (const [, p] of people) {
-    const byUser = await prisma.pointsLedger.aggregate({ where: { userId: p.userId }, _sum: { amount: true } });
     const byProfile = await prisma.pointsLedger.aggregate({ where: { profileId: p.profileId }, _sum: { amount: true } });
     const entryDays = await prisma.journalEntry.findMany({
       where: { userId: p.userId },
@@ -1249,10 +1204,6 @@ async function main() {
     });
     let streak: StreakState = { currentStreak: 0, bestStreak: 0, lastCheckInDay: null, streakGraceUsed: false };
     for (const e of entryDays) streak = advanceStreak(streak, e.day);
-    await prisma.playerProfile.updateMany({
-      where: { userId: p.userId },
-      data: { points: byUser._sum.amount ?? 0, ...streak },
-    });
     await prisma.profile.update({
       where: { id: p.profileId },
       data: { careerPoints: byProfile._sum.amount ?? 0, ...streak },

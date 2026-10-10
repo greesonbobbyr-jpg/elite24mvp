@@ -84,10 +84,10 @@ dbDescribe("the CEO", () => {
     const ceo = ceoAccessFrom((await resolveContextForUser(ceoUser.id, null))!)!;
     const jordan = await prisma.user.findUniqueOrThrow({
       where: { email: "jordan.carter@example.com" },
-      include: { profileRecord: { include: { memberships: true } } },
+      include: { profile: { include: { memberships: true } } },
     });
-    const profileId = jordan.profileRecord!.id;
-    const teamId = jordan.profileRecord!.memberships[0].teamId;
+    const profileId = jordan.profile!.id;
+    const teamId = jordan.profile!.memberships[0].teamId;
     const team = await prisma.team.findUniqueOrThrow({ where: { id: teamId } });
 
     const results = await Promise.all([
@@ -134,10 +134,10 @@ dbDescribe("grant script + forced password change", () => {
   afterAll(async () => {
     const { prisma } = await import("../lib/prisma");
     // Clean up and give the seeded CEO back their grant.
-    const u = await prisma.user.findUnique({ where: { email: EMAIL }, include: { profileRecord: true } });
-    if (u?.profileRecord) {
-      await prisma.auditEvent.deleteMany({ where: { actorProfileId: u.profileRecord.id } });
-      await prisma.profile.delete({ where: { id: u.profileRecord.id } });
+    const u = await prisma.user.findUnique({ where: { email: EMAIL }, include: { profile: true } });
+    if (u?.profile) {
+      await prisma.auditEvent.deleteMany({ where: { actorProfileId: u.profile.id } });
+      await prisma.profile.delete({ where: { id: u.profile.id } });
     }
     if (u) await prisma.user.delete({ where: { id: u.id } });
     await prisma.platformGrant.updateMany({
@@ -167,9 +167,9 @@ dbDescribe("grant script + forced password change", () => {
     await applyGrant(prisma as never, plan, "starting-pass-123");
 
     const user = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL } });
-    expect(user.teamId).toBeNull();
     expect(user.mustChangePassword).toBe(true);
     const ctx = (await resolveContextForUser(user.id, null))!;
+    expect(ctx.memberships).toEqual([]);
     expect(personaOf(ctx)).toBe("ceo");
   });
 

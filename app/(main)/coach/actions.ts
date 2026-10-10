@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { actingScope, actingTeamId, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { can } from "@/lib/authz";
 import { performAdjustPoints } from "@/lib/data/points";
-import { isStaffSide, personaOf } from "@/lib/persona";
 
 export type CoachActionState = { error?: string; ok?: boolean };
 
@@ -21,15 +20,10 @@ export async function adjustPoints(
 ): Promise<CoachActionState> {
   const ctx = await getCurrentContext();
   const coach = ctx?.user;
-  // Matrix (4e): adjust_points is HEAD_COACH / ORG_ADMIN only — assistants
-  // and GMs are denied. Legacy role check for pre-backfill logins only.
+  // Matrix: adjust_points is HEAD_COACH / ORG_ADMIN only — assistants and GMs
+  // are denied.
   const scope = ctx ? actingScope(ctx) : null;
-  const mayAdjust = ctx
-    ? scope
-      ? can(ctx, "adjust_points", scope)
-      : isStaffSide(personaOf(ctx))
-    : false;
-  if (!ctx || !coach || !mayAdjust) return { error: "You can't adjust points." };
+  if (!ctx || !coach || !scope || !can(ctx, "adjust_points", scope)) return { error: "You can't adjust points." };
 
   const playerId = Number.parseInt(String(formData.get("playerId") ?? ""), 10);
   if (!Number.isInteger(playerId)) return { error: "Invalid player." };
@@ -47,32 +41,15 @@ export async function adjustPoints(
     return { error: "A reason is required to remove points." };
   }
 
-  // Team-scoped (4e): a PLAYER with an ACTIVE membership on the acting team
-  // (legacy teamId equality only for pre-backfill targets).
-  const teamId = actingTeamId(ctx);
-  if (teamId == null) return { error: "Not a player on your team." };
-  const player = await prisma.user.findUnique({
-    where: { id: playerId },
-    include: {
-      profile: true,
-      profileRecord: {
-        select: {
-          memberships: {
-            where: { teamId, endedAt: null, role: "PLAYER" },
-            select: { id: true },
-          },
-        },
-      },
-    },
+  // Team-scoped: a PLAYER with an ACTIVE membership on the acting team.
+  const teamId = scope.teamId;
+  const player = await prisma.profile.findFirst({
+    where: { userId: playerId, memberships: { some: { teamId, endedAt: null, role: "PLAYER" } } },
+    select: { careerPoints: true },
   });
-  const onRoster = player?.profileRecord
-    ? player.profileRecord.memberships.length > 0
-    : player?.teamId === teamId && player.role === "PLAYER";
-  if (!player || !player.profile || !onRoster) {
-    return { error: "Not a player on your team." };
-  }
+  if (!player) return { error: "Not a player on your team." };
 
-  const current = player.profile.points;
+  const current = player.careerPoints;
   if (current + amount < 0) {
     return { error: `Can't remove more than ${current} points.` };
   }
@@ -81,7 +58,7 @@ export async function adjustPoints(
 
   // Ledger row + all caches in ONE transaction (lib/data/points — credits the
   // membership on the ADJUSTING STAFF'S team, the acting scope of this action).
-  await performAdjustPoints({ id: player.id, teamId }, amount, finalReason);
+  await performAdjustPoints({ id: playerId, teamId }, amount, finalReason);
 
   revalidatePath(`/coach/player/${playerId}`);
   revalidatePath("/");
@@ -99,13 +76,9 @@ export async function sendCheckInReminder(formData: FormData): Promise<void> {
   // Matrix (4c): any staff role may post; TIME OUT needs send_timeout
   // (HC/ORG_ADMIN) — otherwise it goes out as a normal reminder.
   const scope = actingScope(ctx);
-  const mayPost = scope
-    ? can(ctx, "post_notification", scope)
-    : isStaffSide(personaOf(ctx));
+  const mayPost = scope != null && can(ctx, "post_notification", scope);
   if (!mayPost) return;
-  const maySendTimeout = scope
-    ? can(ctx, "send_timeout", scope)
-    : isStaffSide(personaOf(ctx));
+  const maySendTimeout = scope != null && can(ctx, "send_timeout", scope);
   const isTimeout = formData.get("isTimeout") === "on" && maySendTimeout;
   const teamId = actingTeamId(ctx); // same team the permission check used
   if (teamId == null) return;
@@ -116,9 +89,9 @@ export async function sendCheckInReminder(formData: FormData): Promise<void> {
       title: "Check-in reminder 🏀",
       body: "Get your daily check-in in — write today's plan and get after it. Your streak is counting on you.",
       isTimeout,
-      // Dual-write: person + role snapshot.
-      authorProfileId: ctx.profile?.id ?? null,
-      authorRole: ctx.profile ? snapshotAuthorRole(ctx) : null,
+      // The person + the role snapshot.
+      authorProfileId: ctx.profile.id,
+      authorRole: snapshotAuthorRole(ctx),
     },
   });
   revalidatePath("/notifications");

@@ -1,25 +1,24 @@
+import type { Team } from "@prisma/client";
 import type { Ctx } from "./context";
 import { can } from "./authz";
-import { isStaffSide, personaOf } from "./persona";
 import { prisma } from "./prisma";
 
-// WHO MAY SEE A PERSON'S BRAND PAGE / PHOTO (hierarchy rebuild Stage 4b).
-// Replaces the legacy `viewer.teamId === target.teamId` equality with
-// org-bounded matrix checks:
+// WHO MAY SEE A PERSON'S BRAND PAGE / PHOTO — org-bounded matrix checks
+// against the teams the person is actively on:
 //
 //   "self"      the person themselves — full page + edit
-//   "staff"     view_player_detail within the target's org (HEAD_COACH /
-//               ASSISTANT_COACH / GENERAL_MANAGER on the target's team, or an
-//               ORG_ADMIN of the org) — full read-only view
-//   "teammate"  view_roster on the target's team (a PLAYER membership there) —
-//               CARD INFO ONLY: no Dream, no per-game stats (the §2.10 ruling)
-//   null        everyone else — including ALL of other organizations, always
+//   "staff"     view_player_detail on one of the target's teams (HEAD_COACH /
+//               ASSISTANT_COACH / GENERAL_MANAGER there, or an ORG_ADMIN of
+//               that org) — full read-only view
+//   "teammate"  view_roster on one of the target's teams (a PLAYER membership
+//               there) — CARD INFO ONLY: no Dream, no per-game stats
+//   null        everyone else — including ALL of other organizations, always,
+//               and anyone looking at a person with no team (their card is
+//               their own)
 //
-// LEGACY FALLBACK (dies at Stage 6): when the viewer has no Profile yet or the
-// target's team has no organization (rows the backfill hasn't reached), fall
-// back to the exact legacy same-team check so the transition never locks out
-// a legitimate viewer. The fallback can only ever apply the OLD, tighter
-// same-team scope — it cannot widen access across orgs.
+// An organization's admins (org or group) are known to everyone in it: their
+// card info shows to its teams and admins even when they hold no roster spot
+// (they post to team boards, and their avatar must load there).
 
 export type BrandAccess = "self" | "staff" | "teammate" | null;
 
@@ -31,37 +30,63 @@ function loadBrandTarget(targetUserId: number) {
   return prisma.user.findUnique({
     where: { id: targetUserId },
     include: {
-      profile: true,
-      // The permanent Profile (careerPoints drives the card tier since 4d).
-      profileRecord: { select: { careerPoints: true } },
-      team: { include: { organization: true } },
+      profile: {
+        include: {
+          // ACTIVE = not ended, in the org's current season (as lib/context).
+          memberships: {
+            where: { endedAt: null, season: { isCurrent: true } },
+            include: { team: { include: { organization: true } } },
+            orderBy: [{ startedAt: "desc" }, { id: "desc" }],
+          },
+          roleAssignments: {
+            where: { role: { in: ["ORG_ADMIN", "GROUP_ADMIN"] }, revokedAt: null },
+            select: { organizationId: true },
+          },
+          platformGrants: { where: { revokedAt: null }, select: { id: true } },
+        },
+      },
     },
   });
 }
 
+/** Does this person play — on a team, or on their own? Someone who is only
+ * staff, an admin or the CEO has no player card. */
+export function isAthlete(target: BrandTarget): boolean {
+  const p = target.profile;
+  if (!p) return false;
+  if (p.memberships.some((m) => m.role === "PLAYER")) return true;
+  return p.memberships.length === 0 && p.roleAssignments.length === 0 && p.platformGrants.length === 0;
+}
+
+// `team`: the team the page shows the person on — the viewer's own acting
+// team for themselves, otherwise the team the access came through (the
+// viewer's acting team first). Null for a person with no team.
 export async function resolveBrandAccess(
   ctx: Ctx,
   targetUserId: number,
-): Promise<{ target: BrandTarget; access: BrandAccess } | null> {
+): Promise<{ target: BrandTarget; access: BrandAccess; team: Team | null } | null> {
   const target = await loadBrandTarget(targetUserId);
-  if (!target) return null;
+  if (!target?.profile) return null;
 
-  if (ctx.user.id === target.id) return { target, access: "self" };
+  if (ctx.user.id === target.id) return { target, access: "self", team: ctx.membership?.team ?? null };
 
-  // No team (Personal Player Development): the card is the person's own.
-  if (target.teamId == null) return { target, access: null };
+  const actingTeamId = ctx.membership?.teamId;
+  const places = target.profile.memberships
+    .filter((m) => m.team.organizationId != null)
+    .sort((a, b) => Number(b.teamId === actingTeamId) - Number(a.teamId === actingTeamId))
+    .map((m) => ({ team: m.team, scope: { organizationId: m.team.organizationId!, teamId: m.teamId } }));
+  const asStaff = places.find((p) => can(ctx, "view_player_detail", p.scope));
+  if (asStaff) return { target, access: "staff", team: asStaff.team };
+  const asTeammate = places.find((p) => can(ctx, "view_roster", p.scope));
+  if (asTeammate) return { target, access: "teammate", team: asTeammate.team };
 
-  const targetOrgId = target.team?.organizationId ?? null;
-  if (ctx.profile && targetOrgId != null) {
-    const scope = { organizationId: targetOrgId, teamId: target.teamId };
-    if (can(ctx, "view_player_detail", scope)) return { target, access: "staff" };
-    if (can(ctx, "view_roster", scope)) return { target, access: "teammate" };
-    return { target, access: null };
+  const viewerOrgIds = new Set([
+    ...ctx.memberships.map((m) => m.team.organizationId),
+    ...ctx.orgAdminOf,
+    ...ctx.groupAdminOf.map((g) => g.organizationId),
+  ]);
+  if (target.profile.roleAssignments.some((r) => viewerOrgIds.has(r.organizationId))) {
+    return { target, access: "teammate", team: null };
   }
-
-  // Legacy fallback — same team only, exactly as before Stage 4b.
-  if (ctx.user.teamId === target.teamId) {
-    return { target, access: isStaffSide(personaOf(ctx)) ? "staff" : "teammate" };
-  }
-  return { target, access: null };
+  return { target, access: null, team: null };
 }

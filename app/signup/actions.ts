@@ -44,9 +44,9 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
   const passwordHash = await hashPassword(password);
   try {
     await prisma.$transaction(async (tx) => {
-      // No team: the legacy login role is PLAYER only because the column is
-      // required — what they see comes from their team roles (lib/persona).
-      const user = await tx.user.create({ data: { name, email, role: "PLAYER", teamId: null, passwordHash } });
+      // Just a login and its person: what they see comes later, from their
+      // team roles (lib/persona).
+      const user = await tx.user.create({ data: { name, email, passwordHash } });
       await tx.profile.create({ data: { userId: user.id, name } });
     });
   } catch {

@@ -5,8 +5,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { actingScope, actingTeamId, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { can } from "@/lib/authz";
-import { isOnboarded } from "@/lib/onboarding";
-import { isPlayerSide, isStaffSide, personaOf } from "@/lib/persona";
+import { isSetUp } from "@/lib/onboarding";
+import { isPlayerSide, personaOf } from "@/lib/persona";
 import { listActiveQuestsForOrg } from "@/lib/quests";
 import { todayKey } from "@/lib/journal";
 import { hasMyEntryFor } from "@/lib/data/reflections";
@@ -30,7 +30,7 @@ export async function submitCheckIn(
 ): Promise<CheckInState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isSetUp(ctx)) {
     return { error: "Only a player can check in." };
   }
 
@@ -43,7 +43,7 @@ export async function submitCheckIn(
   // The 1-Minute Mindset takeaway is a separate, optional reflection and does NOT
   // gate this (it used to, which broke submitting the check-in first).
   // The entry + ledger + all caches + streak commit in ONE transaction
-  // (lib/data/points — dual-writes the new-world columns since Stage 3).
+  // (lib/data/points).
   try {
     await performCheckIn(ctx, reflection, todayKey(), POINTS_PER_CHECKIN);
   } catch (error) {
@@ -73,7 +73,7 @@ export async function saveMindsetTakeaway(
 ): Promise<TakeawayState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isSetUp(ctx)) {
     return { error: "Only a player can do this." };
   }
   const text = String(formData.get("text") ?? "").trim();
@@ -81,13 +81,9 @@ export async function saveMindsetTakeaway(
     return { error: "Write a few words on what you took from it." };
   }
 
-  // Dual-write: the at-time membership stamp (coach visibility is scoped to
-  // the team the athlete was acting for THAT DAY). The update fills stamps on
-  // rows first written before Stage 3 — same day, same team, same semantics.
-  const stamps = {
-    profileId: ctx.profile?.id ?? null,
-    membershipId: ctx.profile ? (ctx.membership?.id ?? null) : null,
-  };
+  // The person, and the at-time membership stamp (coach visibility is scoped
+  // to the team the athlete was acting for THAT DAY).
+  const stamps = { profileId: ctx.profile.id, membershipId: ctx.membership?.id ?? null };
   const day = todayKey();
   await prisma.mindsetTakeaway.upsert({
     where: { userId_day: { userId: user.id, day } },
@@ -111,7 +107,7 @@ export async function submitReview(
 ): Promise<ReviewState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isSetUp(ctx)) {
     return { error: "Only a player can review their day." };
   }
 
@@ -132,8 +128,7 @@ export async function submitReview(
     return { error: "Check in first — the review looks back at today's plan." };
   }
 
-  // Review + ledger + all caches in ONE transaction (lib/data/points —
-  // dual-writes the new-world columns since Stage 3).
+  // Review + ledger + all caches in ONE transaction (lib/data/points).
   try {
     await performReview(ctx, { day, outcome, learned, noteToTomorrow }, POINTS_PER_REVIEW);
   } catch (error) {
@@ -167,7 +162,7 @@ async function servedQuest(organizationId: number | null | undefined, questId: n
 export async function completeQuest(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) return;
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isSetUp(ctx)) return;
 
   const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
   const actual = Number.parseInt(String(formData.get("actual") ?? ""), 10);
@@ -178,7 +173,7 @@ export async function completeQuest(formData: FormData): Promise<void> {
   if (actual < 0 || actual > quest.targetCount) return;
 
   // Log + ledger + all caches in ONE transaction, incl. the leftover-PENDING
-  // upgrade path (lib/data/points — dual-writes since Stage 3).
+  // upgrade path (lib/data/points).
   await performMeasuredQuest(ctx, quest, actual, todayKey());
 
   revalidatePath("/quests");
@@ -192,7 +187,7 @@ export async function completeQuest(formData: FormData): Promise<void> {
 export async function logQuest(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) return;
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isSetUp(ctx)) return;
 
   const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
   if (!Number.isInteger(questId)) return;
@@ -202,8 +197,7 @@ export async function logQuest(formData: FormData): Promise<void> {
   // Measurable quests go through the predict-then-log flow, never one-tap.
   if (quest.targetCount != null) return;
 
-  // Log + ledger + all caches in ONE transaction (lib/data/points —
-  // dual-writes since Stage 3).
+  // Log + ledger + all caches in ONE transaction (lib/data/points).
   try {
     await performOneTapQuest(ctx, quest, todayKey());
   } catch (error) {
@@ -230,13 +224,13 @@ export async function logQuest(formData: FormData): Promise<void> {
 export async function undoQuest(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) return;
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isSetUp(ctx)) return;
 
   const questId = Number.parseInt(String(formData.get("questId") ?? ""), 10);
   if (!Number.isInteger(questId)) return;
 
   // Reverses the exact ledger row (by its own stamps) + all caches in ONE
-  // transaction (lib/data/points — dual-writes since Stage 3).
+  // transaction (lib/data/points).
   await performUndoQuest(ctx, questId, todayKey());
 
   revalidatePath("/quests");
@@ -253,12 +247,10 @@ export async function postNotification(
   const ctx = await getCurrentContext();
   const user = ctx?.user;
   if (!ctx || !user) return { error: "Only a coach can post notifications." };
-  // Matrix (4c): HEAD_COACH / ASSISTANT_COACH / GENERAL_MANAGER / ORG_ADMIN
-  // may post; legacy role check only for pre-backfill logins (dies Stage 6).
+  // Matrix: HEAD_COACH / ASSISTANT_COACH / GENERAL_MANAGER / ORG_ADMIN may
+  // post to the team they're acting on.
   const scope = actingScope(ctx);
-  const mayPost = scope
-    ? can(ctx, "post_notification", scope)
-    : isStaffSide(personaOf(ctx));
+  const mayPost = scope != null && can(ctx, "post_notification", scope);
   if (!mayPost) return { error: "Only a coach can post notifications." };
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
@@ -268,9 +260,7 @@ export async function postNotification(
   // Urgent takeover flag — send_timeout is HC/ORG_ADMIN only per the matrix;
   // a staffer without it posts a NORMAL notification (silent downgrade, same
   // pattern as special board types).
-  const maySendTimeout = scope
-    ? can(ctx, "send_timeout", scope)
-    : isStaffSide(personaOf(ctx));
+  const maySendTimeout = scope != null && can(ctx, "send_timeout", scope);
   const isTimeout = formData.get("isTimeout") === "on" && maySendTimeout;
 
   // The acting team — the same one the permission check above used.
@@ -283,9 +273,9 @@ export async function postNotification(
       title,
       body,
       isTimeout,
-      // Dual-write: person + role snapshot ("Coach Gary · Head Coach").
-      authorProfileId: ctx.profile?.id ?? null,
-      authorRole: ctx.profile ? snapshotAuthorRole(ctx) : null,
+      // The person + the role snapshot ("Coach Gary · Head Coach").
+      authorProfileId: ctx.profile.id,
+      authorRole: snapshotAuthorRole(ctx),
     },
   });
   revalidatePath("/notifications");
@@ -301,9 +291,9 @@ export async function postNotification(
 export async function confirmRead(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) return;
-  // 4f: read receipts belong to roster members only.
-  if (ctx.profile && !ctx.membership) return;
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isSetUp(ctx)) return;
+  // Read receipts belong to roster members only.
+  if (!ctx.membership) return;
 
   const notificationId = Number.parseInt(
     String(formData.get("notificationId") ?? ""),
@@ -323,7 +313,7 @@ export async function confirmRead(formData: FormData): Promise<void> {
       data: {
         notificationId,
         userId: user.id,
-        profileId: ctx.profile?.id ?? null, // dual-write stamp
+        profileId: ctx.profile.id,
       },
     });
   } catch (error) {

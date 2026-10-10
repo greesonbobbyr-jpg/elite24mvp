@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentContext, type Ctx } from "@/lib/context";
+import { getCurrentContext } from "@/lib/context";
 import { roleLabel } from "@/lib/format";
 import { acceptStaffInvite, codeKind, createInvite, findInviteByCode, findInviteByToken, inviteState, normalizeCode, stateMessage } from "@/lib/invites";
 import { shareable, type MadeInvite } from "@/lib/invite-share";
@@ -22,15 +22,11 @@ export type CodeState = {
   what?: string;
 };
 
-async function signedIn(): Promise<(Ctx & { profile: NonNullable<Ctx["profile"]> }) | null> {
-  const ctx = await getCurrentContext();
-  return ctx?.profile ? (ctx as Ctx & { profile: NonNullable<Ctx["profile"]> }) : null;
-}
 
 /** The one code box: a team code joins as a player; an invite or org code
  * comes back for a confirm step. */
 export async function enterCode(_p: CodeState, formData: FormData): Promise<CodeState> {
-  const ctx = await signedIn();
+  const ctx = await getCurrentContext();
   if (!ctx) redirect("/login?next=/welcome");
   if (!(await rateLimit("welcome-code", String(ctx.profile.id), 20, 3600))) return { error: RATE_LIMITED_MESSAGE };
   const code = normalizeCode(formData.get("code"));
@@ -45,7 +41,7 @@ export async function enterCode(_p: CodeState, formData: FormData): Promise<Code
           : "That team isn't accepting players right now — ask your coach to start the season.",
       };
     }
-    await joinTeamForProfile(ctx.profile.id, ctx.user.id, joinable.team.id, joinable.seasonId);
+    await joinTeamForProfile(ctx.profile.id, joinable.team.id, joinable.seasonId);
     // A new athlete writes their Dream next; anyone already set up goes home.
     redirect(ctx.profile.setupCompletedAt ? "/" : "/onboarding");
   }
@@ -67,7 +63,7 @@ export type AcceptState = { error?: string };
 
 /** Accept a staff invite — by its code, or by its link's token. Adults only. */
 export async function acceptInviteCode(_p: AcceptState, formData: FormData): Promise<AcceptState> {
-  const ctx = await signedIn();
+  const ctx = await getCurrentContext();
   if (!ctx) redirect("/login");
   if (formData.get("adult") !== "on") return { error: "Coaches and staff must be adults (18+)." };
   const code = normalizeCode(formData.get("code"));
@@ -83,7 +79,7 @@ export type OrgState = { error?: string; made?: MadeInvite; orgId?: number };
 
 /** START AN ORGANIZATION — with an org code, or (the CEO) without one. */
 export async function startOrganization(_p: OrgState, formData: FormData): Promise<OrgState> {
-  const ctx = await signedIn();
+  const ctx = await getCurrentContext();
   if (!ctx) redirect("/login");
   const isCeo = ctx.platformRole === "CEO";
   let orgCodeId: number | null = null;

@@ -166,12 +166,6 @@ export async function acceptStaffInvite(invite: Invite, person: { profileId: num
         await tx.membership.create({ data: { profileId: person.profileId, teamId, seasonId, role: invite.role! } });
       }
     }
-    // The legacy login mirror (dies at Stage 6): staff now; the team anchor if none.
-    const user = await tx.user.findUniqueOrThrow({ where: { id: person.userId }, select: { teamId: true } });
-    await tx.user.update({
-      where: { id: person.userId },
-      data: { role: "COACH", ...(user.teamId == null && invite.teamId != null ? { teamId: invite.teamId } : {}) },
-    });
     await tx.auditEvent.create({
       data: {
         actorProfileId: person.profileId,

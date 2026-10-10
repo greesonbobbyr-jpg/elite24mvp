@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-// STAGE 3 END-TO-END: drives the REAL production write paths (lib/data/points)
-// through a check-in, a one-tap quest, an undo, a measured quest, a Pro
-// Review, and coach adjustments — then proves the three-cache discipline and
-// both sum invariants:
-//   PlayerProfile.points  == Σ ledger by userId       (legacy — must not drift)
-//   Profile.careerPoints  == Σ ledger by profileId    (new)
-//   Membership.points     == Σ ledger by membershipId (new)
-// Also covers the offseason ruling (no active membership: check-in stamps
+// THE POINTS WRITE PATHS, END TO END: drives the REAL production write paths
+// (lib/data/points) through a check-in, a one-tap quest, an undo, a measured
+// quest, a Pro Review, and coach adjustments — then proves the cache
+// discipline and the sum invariants:
+//   Profile.careerPoints  == Σ ledger by profileId    (the person)
+//   Membership.points     == Σ ledger by membershipId (the team board)
+// and that the ledger by login (userId) sums to the same career total.
+// Also covers the no-team ruling (no active membership: check-in stamps
 // profileId + NULL membershipId, quests included) and reversal-by-stamp.
 //
 // Same runner contract as the other DB suites: localhost-only, self-skips
@@ -24,7 +24,7 @@ const dbDescribe = url ? describe : describe.skip;
 
 const DAY = "2031-01-15"; // fixed synthetic day — never collides with seed data
 
-dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
+dbDescribe("points write paths — end-to-end + invariants", () => {
   // Built in beforeAll, torn down in afterAll.
   const world = {} as {
     orgId: number;
@@ -48,29 +48,19 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     const team = await prisma.team.create({
       data: { name: "__dw_team__", organizationId: org.id },
     });
-    const user = await prisma.user.create({
-      data: { name: "__dw_player__", role: "PLAYER", teamId: team.id },
-    });
-    await prisma.playerProfile.create({
-      data: { userId: user.id, dream: "test", onboardedAt: new Date() },
-    });
+    const user = await prisma.user.create({ data: { name: "__dw_player__" } });
     const profile = await prisma.profile.create({
-      data: { userId: user.id, name: user.name },
+      data: { userId: user.id, name: user.name, dream: "test", setupCompletedAt: new Date() },
     });
     const membership = await prisma.membership.create({
       data: { profileId: profile.id, teamId: team.id, seasonId: season.id, role: "PLAYER" },
     });
     // Offseason player: has a Profile but NO active membership.
-    const offUser = await prisma.user.create({
-      data: { name: "__dw_offseason__", role: "PLAYER", teamId: team.id },
-    });
-    await prisma.playerProfile.create({
-      data: { userId: offUser.id, dream: "test", onboardedAt: new Date() },
-    });
+    const offUser = await prisma.user.create({ data: { name: "__dw_offseason__" } });
     const offProfile = await prisma.profile.create({
-      data: { userId: offUser.id, name: offUser.name },
+      data: { userId: offUser.id, name: offUser.name, dream: "test", setupCompletedAt: new Date() },
     });
-    // Inactive synthetic quests: zero legacy-visible footprint even mid-test.
+    // Inactive synthetic quests: never listed for anyone, even mid-test.
     const questTap = await prisma.quest.create({
       data: { title: "__dw_tap__", description: "t", points: 20, active: false },
     });
@@ -87,7 +77,7 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
 
   afterAll(async () => {
     const { prisma } = await import("../lib/prisma");
-    // Users first (cascades legacy rows incl. ledger), then the new world.
+    // Users first (cascades their rows incl. the ledger), then the rest.
     await prisma.user.deleteMany({ where: { id: { in: [world.userId, world.offUserId] } } });
     await prisma.membership.deleteMany({ where: { teamId: world.teamId } });
     await prisma.profile.deleteMany({ where: { id: { in: [world.profileId, world.offProfileId] } } });
@@ -100,20 +90,18 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
 
   async function caches() {
     const { prisma } = await import("../lib/prisma");
-    const [pp, profile, membership] = await Promise.all([
-      prisma.playerProfile.findUniqueOrThrow({ where: { userId: world.userId } }),
+    const [byLogin, profile, membership] = await Promise.all([
+      prisma.pointsLedger.aggregate({ where: { userId: world.userId }, _sum: { amount: true } }),
       prisma.profile.findUniqueOrThrow({ where: { id: world.profileId } }),
       prisma.membership.findUniqueOrThrow({ where: { id: world.membershipId } }),
     ]);
-    return { legacy: pp.points, career: profile.careerPoints, team: membership.points, pp, profile };
+    // ledger: Σ ledger rows by login — what the caches must equal.
+    return { ledger: byLogin._sum.amount ?? 0, career: profile.careerPoints, team: membership.points, profile };
   }
 
   async function assertInvariants() {
     const { prisma } = await import("../lib/prisma");
     // Scoped to the test world, plus the whole-DB sweep for collateral damage.
-    const byUser = await prisma.pointsLedger.aggregate({
-      where: { userId: world.userId }, _sum: { amount: true },
-    });
     const byProfile = await prisma.pointsLedger.aggregate({
       where: { profileId: world.profileId }, _sum: { amount: true },
     });
@@ -121,7 +109,6 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
       where: { membershipId: world.membershipId }, _sum: { amount: true },
     });
     const c = await caches();
-    expect(c.legacy).toBe(byUser._sum.amount ?? 0);
     expect(c.career).toBe(byProfile._sum.amount ?? 0);
     expect(c.team).toBe(byMembership._sum.amount ?? 0);
 
@@ -137,7 +124,7 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     membership: { id: world.membershipId },
   });
 
-  it("check-in: stamps ledger + entry, bumps all three caches, mirrors the streak", async () => {
+  it("check-in: stamps ledger + entry, bumps both caches, advances the person's streak", async () => {
     const { prisma } = await import("../lib/prisma");
     const { performCheckIn } = await import("../lib/data/points");
     await performCheckIn(ctx(), "work on handles", DAY, 5);
@@ -153,9 +140,8 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     expect(ledger.membershipId).toBe(world.membershipId);
 
     const c = await caches();
-    expect([c.legacy, c.career, c.team]).toEqual([5, 5, 5]);
-    expect(c.pp.currentStreak).toBe(1);
-    expect(c.profile.currentStreak).toBe(1); // streak mirrored to the person
+    expect([c.ledger, c.career, c.team]).toEqual([5, 5, 5]);
+    expect(c.profile.currentStreak).toBe(1); // the streak follows the person
     expect(c.profile.lastCheckInDay).toBe(DAY);
     await assertInvariants();
   });
@@ -167,7 +153,7 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
       (e) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002",
     );
     const c = await caches();
-    expect([c.legacy, c.career, c.team]).toEqual([5, 5, 5]);
+    expect([c.ledger, c.career, c.team]).toEqual([5, 5, 5]);
     await assertInvariants();
   });
 
@@ -186,7 +172,7 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     expect(log.pointsLedger?.membershipId).toBe(world.membershipId);
 
     const c = await caches();
-    expect([c.legacy, c.career, c.team]).toEqual([25, 25, 25]);
+    expect([c.ledger, c.career, c.team]).toEqual([25, 25, 25]);
     await assertInvariants();
   });
 
@@ -200,7 +186,7 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     });
     expect(log).toBeNull();
     const c = await caches();
-    expect([c.legacy, c.career, c.team]).toEqual([5, 5, 5]);
+    expect([c.ledger, c.career, c.team]).toEqual([5, 5, 5]);
     await assertInvariants();
   });
 
@@ -216,7 +202,7 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     expect(log.actual).toBe(36);
     expect(log.membershipId).toBe(world.membershipId);
     const c = await caches();
-    expect([c.legacy, c.career, c.team]).toEqual([35, 35, 35]);
+    expect([c.ledger, c.career, c.team]).toEqual([35, 35, 35]);
     await assertInvariants();
   });
 
@@ -233,7 +219,7 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     });
     expect(review.profileId).toBe(world.profileId);
     const c = await caches();
-    expect([c.legacy, c.career, c.team]).toEqual([45, 45, 45]);
+    expect([c.ledger, c.career, c.team]).toEqual([45, 45, 45]);
     await assertInvariants();
   });
 
@@ -241,11 +227,11 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     const { performAdjustPoints } = await import("../lib/data/points");
     await performAdjustPoints({ id: world.userId, teamId: world.teamId }, 10, "Coach bonus");
     let c = await caches();
-    expect([c.legacy, c.career, c.team]).toEqual([55, 55, 55]);
+    expect([c.ledger, c.career, c.team]).toEqual([55, 55, 55]);
 
     await performAdjustPoints({ id: world.userId, teamId: world.teamId }, -15, "Missed practice");
     c = await caches();
-    expect([c.legacy, c.career, c.team]).toEqual([40, 40, 40]);
+    expect([c.ledger, c.career, c.team]).toEqual([40, 40, 40]);
     await assertInvariants();
   });
 
@@ -275,10 +261,8 @@ dbDescribe("Stage 3 dual-write — end-to-end + invariants", () => {
     });
     expect(qLedger.profileId).toBe(world.offProfileId);
     expect(qLedger.membershipId).toBeNull();
-    const off = await prisma.playerProfile.findUniqueOrThrow({ where: { userId: world.offUserId } });
-    expect(off.points).toBe(25); // legacy cache
     const offProfile2 = await prisma.profile.findUniqueOrThrow({ where: { id: world.offProfileId } });
-    expect(offProfile2.careerPoints).toBe(25); // career == legacy: nothing lost
+    expect(offProfile2.careerPoints).toBe(25); // check-in 5 + quest 20: nothing lost
     await assertInvariants();
   });
 });

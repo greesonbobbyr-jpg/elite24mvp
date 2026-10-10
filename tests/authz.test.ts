@@ -125,21 +125,14 @@ describe("org bound comes FIRST — cross-org access fails before role logic", (
 });
 
 describe("structural absences", () => {
-  it("legacy COACH and ORG_ADMIN-as-membership-role resolve to zero permissions", () => {
-    // Neither should ever appear on a Membership row (backfill maps COACH away;
-    // ORG_ADMIN is app-forbidden as a membership role) — but if bad data shows
-    // up, it must fail closed, not open.
-    for (const role of [Role.COACH, Role.ORG_ADMIN]) {
+  it("an unknown role and ORG_ADMIN-as-membership-role resolve to zero permissions", () => {
+    // Neither should ever appear on a Membership row (the retired "COACH"
+    // value is gone from the database; ORG_ADMIN is app-forbidden as a
+    // membership role — only a RoleAssignment grants the org-admin row) — but
+    // if bad data shows up, it must fail closed, not open.
+    for (const role of ["COACH" as unknown as Role, Role.ORG_ADMIN]) {
       const ctx = memberCtx(role);
-      for (const action of ALL_ACTIONS) {
-        // Note: role: ORG_ADMIN via MEMBERSHIP must not grant the org-admin
-        // row — only a RoleAssignment (orgAdminOf) does.
-        if (role === Role.ORG_ADMIN) {
-          expect(can(ctx, action, target)).toBe(false);
-        } else {
-          expect(can(ctx, action, target)).toBe(false);
-        }
-      }
+      for (const action of ALL_ACTIONS) expect(can(ctx, action, target)).toBe(false);
     }
   });
 

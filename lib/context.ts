@@ -1,7 +1,6 @@
 import type {
   Membership,
   Organization,
-  PlayerProfile,
   Profile,
   Role,
   Season,
@@ -10,15 +9,10 @@ import type {
 } from "@prisma/client";
 import { prisma } from "./prisma";
 
-// THE session choke point, v2 (hierarchy rebuild Stage 2). Resolves who is
-// acting: login → permanent person (Profile) → their active memberships → the
-// ACTING membership → that team/org/season, plus org-admin grants.
-//
-// During the migration (Stages 2–5) `ctx.user` is the LEGACY row loaded with
-// the exact same query getCurrentUser() has always run — the compat shim in
-// lib/session.ts returns it as-is, so every not-yet-cut-over surface behaves
-// byte-for-byte identically. Legacy row and new-world fields both die in
-// Stage 6, together.
+// THE session choke point. Resolves who is acting: login (User) → the
+// permanent person (Profile) → their active memberships → the ACTING
+// membership → that team/org/season, plus org-admin grants and the CEO grant.
+// Nothing else decides what someone is: there is no role or team on the login.
 
 export const ACTING_COOKIE = "e24_ctx";
 
@@ -28,13 +22,10 @@ export type ActiveMembership = Membership & {
 };
 
 export type Ctx = {
-  // Legacy user row (with team + PlayerProfile) — the compat shim's source.
-  // team is null for an account with no team (personal athlete, CEO).
-  user: User & { team: Team | null; profile: PlayerProfile | null };
-  // The permanent person. Null only for logins created by the legacy signup
-  // path after the Stage 1 backfill ran — they converge at the next backfill
-  // re-run (Stage 4a) and via dual-write (Stage 3).
-  profile: Profile | null;
+  // The login: id, name, email — nothing about roles or teams.
+  user: User;
+  // The permanent person: every login has one (made with the account).
+  profile: Profile;
   memberships: ActiveMembership[];
   membership: ActiveMembership | null; // the ACTING membership
   team: ActiveMembership["team"] | null; // acting team (branding)
@@ -75,11 +66,7 @@ export async function resolveContextForUser(
   actingCookie?: string | null,
 ): Promise<Ctx | null> {
   const [user, profile] = await Promise.all([
-    // EXACT legacy getCurrentUser query — do not change while the shim lives.
-    prisma.user.findUnique({
-      where: { id: userId },
-      include: { team: true, profile: true },
-    }),
+    prisma.user.findUnique({ where: { id: userId } }),
     prisma.profile.findUnique({
       where: { userId },
       include: {
@@ -100,18 +87,13 @@ export async function resolveContextForUser(
       },
     }),
   ]);
-  if (!user) return null;
+  // A login with no person can't act (every account is made with one).
+  if (!user || !profile) return null;
 
-  const memberships = profile?.memberships ?? [];
+  // Strip the include payloads so ctx.profile is a plain Profile.
+  const { memberships, roleAssignments, platformGrants, ...profileOnly } = profile;
   const membership = pickActingMembership(memberships, actingCookie);
   const team = membership?.team ?? null;
-
-  let profileOnly: Profile | null = null;
-  if (profile) {
-    // Strip the include payloads so ctx.profile is a plain Profile.
-    const { memberships: _m, roleAssignments: _r, platformGrants: _g, ...rest } = profile;
-    profileOnly = rest;
-  }
 
   return {
     user,
@@ -121,20 +103,16 @@ export async function resolveContextForUser(
     team,
     org: team?.organization ?? null,
     season: membership?.season ?? null,
-    orgAdminOf:
-      profile?.roleAssignments.filter((r) => r.role === "ORG_ADMIN").map((r) => r.organizationId) ?? [],
-    groupAdminOf:
-      profile?.roleAssignments
-        .filter((r) => r.role === "GROUP_ADMIN" && r.groupId != null)
-        .map((r) => ({ organizationId: r.organizationId, groupId: r.groupId! })) ?? [],
-    platformRole: profile?.platformGrants.some((g) => g.role === "CEO") ? "CEO" : null,
+    orgAdminOf: roleAssignments.filter((r) => r.role === "ORG_ADMIN").map((r) => r.organizationId),
+    groupAdminOf: roleAssignments
+      .filter((r) => r.role === "GROUP_ADMIN" && r.groupId != null)
+      .map((r) => ({ organizationId: r.organizationId, groupId: r.groupId! })),
+    platformRole: platformGrants.some((g) => g.role === "CEO") ? "CEO" : null,
   };
 }
 
 // The org-bounded authorization scope of the ACTING membership, for can()
-// calls on team surfaces. Null when the viewer has no acting membership or
-// their team predates the backfill (callers fall back to legacy role checks
-// until Stage 6).
+// calls on team surfaces. Null when the viewer has no acting membership.
 export function actingScope(
   ctx: Pick<Ctx, "membership" | "team">,
 ): { organizationId: number; teamId: number } | null {
@@ -143,25 +121,16 @@ export function actingScope(
 }
 
 // The team a person is acting for on team surfaces: the acting membership's
-// team; for an org admin with no roster spot, or a pre-backfill login, the
-// legacy anchor (dies at Stage 6). Null = no team (a personal athlete, or a
-// removed player — who used to fall back to the old team's anchor and get
-// stuck behind its TIME OUT, which they could no longer acknowledge). Every
-// read AND write on one surface must use this same team.
-export function actingTeamId(
-  ctx: Pick<Ctx, "membership" | "user" | "profile" | "orgAdminOf">,
-): number | null {
-  if (ctx.membership) return ctx.membership.teamId;
-  if (!ctx.profile || ctx.orgAdminOf.length > 0) return ctx.user.teamId;
-  return null;
+// team. Null = no team (a personal athlete, a removed player, an admin with
+// no roster spot, the CEO). Every read AND write on one surface must use this
+// same team.
+export function actingTeamId(ctx: Pick<Ctx, "membership">): number | null {
+  return ctx.membership?.teamId ?? null;
 }
 
 // The acting team's row (branding, names) — the same team actingTeamId picks.
-export function actingTeam(
-  ctx: Pick<Ctx, "membership" | "user" | "profile" | "orgAdminOf">,
-): Team | null {
-  if (ctx.membership) return ctx.membership.team;
-  return actingTeamId(ctx) != null ? ctx.user.team : null;
+export function actingTeam(ctx: Pick<Ctx, "membership">): Team | null {
+  return ctx.membership?.team ?? null;
 }
 
 // Display-role snapshot stamped onto posts (Notification / TeamMessage): the
@@ -174,7 +143,7 @@ export function snapshotAuthorRole(
 }
 
 // Identity from the verified Auth.js session — no client-provided id is
-// trusted. (Moved here from lib/session.ts, which re-exports it.)
+// trusted.
 export async function getCurrentUserId(): Promise<number | null> {
   const { auth } = await import("@/auth");
   const session = await auth();

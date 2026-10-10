@@ -86,14 +86,6 @@ export async function createOrganization(input: NewOrganization): Promise<Create
           data: { profileId: input.creator.profileId, teamId, seasonId: season.id, role: "HEAD_COACH" },
         });
       }
-      if (input.becomeAdmin || (input.coachTeam && teamId != null)) {
-        // The legacy login mirror (dies at Stage 6): staff, anchored to the team.
-        const user = await tx.user.findUniqueOrThrow({ where: { id: input.creator.userId }, select: { teamId: true } });
-        await tx.user.update({
-          where: { id: input.creator.userId },
-          data: { role: "COACH", ...(user.teamId == null && teamId != null ? { teamId } : {}) },
-        });
-      }
       if (input.orgCodeId != null) {
         await tx.invite.update({ where: { id: input.orgCodeId }, data: { organizationId: org.id } });
       }

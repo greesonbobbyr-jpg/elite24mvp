@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-// STAGE 4d PROOFS on the real local database — the owner's watch-points:
-//   1. Existing data: the membership board equals the legacy board exactly.
+// LEADERBOARD PROOFS on the real local database — the owner's watch-points:
+//   1. Existing data: the board is the team's active players, each with
+//      their membership's points.
 //   2. An ENDED membership disappears from the board; its ledger rows and the
 //      athlete's careerPoints are untouched.
 //   3. Tie-aware 1224 competition ranking survives the move.
@@ -71,12 +72,9 @@ dbDescribe("Stage 4d leaderboards + points economy", () => {
 
   async function makePlayer(name: string, teamId: number, seasonId: number, points = 0) {
     const { prisma } = await import("../lib/prisma");
-    const user = await prisma.user.create({ data: { name, role: "PLAYER", teamId } });
-    await prisma.playerProfile.create({
-      data: { userId: user.id, points, dream: "t", onboardedAt: new Date() },
-    });
+    const user = await prisma.user.create({ data: { name } });
     const profile = await prisma.profile.create({
-      data: { userId: user.id, name, careerPoints: points },
+      data: { userId: user.id, name, careerPoints: points, dream: "t", setupCompletedAt: new Date() },
     });
     const membership = await prisma.membership.create({
       data: { profileId: profile.id, teamId, seasonId, role: "PLAYER", points },
@@ -87,13 +85,11 @@ dbDescribe("Stage 4d leaderboards + points economy", () => {
     return { user, profile, membership };
   }
 
-  it("existing data: membership board == legacy board on a 1:1 team (ids, points, ranks)", async () => {
+  it("existing data: the board is the team's active players, each with their membership's points", async () => {
     const { prisma } = await import("../lib/prisma");
     const { getTeamRanking } = await import("../lib/leaderboard");
-    // Seed v2 deliberately diverges on the Mustang org (ended membership,
-    // two-team athlete) — the 1:1 equivalence claim holds on a CLEAN team,
-    // which mirrors what production data looks like (single-team org, no
-    // ended memberships): the seeded OKC Thunder.
+    // A clean single-team org (the seeded OKC Thunder): no ended memberships,
+    // nobody on two teams — what production data looks like.
     const cleanOrg = (
       await prisma.organization.findMany({
         where: { id: { notIn: [w.orgA, w.orgB] } },
@@ -103,14 +99,14 @@ dbDescribe("Stage 4d leaderboards + points economy", () => {
     expect(cleanOrg).toBeDefined();
     const team = await prisma.team.findUniqueOrThrow({ where: { id: cleanOrg!.teams[0].id } });
     const board = await getTeamRanking(team.id);
-    const legacy = await prisma.user.findMany({
-      where: { teamId: team.id, role: "PLAYER" },
-      include: { profile: { select: { points: true } } },
+    const roster = await prisma.membership.findMany({
+      where: { teamId: team.id, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
+      select: { points: true, profile: { select: { userId: true } } },
     });
-    expect(board.length).toBe(legacy.length);
-    const legacyPoints = new Map(legacy.map((u) => [u.id, u.profile?.points ?? 0]));
+    expect(board.length).toBe(roster.length);
+    const points = new Map(roster.map((m) => [m.profile.userId, m.points]));
     for (const row of board) {
-      expect(row.points).toBe(legacyPoints.get(row.id));
+      expect(row.points).toBe(points.get(row.id));
     }
     // Ranks strictly non-decreasing and 1-based (1224 shape).
     expect(board[0]?.rank).toBe(1);
@@ -213,10 +209,6 @@ dbDescribe("Stage 4d leaderboards + points economy", () => {
       where: { id: p.profile.id },
       data: { careerPoints: { increment: 50 } },
     });
-    await prisma.playerProfile.update({
-      where: { userId: p.user.id },
-      data: { points: { increment: 50 } },
-    });
 
     const boardA = await getTeamRanking(w.teamA);
     const boardB = await getTeamRanking(w.teamB);
@@ -235,12 +227,7 @@ dbDescribe("Stage 4d leaderboards + points economy", () => {
     const { performCheckIn } = await import("../lib/data/points");
 
     // Profile with NO membership at all (true offseason).
-    const user = await prisma.user.create({
-      data: { name: "__lb_offseason__", role: "PLAYER", teamId: w.teamA },
-    });
-    await prisma.playerProfile.create({
-      data: { userId: user.id, dream: "t", onboardedAt: new Date() },
-    });
+    const user = await prisma.user.create({ data: { name: "__lb_offseason__" } });
     const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
     w.userIds.push(user.id);
     w.profileIds.push(profile.id);

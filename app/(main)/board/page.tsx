@@ -75,9 +75,9 @@ export default async function BoardPage({
   const messages = await listTeamMessages(teamId, limit);
   const hasEarlier = messages.length >= limit && limit < BOARD_MAX_LIMIT;
   // Moderation (delete anyone's message) — the matrix check deleteMessage
-  // uses; legacy role check only for pre-backfill logins (dies at Stage 6).
+  // uses.
   const scope = actingScope(ctx);
-  const mayModerate = scope ? can(ctx, "moderate_board", scope) : staff;
+  const mayModerate = scope != null && can(ctx, "moderate_board", scope);
   const logoUrl = team.logoUrl;
   const latestId = messages.length ? messages[messages.length - 1].id : 0;
 
@@ -146,12 +146,14 @@ export default async function BoardPage({
               // assistants or GMs, who used to see a Delete that did nothing).
               const canDelete = mayModerate || isMine;
               // Staff badge from the role SNAPSHOT taken at write time
-              // ("Head Coach" stays "Head Coach" even after a role change);
-              // legacy fallback for unstamped rows.
-              const authorBadge =
-                roleLabel(message.authorRole) ??
-                (message.author.role === "COACH" ? "Coach" : null);
+              // ("Head Coach" stays "Head Coach" even after a role change).
+              const authorBadge = roleLabel(message.authorRole);
               const authorName = message.authorProfile?.name ?? message.author.name;
+              const authorPhoto = {
+                photoUrl: photoSrc(message.author.id, message.authorProfile?.photoUrl),
+                cutoutUrl: cutoutSrc(message.author.id, message.authorProfile?.photoCutoutUrl),
+                photoMeta: message.authorProfile?.photoMeta,
+              };
 
               // Group consecutive messages from the same author.
               const prevSame =
@@ -199,36 +201,16 @@ export default async function BoardPage({
                       (isFirstOfGroup ? (
                         <div className="mt-6 shrink-0" aria-hidden>
                           {authorBadge ? (
-                            <StaffCard
-                              size="avatar"
-                              person={{
-                                name: authorName,
-                                role: authorBadge,
-                                photoUrl: photoSrc(message.author.id, message.author.photoUrl ?? message.authorProfile?.photoUrl),
-                                cutoutUrl: cutoutSrc(
-                                  message.author.id,
-                                  message.author.photoCutoutUrl ?? message.authorProfile?.photoCutoutUrl,
-                                ),
-                                photoMeta: message.author.photoMeta ?? message.authorProfile?.photoMeta,
-                              }}
-                            />
+                            <StaffCard size="avatar" person={{ name: authorName, role: authorBadge, ...authorPhoto }} />
                           ) : (
                             // The author's mini card: their level, number and cutout.
                             <PlayerCard
                               size="avatar"
                               player={{
                                 name: authorName,
-                                photoUrl: photoSrc(
-                                  message.author.id,
-                                  message.authorProfile?.photoUrl ?? message.author.profile?.photoUrl,
-                                ),
-                                cutoutUrl: cutoutSrc(
-                                  message.author.id,
-                                  message.authorProfile?.photoCutoutUrl ?? message.author.profile?.photoCutoutUrl,
-                                ),
-                                photoMeta: message.authorProfile?.photoMeta ?? message.author.profile?.photoMeta,
-                                jerseyNumber: message.authorProfile?.jerseyNumber ?? message.author.profile?.jerseyNumber ?? null,
-                                points: message.authorProfile?.careerPoints ?? message.author.profile?.points ?? 0,
+                                ...authorPhoto,
+                                jerseyNumber: message.authorProfile?.jerseyNumber ?? null,
+                                points: message.authorProfile?.careerPoints ?? 0,
                               }}
                               team={team}
                             />

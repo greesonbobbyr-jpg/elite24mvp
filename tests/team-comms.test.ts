@@ -1,8 +1,9 @@
 import { afterAll, describe, expect, it } from "vitest";
 
-// STAGE 4c PROOFS, on the real local database — the owner's four watch-points:
-//   1. Read-receipt denominators: memberships == legacy players for existing
-//      data, and an ENDED membership neither inflates nor deflates X/Y.
+// BOARD + NOTIFICATION PROOFS, on the real local database — the owner's four
+// watch-points:
+//   1. Read-receipt denominators: the active player memberships, and an
+//      ENDED membership neither inflates nor deflates X/Y.
 //   2. TIME OUT: a two-team athlete only gets their ACTING team's takeover.
 //   3. Author role snapshot survives a role change (an ASSISTANT_COACH post
 //      still shows "Assistant Coach" after promotion to HEAD_COACH).
@@ -22,7 +23,7 @@ if (url) process.env.DATABASE_URL = url;
 
 const dbDescribe = url ? describe : describe.skip;
 
-dbDescribe("Stage 4c board + notifications", () => {
+dbDescribe("board + notifications", () => {
   afterAll(async () => {
     const { prisma } = await import("../lib/prisma");
     await prisma.$disconnect();
@@ -43,9 +44,8 @@ dbDescribe("Stage 4c board + notifications", () => {
     const { getTeamReadStatus } = await import("../lib/notifications");
     const { team } = await teamA();
 
-    // (Seed v2 diverges from the legacy user roster BY DESIGN: an ended
-    // membership stays a user on the team; a two-team athlete is one user
-    // with two memberships. The membership roster is the truth.)
+    // The membership roster is the truth: an ended membership is off it; a
+    // two-team athlete is one person with two memberships.
     const active = await prisma.membership.findMany({
       where: { teamId: team.id, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
       select: { startedAt: true },
@@ -67,7 +67,7 @@ dbDescribe("Stage 4c board + notifications", () => {
     const baseline = (await getTeamReadStatus(team.id))[0].totalPlayers;
 
     const user = await prisma.user.create({
-      data: { name: "__tc_ghost__", role: "PLAYER", teamId: team.id },
+      data: { name: "__tc_ghost__" },
     });
     const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
     // Joined well before every seeded notification, so it's owed all of them.
@@ -114,10 +114,13 @@ dbDescribe("Stage 4c board + notifications", () => {
       include: { organization: { include: { seasons: { where: { isCurrent: true } } } } },
     });
     const [tA, tB] = teams;
-    const coachB = await prisma.user.findFirstOrThrow({ where: { teamId: tB.id, role: "COACH" } });
+    const coachB = await prisma.user.findFirstOrThrow({
+      where: { profile: { memberships: { some: { teamId: tB.id, role: "HEAD_COACH", endedAt: null } } } },
+      orderBy: { id: "asc" },
+    });
 
     const user = await prisma.user.create({
-      data: { name: "__tc_twoteam__", role: "PLAYER", teamId: tA.id },
+      data: { name: "__tc_twoteam__" },
     });
     const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
     const mA = await prisma.membership.create({
@@ -163,7 +166,10 @@ dbDescribe("Stage 4c board + notifications", () => {
       getTeamReadStatus,
     } = await import("../lib/notifications");
     const { team, season } = await teamA();
-    const coach = await prisma.user.findFirstOrThrow({ where: { teamId: team.id, role: "COACH" } });
+    const coach = await prisma.user.findFirstOrThrow({
+      where: { profile: { memberships: { some: { teamId: team.id, role: "HEAD_COACH", endedAt: null } } } },
+      orderBy: { id: "asc" },
+    });
 
     // An unacknowledged TIME OUT sent an hour ago, BEFORE the player joins.
     const oldTimeout = await prisma.notification.create({
@@ -174,7 +180,7 @@ dbDescribe("Stage 4c board + notifications", () => {
       },
     });
     const user = await prisma.user.create({
-      data: { name: "__tc_late__", role: "PLAYER", teamId: team.id },
+      data: { name: "__tc_late__" },
     });
     const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
     const membership = await prisma.membership.create({
@@ -220,10 +226,10 @@ dbDescribe("Stage 4c board + notifications", () => {
       data: { name: "__tc_many_team__", organizationId: org.id, joinCode: "TCMANY" },
     });
     const coach = await prisma.user.create({
-      data: { name: "__tc_many_coach__", role: "COACH", teamId: team.id },
+      data: { name: "__tc_many_coach__" },
     });
     const player = await prisma.user.create({
-      data: { name: "__tc_many_player__", role: "PLAYER", teamId: team.id },
+      data: { name: "__tc_many_player__" },
     });
     try {
       const since = new Date(Date.now() - 86_400_000);
@@ -250,20 +256,15 @@ dbDescribe("Stage 4c board + notifications", () => {
     }
   });
 
-  it("actingTeamId: the acting membership's team; anchor only for admins / pre-backfill; else none", async () => {
+  it("actingTeamId: the acting membership's team — and nothing else", async () => {
     const { actingTeamId } = await import("../lib/context");
     type Arg = Parameters<typeof actingTeamId>[0];
-    const user = { teamId: 1 } as Arg["user"];
     const membership = { teamId: 2 } as NonNullable<Arg["membership"]>;
-    const profile = { id: 9 } as NonNullable<Arg["profile"]>;
-    expect(actingTeamId({ user, membership, profile, orgAdminOf: [] })).toBe(2);
-    // Org admin with no roster spot: the legacy anchor (dies at Stage 6).
-    expect(actingTeamId({ user, membership: null, profile, orgAdminOf: [5] })).toBe(1);
-    // Pre-backfill login (no Profile): the legacy anchor.
-    expect(actingTeamId({ user, membership: null, profile: null, orgAdminOf: [] })).toBe(1);
-    // Removed player / athlete with no team: NO team — never the old anchor,
-    // whose TIME OUT they could no longer acknowledge.
-    expect(actingTeamId({ user, membership: null, profile, orgAdminOf: [] })).toBeNull();
+    expect(actingTeamId({ membership })).toBe(2);
+    // No roster spot — a removed player, an athlete with no team, an org
+    // admin, the CEO: NO team. (A removed player used to fall back to their
+    // old team and get stuck behind its TIME OUT.)
+    expect(actingTeamId({ membership: null })).toBeNull();
   });
 
   it("author role snapshot survives promotion (Assistant Coach stays Assistant Coach)", async () => {
@@ -273,7 +274,7 @@ dbDescribe("Stage 4c board + notifications", () => {
     const { team, season } = await teamA();
 
     const user = await prisma.user.create({
-      data: { name: "__tc_ac__", role: "COACH", teamId: team.id },
+      data: { name: "__tc_ac__" },
     });
     const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
     const membership = await prisma.membership.create({
@@ -310,9 +311,7 @@ dbDescribe("Stage 4c board + notifications", () => {
     const { team, season } = await teamA();
 
     async function staffCtx(role: "ASSISTANT_COACH" | "GENERAL_MANAGER" | "HEAD_COACH") {
-      const user = await prisma.user.create({
-        data: { name: `__tc_${role}__`, role: "COACH", teamId: team.id },
-      });
+      const user = await prisma.user.create({ data: { name: `__tc_${role}__` } });
       const profile = await prisma.profile.create({ data: { userId: user.id, name: user.name } });
       const membership = await prisma.membership.create({
         data: { profileId: profile.id, teamId: team.id, seasonId: season.id, role },
@@ -346,11 +345,9 @@ dbDescribe("Stage 4c board + notifications", () => {
       // full set. (Seed v2 also has an AC/GM on this team — filter by grant.)
       const realCoach = await prisma.user.findFirstOrThrow({
         where: {
-          teamId: team.id,
-          role: "COACH",
-          profileRecord: {
+          profile: {
             roleAssignments: { some: { role: "ORG_ADMIN", revokedAt: null } },
-            memberships: { some: { teamId: team.id, endedAt: null } },
+            memberships: { some: { teamId: team.id, role: "HEAD_COACH", endedAt: null } },
           },
         },
       });

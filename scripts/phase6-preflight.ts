@@ -149,6 +149,22 @@ async function main() {
     gate(await count(`SELECT 1 FROM "${table}" WHERE "${col}" = 'COACH'`), `${table}.${col} still the legacy COACH value`);
   }
 
+  // Behaviour changes, not data loss: who notices the old team anchor going.
+  info(
+    await count(`
+      SELECT 1 FROM "Profile" p JOIN "User" u ON u.id = p."userId"
+      WHERE u."teamId" IS NOT NULL
+        AND EXISTS (SELECT 1 FROM "RoleAssignment" r WHERE r."profileId" = p.id AND r."revokedAt" IS NULL)
+        AND NOT EXISTS (SELECT 1 FROM "Membership" m JOIN "Season" s ON s.id = m."seasonId"
+                        WHERE m."profileId" = p.id AND m."endedAt" IS NULL AND s."isCurrent")`),
+    "admins with no roster spot who were shown a team (they'll land on Organization View)",
+  );
+  info(
+    (await count(`SELECT 1 FROM "TeamMessage" WHERE "authorRole" IS NULL`)) +
+      (await count(`SELECT 1 FROM "Notification" WHERE "authorRole" IS NULL`)),
+    'posts with no role snapshot (shown without a staff badge / as "Coach")',
+  );
+
   console.log("\n— Every row is stamped with its person");
   for (const table of ["JournalEntry", "DailyReview", "MindsetTakeaway", "PointsLedger", "QuestLog", "NotificationRead", "MessageReaction"]) {
     gate(await count(`SELECT 1 FROM "${table}" WHERE "profileId" IS NULL`), `${table} rows with no profileId`);

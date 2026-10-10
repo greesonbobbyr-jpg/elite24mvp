@@ -29,9 +29,6 @@ export default async function MainLayout({
   const ctx = await getCurrentContext();
   const user = ctx?.user;
 
-  // The setup gate (4f): reads the permanent Profile's setupCompletedAt
-  // (dual-written 1:1 with the legacy onboardedAt; legacy fallback for
-  // pre-backfill logins). Players write the Dream; staff complete at signup.
   // Someone else chose this password (an account made by a script): a new
   // one comes before anything else.
   if (user?.mustChangePassword) {
@@ -43,8 +40,9 @@ export default async function MainLayout({
     redirect("/account/email");
   }
 
-  // Not set up yet: no team at all → Step 2 (start an org / join / train
-  // solo); on a team but no Dream yet → write it.
+  // The setup gate (Profile.setupCompletedAt — players write the Dream; staff
+  // are set up when they join). Not set up yet: no team at all → Step 2
+  // (start an org / join / train solo); on a team but no Dream yet → write it.
   if (ctx && user && !isSetUp(ctx)) {
     redirect(personaOf(ctx) === "new" ? "/welcome" : "/onboarding");
   }
@@ -71,9 +69,8 @@ export default async function MainLayout({
     ctx ? unreadAnnouncements(ctx) : 0,
   ]);
   const unreadCount = alertsUnread + announcementsUnread;
-  // "Organization View" — org and group admins only (grant-gated), with the
-  // pre-backfill legacy fallback (dies at Stage 6).
-  const isOrgAdmin = ctx?.profile ? ctx.orgAdminOf.length + ctx.groupAdminOf.length > 0 : true;
+  // "Organization View" — org and group admins only (grant-gated).
+  const isOrgAdmin = ctx != null && ctx.orgAdminOf.length + ctx.groupAdminOf.length > 0;
   const { links, tabs } = chromeFor(persona, {
     userId: user?.id ?? 0,
     unread: unreadCount,
@@ -91,29 +88,20 @@ export default async function MainLayout({
           (and the installed iPhone app's status-bar text is always white). */}
       <header className="theme-dark border-b border-line-faint bg-frame px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
         <div className="relative flex items-center justify-between">
-          {/* left: player/coach identity avatar (photo or initials). Profile
-              fields come from the permanent Profile since 4b (careerPoints ==
-              legacy points by invariant; photo dual-written) with a legacy
-              fallback for not-yet-backfilled logins. */}
+          {/* left: player/coach identity avatar (photo or initials), from the
+              person's Profile. */}
           {ctx && user ? (
             <IdentityChip
               user={{
                 id: user.id,
                 name: user.name,
                 staff: persona != null && (isStaffSide(persona) || persona === "ceo"),
-                photoUrl: user.photoUrl,
-                photoCutoutUrl: user.photoCutoutUrl,
-                photoMeta: user.photoMeta,
                 team: actingTeam(ctx) ?? PERSONAL_CARD_TEAM,
-                profile: ctx.profile
-                  ? {
-                      photoUrl: ctx.profile.photoUrl,
-                      photoCutoutUrl: ctx.profile.photoCutoutUrl,
-                      photoMeta: ctx.profile.photoMeta,
-                      jerseyNumber: ctx.profile.jerseyNumber,
-                      points: ctx.profile.careerPoints,
-                    }
-                  : user.profile,
+                photoUrl: ctx.profile.photoUrl,
+                photoCutoutUrl: ctx.profile.photoCutoutUrl,
+                photoMeta: ctx.profile.photoMeta,
+                jerseyNumber: ctx.profile.jerseyNumber,
+                points: ctx.profile.careerPoints,
               }}
             />
           ) : (

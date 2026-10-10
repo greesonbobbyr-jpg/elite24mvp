@@ -3,40 +3,34 @@ import { prisma } from "../prisma";
 import { advanceStreak } from "../streaks";
 import { createMyEntryInTx, createMyReviewOp } from "./reflections";
 
-// THE points write paths (hierarchy rebuild Stage 3). Every transaction here
-// dual-writes: the legacy statements are the VERBATIM bodies that lived in the
-// server actions through Stage 2, and each transaction additionally
-// - stamps new-dimension columns (profileId / membershipId) on the rows it
-//   creates, and
-// - updates Profile.careerPoints and Membership.points in the SAME transaction
-//   as PlayerProfile.points — one commit, three caches, same ledger row.
+// THE points write paths. Every transaction here writes the ledger row and,
+// in the SAME transaction, the caches that sum it:
+//   Profile.careerPoints  == Σ ledger by profileId    (the person; card tier)
+//   Membership.points     == Σ ledger by membershipId (the team board)
+// Rows are stamped with the person (profileId) and, when the person is acting
+// on a team, that membership.
 //
-// No-team ruling (owner, 2026-10-09 — replaces the offseason ruling of
-// HIERARCHY_PLAN.md §2.10): every player-earned source — check-in, review,
-// AND quests — stamps profileId whenever a Profile exists, with NULL
-// membershipId when there is no active membership. An athlete with no team
-// (Personal Player Development, or between teams) earns career points from
-// quests like anyone else; only the team board needs a membership. Coach
-// adjustments stay all-or-nothing: they only exist on a roster.
+// No-team ruling (owner, 2026-10-09): every player-earned source — check-in,
+// review, AND quests — stamps the person, with NULL membershipId when there
+// is no active membership. An athlete with no team (Personal Player
+// Development, or between teams) earns career points from quests like anyone
+// else; only the team board needs a membership. Coach adjustments only exist
+// on a roster.
 //
-// Legacy-only logins (created by the old signup path, no Profile yet) stamp
-// nothing — their rows converge at the idempotent backfill re-run (Stage 4a).
 // Undo reverses BY THE LEDGER ROW'S OWN STAMPS, never the current ctx, so an
 // award is always reversed exactly where it landed.
 
 // The slice of ctx these writes need. lib/context's Ctx satisfies it.
 export type WriteCtx = {
   user: { id: number };
-  profile: { id: number } | null;
+  profile: { id: number };
   membership: { id: number } | null;
 };
 
+type Stamps = { profileId: number | null; membershipId: number | null };
+
 // Bump careerPoints (+ membership points when stamped) inside a transaction.
-async function bumpNewCaches(
-  tx: Prisma.TransactionClient,
-  stamps: { profileId: number | null; membershipId: number | null },
-  amount: number,
-) {
+async function bumpCaches(tx: Prisma.TransactionClient, stamps: Stamps, amount: number) {
   if (stamps.profileId != null) {
     await tx.profile.update({
       where: { id: stamps.profileId },
@@ -51,13 +45,10 @@ async function bumpNewCaches(
   }
 }
 
-// Stamps for player-earned sources (check-in / review / quests): profile
-// whenever known, membership nullable (no-team ruling).
+// Stamps for player-earned sources (check-in / review / quests): the person
+// always, the membership when there is one (no-team ruling).
 function personStamps(ctx: WriteCtx) {
-  return {
-    profileId: ctx.profile?.id ?? null,
-    membershipId: ctx.profile ? (ctx.membership?.id ?? null) : null,
-  };
+  return { profileId: ctx.profile.id, membershipId: ctx.membership?.id ?? null };
 }
 
 // Daily check-in: JournalEntry + ledger + caches + streak, one transaction.
@@ -81,9 +72,10 @@ export async function performCheckIn(
       },
     });
     // Advance the streak in the same transaction as the entry (the unique
-    // [userId, day] on JournalEntry guarantees this runs once per day).
-    const profile = await tx.playerProfile.findUnique({
-      where: { userId: ctx.user.id },
+    // [userId, day] on JournalEntry guarantees this runs once per day). The
+    // streak follows the PERSON.
+    const profile = await tx.profile.findUniqueOrThrow({
+      where: { id: ctx.profile.id },
       select: {
         currentStreak: true,
         bestStreak: true,
@@ -91,28 +83,11 @@ export async function performCheckIn(
         streakGraceUsed: true,
       },
     });
-    const streak = advanceStreak(
-      profile ?? {
-        currentStreak: 0,
-        bestStreak: 0,
-        lastCheckInDay: null,
-        streakGraceUsed: false,
-      },
-      day,
-    );
-    await tx.playerProfile.update({
-      where: { userId: ctx.user.id },
-      data: { points: { increment: pointsPerCheckIn }, ...streak },
+    await tx.profile.update({
+      where: { id: ctx.profile.id },
+      data: { ...advanceStreak(profile, day) },
     });
-    // Dual-write: same streak fields mirror onto the Profile (they follow the
-    // PERSON), careerPoints/membership.points alongside the legacy cache.
-    if (stamps.profileId != null) {
-      await tx.profile.update({
-        where: { id: stamps.profileId },
-        data: { ...streak },
-      });
-    }
-    await bumpNewCaches(tx, stamps, pointsPerCheckIn);
+    await bumpCaches(tx, stamps, pointsPerCheckIn);
   });
 }
 
@@ -129,8 +104,8 @@ export async function performReview(
   pointsPerReview: number,
 ) {
   const stamps = personStamps(ctx);
-  // Same ARRAY transaction as always (createMyReviewOp returns the unexecuted
-  // create), with the new-cache ops appended to the same commit.
+  // An ARRAY transaction (createMyReviewOp returns the unexecuted create),
+  // with the cache ops in the same commit.
   const ops: Prisma.PrismaPromise<unknown>[] = [
     createMyReviewOp(ctx, data),
     prisma.pointsLedger.create({
@@ -142,19 +117,11 @@ export async function performReview(
         ...stamps,
       },
     }),
-    prisma.playerProfile.update({
-      where: { userId: ctx.user.id },
-      data: { points: { increment: pointsPerReview } },
+    prisma.profile.update({
+      where: { id: stamps.profileId },
+      data: { careerPoints: { increment: pointsPerReview } },
     }),
   ];
-  if (stamps.profileId != null) {
-    ops.push(
-      prisma.profile.update({
-        where: { id: stamps.profileId },
-        data: { careerPoints: { increment: pointsPerReview } },
-      }),
-    );
-  }
   if (stamps.membershipId != null) {
     ops.push(
       prisma.membership.update({
@@ -185,11 +152,7 @@ export async function performOneTapQuest(ctx: WriteCtx, quest: Quest, day: strin
         ...stamps,
       },
     });
-    await tx.playerProfile.update({
-      where: { userId: ctx.user.id },
-      data: { points: { increment: quest.points } },
-    });
-    await bumpNewCaches(tx, stamps, quest.points);
+    await bumpCaches(tx, stamps, quest.points);
   });
 }
 
@@ -201,24 +164,19 @@ export async function performMeasuredQuest(
   day: string,
 ) {
   const stamps = personStamps(ctx);
-  const award = (tx: Prisma.TransactionClient, questLogId: number) =>
-    Promise.all([
-      tx.pointsLedger.create({
-        data: {
-          userId: ctx.user.id,
-          amount: quest.points,
-          reason: quest.title,
-          source: PointsSource.QUEST,
-          questLogId,
-          ...stamps,
-        },
-      }),
-      tx.playerProfile.update({
-        where: { userId: ctx.user.id },
-        data: { points: { increment: quest.points } },
-      }),
-      bumpNewCaches(tx, stamps, quest.points),
-    ]);
+  const award = async (tx: Prisma.TransactionClient, questLogId: number) => {
+    await tx.pointsLedger.create({
+      data: {
+        userId: ctx.user.id,
+        amount: quest.points,
+        reason: quest.title,
+        source: PointsSource.QUEST,
+        questLogId,
+        ...stamps,
+      },
+    });
+    await bumpCaches(tx, stamps, quest.points);
+  };
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -272,51 +230,36 @@ export async function performUndoQuest(ctx: WriteCtx, questId: number, day: stri
 
     const amount = log.pointsLedger?.amount ?? 0;
     // Reverse where the award actually landed, not where ctx points now.
-    const stamps = {
+    const stamps: Stamps = {
       profileId: log.pointsLedger?.profileId ?? null,
       membershipId: log.pointsLedger?.membershipId ?? null,
     };
     // Deleting the log cascades its linked PointsLedger row (questLogId).
     await tx.questLog.delete({ where: { id: log.id } });
-    if (amount > 0) {
-      await tx.playerProfile.update({
-        where: { userId: ctx.user.id },
-        data: { points: { decrement: amount } },
-      });
-      await bumpNewCaches(tx, stamps, -amount);
-    }
+    if (amount > 0) await bumpCaches(tx, stamps, -amount);
   });
 }
 
-// Coach adjustment (+/-) targeting a player's MEMBERSHIP on the given team
-// (4e: the adjusting staff's acting team — for a two-team athlete, only that
-// team's membership is credited). membershipId REQUIRED (team-context
-// source): stamps only when the TARGET has a profile AND an active membership
-// there; a legacy-only target gets the legacy write alone.
+// Coach adjustment (+/-) on a player's MEMBERSHIP on the given team (the
+// adjusting staff's acting team — for a two-team athlete, only that team's
+// membership is credited). Only exists on a roster: returns false, writing
+// nothing, when the target has no active membership there.
 export async function performAdjustPoints(
   target: { id: number; teamId: number },
   amount: number,
   reason: string,
-) {
-  const profile = await prisma.profile.findUnique({
-    where: { userId: target.id },
-    select: { id: true },
+): Promise<boolean> {
+  const membership = await prisma.membership.findFirst({
+    where: {
+      profile: { userId: target.id },
+      teamId: target.teamId,
+      endedAt: null,
+      season: { isCurrent: true },
+    },
+    select: { id: true, profileId: true },
   });
-  const membership = profile
-    ? await prisma.membership.findFirst({
-        where: {
-          profileId: profile.id,
-          teamId: target.teamId,
-          endedAt: null,
-          season: { isCurrent: true },
-        },
-        select: { id: true },
-      })
-    : null;
-  const stamps =
-    profile && membership
-      ? { profileId: profile.id, membershipId: membership.id }
-      : { profileId: null, membershipId: null };
+  if (!membership) return false;
+  const stamps = { profileId: membership.profileId, membershipId: membership.id };
 
   // Ledger row + cache bump in ONE transaction (mirror of logQuest).
   await prisma.$transaction(async (tx) => {
@@ -329,10 +272,7 @@ export async function performAdjustPoints(
         ...stamps,
       },
     });
-    await tx.playerProfile.update({
-      where: { userId: target.id },
-      data: { points: { increment: amount } },
-    });
-    await bumpNewCaches(tx, stamps, amount);
+    await bumpCaches(tx, stamps, amount);
   });
+  return true;
 }

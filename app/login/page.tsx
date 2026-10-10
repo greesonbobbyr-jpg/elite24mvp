@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentContext } from "@/lib/context";
 import { safeNext } from "@/lib/safe-next";
 import { LoginForm } from "./LoginForm";
 
@@ -8,7 +8,7 @@ import { LoginForm } from "./LoginForm";
 // back to where they were headed — e.g. an invite link — after logging in.
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const next = safeNext((await searchParams).next);
-  if (await getCurrentUser()) redirect(next ?? "/");
+  if (await getCurrentContext()) redirect(next ?? "/");
   const signupHref = `/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   return (

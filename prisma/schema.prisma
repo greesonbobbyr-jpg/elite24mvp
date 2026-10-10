@@ -1,12 +1,12 @@
 // Elite24MVP — Prisma schema
 //
 // Data layer for the team-private basketball development app (see CLAUDE.md).
-// SQLite is an MVP/testing choice; keep the data layer swappable for a hosted
-// database later (CLAUDE.md section 6).
+// Postgres (Supabase in production); keep the data layer swappable.
 //
-// Phase 1 introduces Team, User, and PlayerProfile; Phase 3 adds JournalEntry
-// and PointsLedger; Phase 4 adds Quest and QuestLog; Phase 5 adds Notification
-// and NotificationRead.
+// A LOGIN is a User; the PERSON is a Profile; what they do on a team is a
+// Membership. The older single-table layer (User.role / User.teamId /
+// PlayerProfile, and the fixed Program → Division grouping) was removed in
+// person-first Phase 6 (2026-10-10).
 
 generator client {
   provider = "prisma-client-js"
@@ -20,12 +20,10 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Hierarchy-rebuild roles. COACH is the LEGACY login-level value (User.role) and
-// is retired at decommission (Stage 6); the five real roles are used by
-// Membership.role (team scope; never ORG_ADMIN — app-enforced) and
-// RoleAssignment.role (org scope).
+// Roles. Membership.role is team scope (PLAYER / HEAD_COACH / ASSISTANT_COACH /
+// GENERAL_MANAGER — never an admin role, app-enforced); RoleAssignment.role is
+// org scope (ORG_ADMIN, GROUP_ADMIN).
 enum Role {
-  COACH // legacy — do not use in new code
   PLAYER
   ORG_ADMIN
   GROUP_ADMIN // RoleAssignment only: an org admin for one branch (a Group)
@@ -44,10 +42,9 @@ model RateLimit {
 }
 
 // ============================================================================
-// HIERARCHY REBUILD (Stage 0 — additive; see plans/REVAMP docs).
 // Organization → Season → Team. `organizationId` is the AUTHORIZATION ANCHOR:
-// every permission check compares org ids, so Program/Division can be inserted
-// later as optional grouping FKs without touching a single permission check.
+// every permission check compares org ids; the group tree below is display,
+// rollups and the reach of a GROUP_ADMIN grant, never the first check.
 // ============================================================================
 
 model Organization {
@@ -59,12 +56,11 @@ model Organization {
   teams           Team[]
   quests          Quest[]
   roleAssignments RoleAssignment[]
-  programs        Program[]
   groups          Group[]
 }
 
-// THE GROUP TREE (person-first plan Phase 2, owner 2026-10-09) — replaces the
-// fixed Program → Division layers with whatever shape an organization has:
+// THE GROUP TREE (person-first plan Phase 2, owner 2026-10-09) — whatever
+// shape an organization has:
 // Boys/Girls, age groups, Junior High/JV/Varsity, schools in a district —
 // up to 4 levels, teams at any level (Team.groupId; null = directly under the
 // org). Display and rollups, plus the reach of a GROUP_ADMIN grant
@@ -91,48 +87,12 @@ model Group {
   kind           GroupKind    @default(CUSTOM)
   sortOrder      Int          @default(0)
   depth          Int          @default(1) // 1 = top level; at most 4 (lib/groups)
-  // Where a backfilled group came from (scripts/backfill-groups.ts); dropped
-  // with Program/Division in Phase 6.
-  legacyProgramId  Int?     @unique
-  legacyDivisionId Int?     @unique
-  createdAt        DateTime @default(now())
+  createdAt      DateTime     @default(now())
 
   teams           Team[]
   roleAssignments RoleAssignment[]
 
   @@index([organizationId, parentId, sortOrder])
-}
-
-// Grouping layers (structure Chunk 1). DISPLAY/ROLLUP ONLY — never traversed
-// by a permission check; authorization stays anchored on organizationId.
-// Program and Division PERSIST across seasons ("12U in 2026" = the 12U
-// division's teams whose memberships are in the 2026 season). Layers with a
-// single entry are hidden by the UI (progressive disclosure — a display rule,
-// never a data rule; every org always has at least a default of each).
-model Program {
-  id             Int          @id @default(autoincrement())
-  organizationId Int
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  name           String
-  sortOrder      Int          @default(0)
-  createdAt      DateTime     @default(now())
-
-  divisions Division[]
-
-  @@index([organizationId, sortOrder])
-}
-
-model Division {
-  id        Int      @id @default(autoincrement())
-  programId Int
-  program   Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
-  name      String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-
-  teams Team[]
-
-  @@index([programId, sortOrder])
 }
 
 model Season {
@@ -162,18 +122,18 @@ model Profile {
   user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Identity ("card info" — the teammate-visible surface per the matrix)
-  name         String
-  photoUrl     String?
+  name           String
+  photoUrl       String?
   // Card portrait (card redesign): background-removed cutout derived from
   // photoUrl (the original is never overwritten) + the Stage-4 normalization
   // metadata {version, faceBox, eyeY, headTopY, shoulderY, scale, tx, ty}.
   photoCutoutUrl String?
   photoMeta      Json?
-  jerseyNumber Int? // preferred; Membership can override per team
-  position     String?
-  gradYear     Int?
-  bio          String?
-  heightInches Int?
+  jerseyNumber   Int? // preferred; Membership can override per team
+  position       String?
+  gradYear       Int?
+  bio            String?
+  heightInches   Int?
 
   // Personal (owner-visible; Dream lives on the athlete's own Home)
   dream           String?
@@ -194,7 +154,7 @@ model Profile {
   streakGraceUsed Boolean @default(false)
 
   // The setup gate: EVERYONE completes profile setup (players: Dream + basics;
-  // staff: name/photo). Replaces PlayerProfile.onboardedAt at cutover.
+  // staff: name/photo).
   setupCompletedAt DateTime?
   createdAt        DateTime  @default(now())
 
@@ -209,8 +169,8 @@ model Profile {
   pointsLedger          PointsLedger[]
   notificationReads     NotificationRead[]
   messageReactions      MessageReaction[]
-  authoredNotifications Notification[]    @relation("NotificationAuthorProfile")
-  authoredMessages      TeamMessage[]     @relation("MessageAuthorProfile")
+  authoredNotifications Notification[]     @relation("NotificationAuthorProfile")
+  authoredMessages      TeamMessage[]      @relation("MessageAuthorProfile")
 }
 
 // Sensitive contact data — a SEPARATE table so it has a separate, permission-
@@ -257,7 +217,7 @@ model Membership {
   team      Team    @relation(fields: [teamId], references: [id])
   seasonId  Int
   season    Season  @relation(fields: [seasonId], references: [id])
-  role      Role // PLAYER | HEAD_COACH | ASSISTANT_COACH | GENERAL_MANAGER (never ORG_ADMIN/COACH)
+  role      Role // PLAYER | HEAD_COACH | ASSISTANT_COACH | GENERAL_MANAGER (never an admin role)
 
   jerseyNumber Int? // per-team override of Profile.jerseyNumber
 
@@ -447,28 +407,19 @@ model AuditEvent {
   @@index([actorProfileId, createdAt])
 }
 
-// A team is the private space a coach runs for their players.
-//
-// `parentId` is a nullable self-relation: a team can later belong to a larger
-// grouping (conference / region) so leaderboards can be scoped to any level
-// (CLAUDE.md section 3.5). It is intentionally unused in the UI for now — the
-// app shows a single-team view — but the model must never hard-code "one team".
-// STAGE 0: gains nullable organizationId (backfilled in Stage 1; parentId is
-// retired at decommission, superseded by the org anchor).
+// A team is the private space a coach runs for their players. It belongs to
+// an organization (the authorization anchor) and may sit in a group of that
+// organization's tree, so leaderboards and rollups can be scoped to any level
+// (CLAUDE.md section 3.5) — the app shows the single-team view for now.
 model Team {
   id        Int      @id @default(autoincrement())
   name      String
   createdAt DateTime @default(now())
 
-  // Stage 0 (nullable → backfilled → NOT NULL at decommission).
+  // Every team has one (the column is still nullable in the database).
   organizationId Int?
   organization   Organization? @relation(fields: [organizationId], references: [id])
   memberships    Membership[]
-
-  // Grouping (Chunk 1): nullable during migration → backfilled → NOT NULL at a
-  // later cleanup. Restrict: a division holding teams can't be deleted.
-  divisionId Int?
-  division   Division? @relation(fields: [divisionId], references: [id], onDelete: Restrict)
 
   // The group tree (Phase 2): the group this team sits in; null = directly
   // under the organization. Restrict: a group holding teams can't be deleted.
@@ -498,64 +449,34 @@ model Team {
   primaryColor   String?
   secondaryColor String?
 
-  // Future grouping hook (conference/region). Unused in the current UI.
-  parentId Int?
-  parent   Team?  @relation("TeamHierarchy", fields: [parentId], references: [id])
-  children Team[] @relation("TeamHierarchy")
-
-  users         User[]
   notifications Notification[]
   teamMessages  TeamMessage[]
-
-  @@index([divisionId])
 }
 
-// A user is either a COACH (team admin) or a PLAYER. Both belong to one team.
-// No password field yet: Phase 1 uses the dev user switcher for local testing,
-// and real auth will be added with a vetted library in a later hardening phase
-// (CLAUDE.md section 6).
+// A LOGIN: email + password, nothing about what the person does. Who they are
+// lives on Profile (1:1); their teams and roles on Membership / RoleAssignment.
 model User {
   id        Int      @id @default(autoincrement())
-  // Nullable: players sign up with a username + password only (no email — data
-  // minimization for minors, CLAUDE.md §3.4). Coaches still have an email.
+  // The login. Nullable only for older accounts that joined with a username
+  // and haven't added an email yet (lib/login.ts asks them to, once).
   email     String?  @unique
   name      String
-  role      Role
   createdAt DateTime @default(now())
 
-  // Credential auth (Auth.js credentials provider). Coaches log in by email now;
-  // players by username in a later chunk — username added now to avoid a
-  // re-migration. `passwordHash` is a bcrypt hash; null until a credential is set.
-  passwordHash String?
-  username     String? @unique
+  // Credential auth (Auth.js credentials provider). `passwordHash` is a bcrypt
+  // hash; null until a credential is set.
+  passwordHash       String?
+  username           String? @unique
   // Set when someone else chose this password (an account made by a script);
   // the app asks for a new one before anything else.
   mustChangePassword Boolean @default(false)
 
-  // Optional profile photo — a size-capped `data:` URL. Coaches upload theirs in
-  // Team Settings; players use PlayerProfile.photoUrl (via their Brand page). Both
-  // render in the PlayerCard/avatar with an initials fallback.
-  photoUrl String?
-  // Card portrait cutout + normalization metadata (card redesign; see Profile).
-  photoCutoutUrl String?
-  photoMeta      Json?
-
-  // Legacy team anchor (dies at Stage 6). Nullable since the person-first
-  // plan (2026-10-09): an account can exist with no team — a Personal Player
-  // Development athlete, or the CEO. Team surfaces read the acting membership
-  // (lib/context actingTeamId), never this column directly.
-  teamId Int?
-  team   Team? @relation(fields: [teamId], references: [id])
-
-  // Players have a profile; coaches do not.
-  profile PlayerProfile?
-
-  // A player's daily check-ins, points history, and quest completions.
-  journalEntries JournalEntry[]
-  pointsLedger   PointsLedger[]
-  questLogs      QuestLog[]
+  // Rows this login wrote (each is also stamped with the person, profileId).
+  journalEntries   JournalEntry[]
+  pointsLedger     PointsLedger[]
+  questLogs        QuestLog[]
   mindsetTakeaways MindsetTakeaway[]
-  dailyReviews   DailyReview[]
+  dailyReviews     DailyReview[]
 
   // Notifications a coach has authored, and a player's read-confirmations.
   authoredNotifications Notification[]     @relation("NotificationAuthor")
@@ -568,8 +489,8 @@ model User {
   // Web Push subscriptions for the daily check-in reminder (player-owned).
   pushSubscriptions PushSubscription[]
 
-  // Stage 0: the permanent person this login belongs to (1:1 for now).
-  profileRecord Profile?
+  // The permanent person this login belongs to (1:1).
+  profile Profile?
 }
 
 // One browser/device Web Push subscription. Endpoint is globally unique; a user
@@ -587,61 +508,6 @@ model PushSubscription {
   @@index([userId])
 }
 
-// Player-only data: the required Dream plus structured "Your Brand" stats.
-// Kept on a separate 1:1 model so the User model stays clean for both roles
-// and we only collect what the loop needs (CLAUDE.md section 3.4).
-model PlayerProfile {
-  id     Int  @id @default(autoincrement())
-  userId Int  @unique
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // The Dream is required at onboarding and is the heart of the loop (section 2).
-  dream String
-
-  // Structured basketball stats (all optional; entered by the player).
-  heightInches    Int?
-  position        String?
-  jerseyNumber    Int?
-  pointsPerGame   Float?
-  reboundsPerGame Float?
-  assistsPerGame  Float?
-
-  favoritePlayer String?
-  favoriteTeam   String?
-
-  // A single highlight reel — a PASTED LINK only (no upload/hosting, section 5).
-  highlightUrl String?
-
-  // Player photo: an uploaded image stored as a size-capped `data:` URL (same
-  // in-field, no-hosting pattern as Team.logoUrl). Owner-only upload; null =
-  // fall back to initials in the PlayerCard.
-  photoUrl String?
-  // Card portrait cutout + normalization metadata (card redesign; see Profile).
-  photoCutoutUrl String?
-  photoMeta      Json?
-
-  // Convenience cache of the player's total points. The PointsLedger is the
-  // source of truth; this is kept in sync in the same transaction as each
-  // ledger write so a future leaderboard can read a single number quickly.
-  points Int @default(0)
-
-  // Check-in streak (lib/streaks.ts, advanced inside submitCheckIn's txn).
-  // One missed day is absorbed by a grace "shield" (streakGraceUsed tracks
-  // whether this streak already spent it); a second gap resets. Habit design:
-  // punishing a single miss teaches quitting, not consistency.
-  currentStreak   Int     @default(0)
-  bestStreak      Int     @default(0)
-  lastCheckInDay  String?
-  streakGraceUsed Boolean @default(false)
-
-  // Set when the player completes first-time onboarding (CLAUDE.md section 2).
-  // Null = not yet onboarded. In the seed, a not-yet-onboarded player has no
-  // PlayerProfile row at all; this timestamp marks completion explicitly.
-  onboardedAt DateTime?
-
-  createdAt DateTime @default(now())
-}
-
 // One row per daily check-in: the player's typed reflection for a calendar day.
 // One per player per day (see @@unique). Typed text only — no photo upload and
 // no AI grading (CLAUDE.md section 3.3).
@@ -650,7 +516,7 @@ model JournalEntry {
   userId     Int
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reflection String
-  day        String   // calendar day "YYYY-MM-DD" (server-local time)
+  day        String // calendar day "YYYY-MM-DD" (server-local time)
   createdAt  DateTime @default(now())
 
   // Stage 0: person dimension (backfilled; becomes the key at decommission).
@@ -707,7 +573,7 @@ model MindsetTakeaway {
   userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   text      String
-  day       String   // "YYYY-MM-DD" (server-local time)
+  day       String // "YYYY-MM-DD" (server-local time)
   createdAt DateTime @default(now())
 
   // Stage 0: person dimension + the AT-TIME membership stamp — coach visibility
@@ -734,7 +600,7 @@ enum PointsSource {
 }
 
 // The points ledger is the source of truth for a player's points: one row per
-// earning event. A player's total = the sum of their rows. PlayerProfile.points
+// earning event. A player's total = the sum of their rows. Profile.careerPoints
 // is a convenience cache kept in sync in the same transaction.
 model PointsLedger {
   id        Int          @id @default(autoincrement())
@@ -769,13 +635,13 @@ model PointsLedger {
 // PLACEHOLDER content lives in the seed; Gary replaces it later. Kept clean so a
 // nullable teamId could be added later for team-specific quests (CLAUDE.md 3.5).
 model Quest {
-  id          Int        @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   title       String
   description String
   points      Int
-  active      Boolean    @default(true)
-  sortOrder   Int        @default(0)
-  createdAt   DateTime   @default(now())
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
 
   // A MEASURABLE quest (e.g. free throws out of 50). When set, the player
   // predicts their count before starting and logs the actual after — the
@@ -809,7 +675,7 @@ model QuestLog {
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   questId   Int
   quest     Quest       @relation(fields: [questId], references: [id], onDelete: Cascade)
-  day       String      // calendar day "YYYY-MM-DD" (app-timezone, lib/daykey)
+  day       String // calendar day "YYYY-MM-DD" (app-timezone, lib/daykey)
   status    QuestStatus @default(APPROVED)
   createdAt DateTime    @default(now())
 
@@ -892,13 +758,13 @@ model NotificationRead {
 // `type` is REGULAR for everyone's normal messages; the colored special types
 // (Discussion/Challenge/Spotlight) are coach-only, enforced in the post action.
 model TeamMessage {
-  id        Int         @id @default(autoincrement())
+  id        Int           @id @default(autoincrement())
   teamId    Int
-  team      Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team      Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
   authorId  Int
-  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   body      String
-  type      MessageType @default(REGULAR)
+  type      MessageType   @default(REGULAR)
   // References a curated GIF id from lib/gifs.ts (NOT a DB relation — the registry
   // lives in code). Validated against the registry server-side on every post, so a
   // message can never point at an arbitrary/external image. Null = no GIF.
@@ -909,7 +775,7 @@ model TeamMessage {
   replyToId Int?
   replyTo   TeamMessage?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   TeamMessage[] @relation("MessageReplies")
-  createdAt DateTime    @default(now())
+  createdAt DateTime      @default(now())
   deletedAt DateTime?
 
   // Stage 0: author person + role snapshot (same reasoning as Notification).
@@ -926,8 +792,8 @@ model TeamMessage {
 enum MessageType {
   REGULAR
   DISCUSSION // blue  — "Discussion of the Day" (coach only)
-  CHALLENGE  // green — "Challenge of the Week" (coach only)
-  SPOTLIGHT  // red   — "Coach's Spotlight" (coach only)
+  CHALLENGE // green — "Challenge of the Week" (coach only)
+  SPOTLIGHT // red   — "Coach's Spotlight" (coach only)
 }
 
 enum ReactionType {

@@ -35,19 +35,14 @@ dbDescribe("Stage 4b brand/photo access", () => {
     const teamA = all[0];
     const teamB = all.find((t) => t.organizationId !== teamA.organizationId)!;
     expect(teamB).toBeDefined();
-    const coachA = await prisma.user.findFirstOrThrow({
-      where: { teamId: teamA.id, role: "COACH" },
+    // People by their ACTIVE membership on a team (the roster truth).
+    const on = (teamId: number, role: "HEAD_COACH" | "PLAYER") => ({
+      profile: { memberships: { some: { teamId, role, endedAt: null } } },
     });
-    const coachB = await prisma.user.findFirstOrThrow({
-      where: { teamId: teamB.id, role: "COACH" },
-    });
-    const playersA = await prisma.user.findMany({
-      where: { teamId: teamA.id, role: "PLAYER", profile: { isNot: null } },
-      take: 2,
-    });
-    const playerB = await prisma.user.findFirstOrThrow({
-      where: { teamId: teamB.id, role: "PLAYER" },
-    });
+    const coachA = await prisma.user.findFirstOrThrow({ where: on(teamA.id, "HEAD_COACH"), orderBy: { id: "asc" } });
+    const coachB = await prisma.user.findFirstOrThrow({ where: on(teamB.id, "HEAD_COACH"), orderBy: { id: "asc" } });
+    const playersA = await prisma.user.findMany({ where: on(teamA.id, "PLAYER"), orderBy: { id: "asc" }, take: 2 });
+    const playerB = await prisma.user.findFirstOrThrow({ where: on(teamB.id, "PLAYER"), orderBy: { id: "asc" } });
     expect(playersA.length).toBe(2);
     return { teamA, teamB, coachA, coachB, playerA1: playersA[0], playerA2: playersA[1], playerB };
   }
@@ -90,9 +85,7 @@ dbDescribe("Stage 4b brand/photo access", () => {
   it("an ORG_ADMIN with no membership is staff org-wide, and nothing cross-org", async () => {
     const { prisma } = await import("../lib/prisma");
     const w = await world();
-    const user = await prisma.user.create({
-      data: { name: "__ba_orgadmin__", role: "COACH", teamId: w.teamA.id },
-    });
+    const user = await prisma.user.create({ data: { name: "__ba_orgadmin__" } });
     const profile = await prisma.profile.create({
       data: { userId: user.id, name: user.name },
     });
@@ -109,17 +102,44 @@ dbDescribe("Stage 4b brand/photo access", () => {
     }
   });
 
-  it("legacy fallback: a viewer with no Profile keeps exactly the old same-team scope", async () => {
+  it("a login with no Profile has no context at all — nothing to fall back on", async () => {
+    const { prisma } = await import("../lib/prisma");
+    const { resolveContextForUser } = await import("../lib/context");
+    const bare = await prisma.user.create({ data: { name: "__ba_bare__" } });
+    try {
+      expect(await resolveContextForUser(bare.id)).toBeNull();
+    } finally {
+      await prisma.user.delete({ where: { id: bare.id } });
+    }
+  });
+
+  it("a removed player is no longer visible to their old team; their own page still is", async () => {
     const { prisma } = await import("../lib/prisma");
     const w = await world();
-    const legacyOnly = await prisma.user.create({
-      data: { name: "__ba_legacy__", role: "PLAYER", teamId: w.teamA.id },
-    });
-    try {
-      expect(await accessOf(legacyOnly.id, w.playerA1.id)).toBe("teammate");
-      expect(await accessOf(legacyOnly.id, w.playerB.id)).toBe(null); // never wider
-    } finally {
-      await prisma.user.delete({ where: { id: legacyOnly.id } });
-    }
+    const devon = await prisma.user.findUniqueOrThrow({ where: { email: "devon.price@example.com" } });
+    expect(await accessOf(w.coachA.id, devon.id)).toBe(null);
+    expect(await accessOf(w.playerA1.id, devon.id)).toBe(null);
+    expect(await accessOf(devon.id, devon.id)).toBe("self");
+  });
+
+  it("an org's admin with no roster spot: card info to that org's people only", async () => {
+    const { prisma } = await import("../lib/prisma");
+    const w = await world();
+    const alex = await prisma.user.findUniqueOrThrow({ where: { email: "alex@elite24.demo" } });
+    expect(await accessOf(w.playerA1.id, alex.id)).toBe("teammate");
+    expect(await accessOf(w.coachA.id, alex.id)).toBe("teammate");
+    expect(await accessOf(w.playerB.id, alex.id)).toBe(null);
+    expect(await accessOf(w.coachB.id, alex.id)).toBe(null);
+  });
+
+  it("the page shows the team the access came through (a two-team athlete)", async () => {
+    const { prisma } = await import("../lib/prisma");
+    const { resolveContextForUser } = await import("../lib/context");
+    const { resolveBrandAccess } = await import("../lib/brand-access");
+    const casey = await prisma.user.findUniqueOrThrow({ where: { email: "casey.rivers@example.com" } });
+    const jamie = await prisma.user.findUniqueOrThrow({ where: { email: "jamie@elite24.demo" } }); // JV head coach
+    const viaJv = await resolveBrandAccess((await resolveContextForUser(jamie.id))!, casey.id);
+    expect(viaJv?.access).toBe("staff");
+    expect(viaJv?.team?.joinCode).toBe("MUSTJV");
   });
 });

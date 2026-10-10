@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from "vitest";
 //   - an org with MULTIPLE teams (org-wide staff access is real)
 //   - an ASSISTANT_COACH and a GENERAL_MANAGER
 //   - an ORG_ADMIN with no membership
-//   - a TWO-TEAM athlete (defaulting to their legacy-anchor team)
+//   - a TWO-TEAM athlete (defaulting to the team they joined last)
 //   - an ENDED membership
 //   - DailyReview rows
 // Runs against whatever the local DB holds — seed v2 must satisfy all of it.
@@ -79,7 +79,7 @@ dbDescribe("Stage 5 seed integrity", () => {
     expect(tops.map((t) => t.name)).toEqual(["Boys", "Girls", "Lincoln High", "Lincoln Middle"]);
   });
 
-  it("the two-team athlete's cookie-less default acting team matches their legacy anchor", async () => {
+  it("the two-team athlete's cookie-less default is the team they joined last; the cookie flips it", async () => {
     const { prisma } = await import("../lib/prisma");
     const { resolveContextForUser } = await import("../lib/context");
     const athlete = (
@@ -90,24 +90,16 @@ dbDescribe("Stage 5 seed integrity", () => {
     ).find((p) => p.memberships.length >= 2)!;
     expect(athlete).toBeDefined();
     const ctx = await resolveContextForUser(athlete.userId!);
-    expect(ctx!.membership?.teamId).toBe(ctx!.user.teamId);
+    const latest = [...athlete.memberships].sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime() || b.id - a.id)[0];
+    expect(ctx!.membership?.id).toBe(latest.id);
     // And the cookie flips it (the switcher's mechanism).
-    const other = athlete.memberships.find((m) => m.teamId !== ctx!.user.teamId)!;
+    const other = athlete.memberships.find((m) => m.id !== latest.id)!;
     const flipped = await resolveContextForUser(athlete.userId!, String(other.id));
     expect(flipped!.membership?.id).toBe(other.id);
   });
 
-  it("ALL THREE point caches equal their ledger sums for every row in the DB", async () => {
+  it("both point caches equal their ledger sums for every row in the DB", async () => {
     const { prisma } = await import("../lib/prisma");
-
-    const byUser = new Map(
-      (await prisma.pointsLedger.groupBy({ by: ["userId"], _sum: { amount: true } })).map(
-        (r) => [r.userId, r._sum.amount ?? 0],
-      ),
-    );
-    for (const pp of await prisma.playerProfile.findMany({ select: { userId: true, points: true } })) {
-      expect(pp.points, `legacy cache user ${pp.userId}`).toBe(byUser.get(pp.userId) ?? 0);
-    }
 
     const byProfile = new Map(
       (await prisma.pointsLedger.groupBy({ by: ["profileId"], _sum: { amount: true } })).map(

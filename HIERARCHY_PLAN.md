@@ -5,7 +5,19 @@
 > multi-tenant model. Supersedes the exploratory findings report (available in git history
 > of the planning session if needed).
 
-**STATUS (2026-08-10)**
+**STATUS (2026-10-10): STAGE 6 DECOMMISSION DONE IN CODE** — person-first Phase 6
+removed the compat shim and every legacy read/write: `User.role`, `User.teamId`, the
+User photo columns, `PlayerProfile`, `Team.parentId`, Program / Division, and the
+retired `COACH` role value are gone from the schema and the app (`User.profileRecord`
+is now `User.profile`). See MIGRATION-HANDOFF.md for the production state of the two
+migrations (`phase6_relax`, `phase6_drop_legacy`).
+Deliberately NOT done: the legacy `userId` columns on the content tables (journal,
+reviews, takeaways, quest logs, ledger, reads, reactions) and `authorId` on posts stay —
+every row carries both the login and the person; NOT NULL on the person keys and a
+person-deletion script are also still open. The shared quests (organizationId null) are
+no longer "orphaned": they are the Elite24 set for athletes with no team.
+
+**STATUS (2026-08-10) — historical**
 | | |
 |---|---|
 | Branch | `hierarchy-rebuild` (branched from `main` @ `eea25d0`) |

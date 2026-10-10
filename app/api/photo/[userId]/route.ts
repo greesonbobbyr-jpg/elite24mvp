@@ -4,12 +4,12 @@ import { resolveBrandAccess } from "@/lib/brand-access";
 
 export const runtime = "nodejs";
 
-// Serves a user's profile photo as real image bytes instead of inlining the
+// Serves a person's profile photo as real image bytes instead of inlining the
 // stored data: URL into every list page's HTML (which made the leaderboard >1MB
-// for one roster). Auth-gated + ORG-BOUNDED (Stage 4b): access mirrors the
-// Brand page — self, org staff (view_player_detail), or a teammate on the
-// target's team (view_roster). Another org's members always get 404. Player
-// photos live on PlayerProfile.photoUrl, coach photos on User.photoUrl.
+// for one roster). Auth-gated + ORG-BOUNDED: access mirrors the Brand page —
+// self, org staff (view_player_detail), a teammate on one of the target's
+// teams (view_roster), or anyone in an org the target administers. Another
+// org's members always get 404. Photos live on the person's Profile.
 // Non-data values (http(s)/path) redirect.
 export async function GET(
   request: NextRequest,
@@ -31,12 +31,7 @@ export async function GET(
   // ?cut=1 serves the card-portrait CUTOUT (photo pipeline A) instead of the
   // original — same auth/org-bounding, different stored column.
   const wantCutout = request.nextUrl.searchParams.get("cut") === "1";
-  const stored =
-    target.role === "PLAYER"
-      ? ((wantCutout ? target.profile?.photoCutoutUrl : target.profile?.photoUrl) ?? null)
-      : wantCutout
-        ? target.photoCutoutUrl
-        : target.photoUrl;
+  const stored = (wantCutout ? target.profile?.photoCutoutUrl : target.profile?.photoUrl) ?? null;
   if (!stored) return new NextResponse("No photo", { status: 404 });
 
   // Pass-through for non-data values (pasted URL / public path).

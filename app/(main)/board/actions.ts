@@ -5,8 +5,7 @@ import { ReactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { actingScope, actingTeamId, getCurrentContext, snapshotAuthorRole } from "@/lib/context";
 import { can } from "@/lib/authz";
-import { isOnboarded } from "@/lib/onboarding";
-import { isStaffSide, personaOf } from "@/lib/persona";
+import { isSetUp } from "@/lib/onboarding";
 import { isValidGifId } from "@/lib/gifs";
 import { rateLimit } from "@/lib/ratelimit";
 
@@ -23,7 +22,7 @@ export async function postMessage(
 ): Promise<BoardState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || (!isStaffSide(personaOf(ctx)) && !isOnboarded(user))) {
+  if (!ctx || !user || !isSetUp(ctx)) {
     return { error: "Only a team member can post." };
   }
   // 4f: posting requires a team — a removed player (or one whose season
@@ -48,13 +47,11 @@ export async function postMessage(
     return { error: "Write a message or pick a GIF." };
   }
 
-  // Matrix (4c): special colored types are post_special_message — HEAD_COACH
-  // / ORG_ADMIN only (assistants and GMs post REGULAR like everyone else).
-  // Silent downgrade, as before. Legacy role check until Stage 6.
+  // Matrix: special colored types are post_special_message — HEAD_COACH /
+  // ORG_ADMIN only (assistants and GMs post REGULAR like everyone else).
+  // Silent downgrade.
   const scope = actingScope(ctx);
-  const maySpecial = scope
-    ? can(ctx, "post_special_message", scope)
-    : isStaffSide(personaOf(ctx));
+  const maySpecial = scope != null && can(ctx, "post_special_message", scope);
   const rawType = String(formData.get("type") ?? "REGULAR");
   const type =
     maySpecial && SPECIAL_TYPES.has(rawType)
@@ -83,9 +80,9 @@ export async function postMessage(
       type,
       gifId,
       replyToId,
-      // Dual-write: person + role snapshot.
-      authorProfileId: ctx.profile?.id ?? null,
-      authorRole: ctx.profile ? snapshotAuthorRole(ctx) : null,
+      // The person + the role snapshot.
+      authorProfileId: ctx.profile.id,
+      authorRole: snapshotAuthorRole(ctx),
     },
   });
   revalidatePath("/board");
@@ -110,12 +107,10 @@ export async function deleteMessage(formData: FormData): Promise<void> {
   const teamId = actingTeamId(ctx);
   if (teamId == null || message.teamId !== teamId) return; // never another team's board
 
-  // Matrix (4c): your own message, or moderate_board (HEAD_COACH/ORG_ADMIN —
-  // assistants and GMs may NOT moderate). Legacy role check until Stage 6.
+  // Matrix: your own message, or moderate_board (HEAD_COACH/ORG_ADMIN —
+  // assistants and GMs may NOT moderate).
   const scope = actingScope(ctx);
-  const mayModerate = scope
-    ? can(ctx, "moderate_board", scope)
-    : isStaffSide(personaOf(ctx));
+  const mayModerate = scope != null && can(ctx, "moderate_board", scope);
   const allowed = mayModerate || message.authorId === user.id;
   if (!allowed) return;
 
@@ -142,7 +137,7 @@ const REACTION_TYPES = new Set([
 export async function toggleReaction(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || (!isStaffSide(personaOf(ctx)) && !isOnboarded(user))) return;
+  if (!ctx || !user || !isSetUp(ctx)) return;
   // 4f: reacting requires a team (see postMessage).
   const teamId = actingTeamId(ctx);
   if (teamId == null) return;
@@ -172,7 +167,7 @@ export async function toggleReaction(formData: FormData): Promise<void> {
         messageId,
         userId: user.id,
         reactionType: reactionType as ReactionType,
-        profileId: ctx.profile?.id ?? null, // dual-write stamp
+        profileId: ctx.profile.id,
       },
     });
   } else if (existing.reactionType !== reactionType) {

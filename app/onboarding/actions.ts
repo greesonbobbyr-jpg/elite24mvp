@@ -26,8 +26,8 @@ export async function completeOnboarding(
 ): Promise<OnboardingState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  // Only an athlete who hasn't completed setup may run this (4f gate; staff
-  // are always set up).
+  // Only an athlete who hasn't completed setup may run this (staff are
+  // always set up).
   if (!ctx || !user || isSetUp(ctx)) {
     redirect("/");
   }
@@ -39,32 +39,19 @@ export async function completeOnboarding(
   const height = parseHeight(formData.get("heightFt"), formData.get("heightIn"));
   if (!height.ok) return { error: height.error };
 
-  const fields = {
-    dream,
-    position: optionalString(formData.get("position")),
-    jerseyNumber: optionalInt(formData.get("jerseyNumber")),
-    heightInches: height.inches,
-    favoritePlayer: optionalString(formData.get("favoritePlayer")),
-    favoriteTeam: optionalString(formData.get("favoriteTeam")),
-    onboardedAt: new Date(),
-  };
-
-  // Upsert keeps this safe even if a profile somehow already exists.
-  await prisma.playerProfile.upsert({
-    where: { userId: user.id },
-    create: { userId: user.id, ...fields },
-    update: fields,
+  // Writing the Dream completes setup.
+  await prisma.profile.update({
+    where: { id: ctx.profile.id },
+    data: {
+      dream,
+      position: optionalString(formData.get("position")),
+      jerseyNumber: optionalInt(formData.get("jerseyNumber")),
+      heightInches: height.inches,
+      favoritePlayer: optionalString(formData.get("favoritePlayer")),
+      favoriteTeam: optionalString(formData.get("favoriteTeam")),
+      setupCompletedAt: new Date(),
+    },
   });
-
-  // Dual-write: mirror onto the permanent Profile (onboardedAt maps to the
-  // new setup gate). Legacy-only logins have no Profile — converge at 4a.
-  if (ctx.profile) {
-    const { onboardedAt, ...identity } = fields;
-    await prisma.profile.update({
-      where: { id: ctx.profile.id },
-      data: { ...identity, setupCompletedAt: onboardedAt },
-    });
-  }
 
   redirect("/");
 }

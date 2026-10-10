@@ -2,14 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/prisma";
 import { ACTING_COOKIE, getCurrentContext } from "@/lib/context";
 
-// THE CONTEXT SWITCHER (Stage 5): a person with 2+ active memberships picks
-// which team they're acting for. The cookie only ever selects among the
-// caller's OWN active memberships (validated here AND re-validated by the
-// resolver on every request — it is a hint, never an authority). The legacy
-// teamId anchor follows the acting team (dies at Stage 6).
+// THE CONTEXT SWITCHER: a person with 2+ active memberships picks which team
+// they're acting for. The cookie only ever selects among the caller's OWN
+// active memberships (validated here AND re-validated by the resolver on
+// every request — it is a hint, never an authority).
 export async function setActingTeam(formData: FormData): Promise<void> {
   const ctx = await getCurrentContext();
   if (!ctx) return;
@@ -24,10 +22,6 @@ export async function setActingTeam(formData: FormData): Promise<void> {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
-  });
-  await prisma.user.update({
-    where: { id: ctx.user.id },
-    data: { teamId: membership.teamId },
   });
   revalidatePath("/", "layout");
 }

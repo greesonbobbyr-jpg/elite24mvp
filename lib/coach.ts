@@ -8,9 +8,9 @@ import {
 } from "./data/reflections";
 import { getTeamRanking } from "./leaderboard";
 
-// Staff-facing team data (Stage 4e: rosters come from ACTIVE memberships in
-// the current season — an ended membership is off every list here; the
-// athlete's data is untouched). STRICTLY team-scoped (callers pass their own
+// Staff-facing team data: rosters come from ACTIVE memberships in the current
+// season — an ended membership is off every list here; the athlete's data is
+// untouched. STRICTLY team-scoped (callers pass their own
 // acting teamId) and staff-only (enforced at the page/action via the matrix).
 // CHILD-SAFETY / PRIVACY: these queries NEVER select a journal `reflection` or
 // any check-in text — staff see check-in STATUS + time, points, and quest
@@ -46,8 +46,7 @@ function lastName(name: string): string {
   return (parts[parts.length - 1] ?? name).toLowerCase();
 }
 
-// The team's ACTIVE PLAYER roster: [userId, display fields] from memberships,
-// with a legacy user-roster fallback for pre-backfill teams (dies at Stage 6).
+// The team's ACTIVE PLAYER roster: [userId, display fields] from memberships.
 async function activeRoster(teamId: number) {
   const memberships = await prisma.membership.findMany({
     where: { teamId, role: "PLAYER", endedAt: null, season: { isCurrent: true } },
@@ -67,55 +66,20 @@ async function activeRoster(teamId: number) {
       },
     },
   });
-  if (memberships.length > 0) {
-    return memberships
-      .filter((m) => m.profile.userId != null)
-      .map((m) => ({
-        id: m.profile.userId!,
-        name: m.profile.name,
-        position: m.profile.position,
-        jerseyNumber: m.jerseyNumber ?? m.profile.jerseyNumber,
-        photoUrl: m.profile.photoUrl,
-        photoCutoutUrl: m.profile.photoCutoutUrl,
-        photoMeta: m.profile.photoMeta,
-        careerPoints: m.profile.careerPoints,
-        points: m.points,
-        currentStreak: m.profile.currentStreak,
-      }));
-  }
-  // A migrated team with an empty player roster (e.g. post-rollover) is
-  // genuinely empty — the legacy fallback is only for pre-backfill teams.
-  if ((await prisma.membership.count({ where: { teamId } })) > 0) return [];
-  const players = await prisma.user.findMany({
-    where: { teamId, role: "PLAYER" },
-    select: {
-      id: true,
-      name: true,
-      profile: {
-        select: {
-          points: true,
-          position: true,
-          jerseyNumber: true,
-          photoUrl: true,
-          photoCutoutUrl: true,
-          photoMeta: true,
-          currentStreak: true,
-        },
-      },
-    },
-  });
-  return players.map((p) => ({
-    id: p.id,
-    name: p.name,
-    position: p.profile?.position ?? null,
-    jerseyNumber: p.profile?.jerseyNumber ?? null,
-    photoUrl: p.profile?.photoUrl ?? null,
-    photoCutoutUrl: p.profile?.photoCutoutUrl ?? null,
-    photoMeta: p.profile?.photoMeta ?? null,
-    careerPoints: p.profile?.points ?? 0,
-    points: p.profile?.points ?? 0,
-    currentStreak: p.profile?.currentStreak ?? 0,
-  }));
+  return memberships
+    .filter((m) => m.profile.userId != null)
+    .map((m) => ({
+      id: m.profile.userId!,
+      name: m.profile.name,
+      position: m.profile.position,
+      jerseyNumber: m.jerseyNumber ?? m.profile.jerseyNumber,
+      photoUrl: m.profile.photoUrl,
+      photoCutoutUrl: m.profile.photoCutoutUrl,
+      photoMeta: m.profile.photoMeta,
+      careerPoints: m.profile.careerPoints,
+      points: m.points,
+      currentStreak: m.profile.currentStreak,
+    }));
 }
 
 // The team at a glance: the active roster + today's check-in status, with the
@@ -187,27 +151,21 @@ export async function getPlayerCoachView(
   playerId: number,
   includeTakeaway = true,
 ): Promise<PlayerCoachView | null> {
+  // Roster truth = an active PLAYER membership on the caller's team.
   const target = await prisma.user.findUnique({
     where: { id: playerId },
     include: {
-      profile: true,
-      profileRecord: {
-        select: {
-          careerPoints: true,
+      profile: {
+        include: {
           memberships: {
-            where: { teamId: coachTeamId, endedAt: null },
+            where: { teamId: coachTeamId, role: "PLAYER", endedAt: null },
             select: { id: true },
           },
         },
       },
     },
   });
-  if (!target || target.role !== "PLAYER" || !target.profile) return null;
-  // Roster truth = active membership (legacy teamId only pre-backfill).
-  const onRoster = target.profileRecord
-    ? target.profileRecord.memberships.length > 0
-    : target.teamId === coachTeamId;
-  if (!onRoster) return null;
+  if (!target?.profile || target.profile.memberships.length === 0) return null;
 
   // Trailing 7 days (today + previous 6), local midnight.
   const weekStart = new Date();
@@ -220,8 +178,8 @@ export async function getPlayerCoachView(
       // status/time only — no reflection (content-free by module contract)
       checkInTimeForPlayer(playerId, todayKey()),
       // Coach-visible BY DESIGN (unlike the private reflection) — but AT-TIME
-      // scoped (4e): the stamp taken at write time decides which team's staff
-      // may see it. An unstamped (pre-rebuild) row keeps legacy visibility.
+      // scoped: the stamp taken at write time decides which team's staff may
+      // see it (a row written with no team has no stamp).
       prisma.mindsetTakeaway.findUnique({
         where: { userId_day: { userId: playerId, day: todayKey() } },
         select: { text: true, membership: { select: { teamId: true } } },
@@ -242,7 +200,7 @@ export async function getPlayerCoachView(
   const takeawayVisible =
     includeTakeaway &&
     todayTakeaway != null &&
-    (todayTakeaway.membership == null || // unstamped → legacy visibility
+    (todayTakeaway.membership == null || // written with no team: no stamp
       todayTakeaway.membership.teamId === coachTeamId); // at-time stamp
 
   const p = target.profile;
@@ -258,8 +216,8 @@ export async function getPlayerCoachView(
     pointsPerGame: p.pointsPerGame,
     reboundsPerGame: p.reboundsPerGame,
     assistsPerGame: p.assistsPerGame,
-    // Card points/tier = CAREER (4d), equal to the legacy cache by invariant.
-    points: target.profileRecord?.careerPoints ?? p.points,
+    // Card points/tier = CAREER.
+    points: p.careerPoints,
     rank: ranking.findIndex((r) => r.id === playerId) >= 0
       ? ranking.find((r) => r.id === playerId)!.rank
       : 0,

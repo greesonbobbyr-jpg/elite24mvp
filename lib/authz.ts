@@ -1,8 +1,7 @@
 import type { Role } from "@prisma/client";
 
 // The ONE authorization helper. Nothing else in the app hand-rolls a role
-// check (legacy `user.role === "COACH"` checks are retired surface-by-surface
-// in Stage 4). The matrix below encodes HIERARCHY_PLAN.md §2.10 EXACTLY — if a
+// check. The matrix below encodes HIERARCHY_PLAN.md §2.10 EXACTLY — if a
 // product decision changes, change the plan doc first, then this map, then the
 // tests that mirror it.
 //
@@ -124,9 +123,7 @@ export const MATRIX: Partial<Record<Role, ReadonlySet<Action>>> = {
     // (view_player_detail: status metadata, contact) is staff-only.
     "view_roster",
   ]),
-  // Legacy COACH is deliberately absent: the backfill maps every COACH login to
-  // a HEAD_COACH membership + ORG_ADMIN grant, and no new membership may carry
-  // it. An unknown role resolves to "no permissions".
+  // An unknown role resolves to "no permissions".
 };
 
 export function can(ctx: AuthzCtx, action: Action, target: Target): boolean {

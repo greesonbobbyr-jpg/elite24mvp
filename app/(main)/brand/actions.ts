@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentContext } from "@/lib/context";
-import { isOnboarded } from "@/lib/onboarding";
+import { isSetUp } from "@/lib/onboarding";
 import { isPlayerSide, personaOf } from "@/lib/persona";
 import {
   validateImageDataUrl,
@@ -41,7 +41,7 @@ export async function updateBrand(
 ): Promise<BrandState> {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
-  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isOnboarded(user)) {
+  if (!ctx || !user || !isPlayerSide(personaOf(ctx)) || !isSetUp(ctx)) {
     return { error: "Only the player can edit their own profile." };
   }
 
@@ -104,17 +104,7 @@ export async function updateBrand(
     photoMeta:
       storedCutout && photoMeta ? (photoMeta as Prisma.InputJsonValue) : Prisma.DbNull,
   };
-  await prisma.playerProfile.update({
-    where: { userId: user.id },
-    data: brandFields,
-  });
-  // Dual-write: same fields mirror onto the permanent Profile.
-  if (ctx.profile) {
-    await prisma.profile.update({
-      where: { id: ctx.profile.id },
-      data: brandFields,
-    });
-  }
+  await prisma.profile.update({ where: { id: ctx.profile.id }, data: brandFields });
 
   // The photo shows on the card across surfaces — refresh them too.
   revalidatePath(`/brand/${user.id}`);
