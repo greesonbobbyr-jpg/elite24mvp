@@ -138,7 +138,15 @@ announcements.** Plan: `~/.claude/plans/c-users-grees-claude-uploads-a1d7a349-e-
 The owner approved the Phase 0 mockup (`/preview/*`, dev only). The order was changed so that
 Gary Harper (the CEO) can log in sooner: Phase 1, then the CEO step, then Phases 2 → 3 → 5.
 
-### Ready, awaiting "Deploy": Phase 1 + the CEO step (branch `person-first-p1`)
+### Deployed 2026-10-09: Phase 1 + the CEO step (`person-first-p1`, e4d3668)
+
+Deployed on the owner's "Deploy go ahead", following the runbook below:
+- Both migrations applied.
+- Elite24 quest set: 6 of 6 active; `--verify` OK.
+- `main` fast-forwarded to e4d3668; the Vercel build succeeded.
+- Gary Harper's CEO account created: one CEO grant; must pick his own password at first login.
+
+**Next:** Phase 2 (org structure + Organization View), then Phase 3 (new sign-up, invites). Phase 3 is where Gary can start creating organizations.
 
 - **Phase 1:**
   - `User.teamId` is nullable; screens read persona (`lib/persona.ts`), not `User.role`.
