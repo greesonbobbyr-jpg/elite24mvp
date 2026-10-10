@@ -146,13 +146,18 @@ Deployed on the owner's "Deploy go ahead", following the runbook below:
 - `main` fast-forwarded to e4d3668; the Vercel build succeeded.
 - Gary Harper's CEO account created: one CEO grant; must pick his own password at first login.
 
-### Ready, awaiting "Deploy": the new playbook (branch `playbook-update`, 0427f5d)
+### Deployed 2026-10-09: the new playbook (`playbook-update`, 0427f5d)
 
 The owner's updated playbook ("MVP UPDATE PLAYBOOK 8.26", 279 pages, via OneDrive) replaces `content/e24playbookV2.pdf` as `content/e24playbook.pdf`. It uses the same gated route and downloads as `Elite24MVP-Playbook.pdf`. The Vercel preview build of the branch succeeded.
 
-To deploy: fast-forward `main` to `origin/playbook-update` and push. No migration.
+Deployed on the owner's explicit "Deploy now". `main` was fast-forwarded and the production deployment succeeded. No migration.
 
-### Ready, awaiting "Deploy": Phase 2 — group tree + Organization View (branch `person-first-p2`)
+### Deployed 2026-10-09: Phase 2 — group tree + Organization View (`person-first-p2`, 2b74aec)
+
+Deployed on the owner's "Deploy when checks pass", after every check passed (tests, build, layout / contrast / outlines for every user, open-panel fit at 320px).
+- `group_tree` migration applied.
+- Backfill dry run: both live orgs are Main/Main, so 0 groups and 0 teams. `--execute` and `--verify` both passed.
+- `main` was fast-forwarded to 2b74aec (Phase 2 merged with the playbook); the production deployment succeeded.
 
 See the Phase 2 commit message for the full list.
 
