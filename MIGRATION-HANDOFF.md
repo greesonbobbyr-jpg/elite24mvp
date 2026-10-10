@@ -146,7 +146,25 @@ Deployed on the owner's "Deploy go ahead", following the runbook below:
 - `main` fast-forwarded to e4d3668; the Vercel build succeeded.
 - Gary Harper's CEO account created: one CEO grant; must pick his own password at first login.
 
-**Next:** Phase 2 (org structure + Organization View), then Phase 3 (new sign-up, invites). Phase 3 is where Gary can start creating organizations.
+### Ready, awaiting "Deploy": the new playbook (branch `playbook-update`, 0427f5d)
+
+The owner's updated playbook ("MVP UPDATE PLAYBOOK 8.26", 279 pages, via OneDrive) replaces `content/e24playbookV2.pdf` as `content/e24playbook.pdf`. It uses the same gated route and downloads as `Elite24MVP-Playbook.pdf`. The Vercel preview build of the branch succeeded.
+
+To deploy: fast-forward `main` to `origin/playbook-update` and push. No migration.
+
+### Ready, awaiting "Deploy": Phase 2 — group tree + Organization View (branch `person-first-p2`)
+
+See the Phase 2 commit message for the full list.
+
+Production runbook:
+1. `npx prisma migrate deploy` applies `group_tree` (additive: a new table, 2 nullable columns, a new Role value).
+2. Backfill the group tree:
+   - `npx tsx scripts/backfill-groups.ts` (dry run). Expected: the 2 live orgs are Main/Main, so 0 groups and 0 teams. Their teams stay directly under the org, and both orgs look exactly as before.
+   - Then `BACKFILL_CONFIRM=<host> ... --execute`.
+   - Then `--verify`.
+3. Merge or rebase onto `main` (it holds the playbook commit if that deployed first), fast-forward, push, and wait for Vercel.
+
+**Next:** Phase 3 (new sign-up, org codes, invites, promotion). Phase 3 is where Gary can start creating organizations.
 
 - **Phase 1:**
   - `User.teamId` is nullable; screens read persona (`lib/persona.ts`), not `User.role`.
