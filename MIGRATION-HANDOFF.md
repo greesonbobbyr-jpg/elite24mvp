@@ -198,7 +198,14 @@ Production runbook:
    - `/invite/x` shows "isn't valid".
    - `/welcome` redirects to login when logged out.
 
-### Built 2026-10-10, NOT deployed (waits on the owner's "Deploy"): Phase 5 — announcements (`person-first-p5`)
+### Deployed 2026-10-10: Phase 5 — announcements (`person-first-p5`, 629f6df)
+
+Deployed on the owner's "Once it is finished go ahead and merge to main and deploy. It is good to go."
+- `announcements` migration applied to production.
+- `main` fast-forwarded to 629f6df; Vercel's production deployment succeeded.
+- Live smoke test (logged out) passed: `/login` and `/signup` load; `/notifications`, `/ceo/announce` and `/api/media/x` redirect to login; `/api/cron/expire-media` answers 401 without the secret and `{"ok":true,"removed":0}` with it.
+- NOT checked on live: any logged-in page (no production logins are used for testing). The owner was asked to open Notifications.
+- **Pictures are OFF in production** until the owner does the two setup steps below, then redeploys. Text and video links work now.
 
 What it adds:
 - **Announcements.** The CEO sends to everyone, or to any org, group or team (CEO View → Announce). An organization sends to its own org, a group or a team (Organization View → Announce); a group admin only within their branch. Each goes to players, staff or both.
@@ -218,7 +225,7 @@ Checked locally on 2026-10-10:
 
 Not exercised locally: the Supabase storage driver itself (uploads, signed links, deletes go to Supabase only in production). The first real test is runbook step 5.
 
-Before deploying — the owner does these two things (pictures stay off until both are done; text + links work without them):
+To turn pictures on — the owner does these two things, then a redeploy (Vercel only reads new environment variables on a new deployment):
 1. Supabase → Storage → New bucket named `announcement-media`, **Public bucket OFF**.
 2. Vercel → the project → Settings → Environment Variables (Production): `SUPABASE_URL` (the Supabase Project URL) and `SUPABASE_SERVICE_ROLE_KEY` (the `service_role` secret key). The owner pastes the key into Vercel directly — it never goes in chat or the repo.
 
@@ -231,7 +238,7 @@ Production runbook:
 
 Deliberately unchanged: profile photos stay in the database. `lib/photoStore.ts` now needs `PHOTO_STORAGE=supabase-public` to move them to a public bucket, so adding the Supabase keys for announcements can never do that by accident.
 
-**Next:** deploy Phase 5 on the owner's word, then Phase 6 cleanup. Then the separate game logs + KPIs plan.
+**Next:** the owner's picture setup + a test announcement to staff (runbook step 5). Phase 6 cleanup after a soak. The separate game logs + KPIs plan (ask the owner).
 
 - **Phase 1:**
   - `User.teamId` is nullable; screens read persona (`lib/persona.ts`), not `User.role`.
