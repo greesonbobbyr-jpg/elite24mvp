@@ -21,7 +21,7 @@ const EXEMPT = [
   "app/components/StaffCard.tsx",
   "app/components/card/",
   "app/(main)/card-preview/",
-  "app/(main)/org/view/TreeNodes.tsx", // the org tree's mini cards: the card family's dark palette
+  "app/(main)/org/tree/TreeNodes.tsx", // the org tree's mini cards: the card family's dark palette
 ];
 
 const PALETTE = "red|orange|rose|pink|zinc|gray|neutral|slate|stone|amber|yellow|green|emerald|lime|teal|cyan|sky|blue|indigo|violet|purple|white|black";

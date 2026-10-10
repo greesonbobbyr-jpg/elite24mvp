@@ -61,9 +61,9 @@ export default async function MainLayout({
     user && persona === "athlete" && teamId != null
       ? await countUnreadForPlayer(user.id, teamId, joinedAt)
       : 0;
-  // "Organization" (structure page) is org-admin only — grant-gated, with
-  // the pre-backfill legacy fallback (dies at Stage 6).
-  const isOrgAdmin = ctx?.profile ? ctx.orgAdminOf.length > 0 : true;
+  // "Organization View" — org and group admins only (grant-gated), with the
+  // pre-backfill legacy fallback (dies at Stage 6).
+  const isOrgAdmin = ctx?.profile ? ctx.orgAdminOf.length + ctx.groupAdminOf.length > 0 : true;
   const { links, tabs } = chromeFor(persona, {
     userId: user?.id ?? 0,
     unread: unreadCount,

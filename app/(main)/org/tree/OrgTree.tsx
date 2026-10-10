@@ -24,7 +24,7 @@ import {
 } from "@/lib/orgtree";
 import { CoachNode, GroupNode, OwnerNode, PlayerNode, StaffChip } from "./TreeNodes";
 
-// THE ORG TREE (the owner's sketch): search → Org Owner → divisions → head
+// THE ORG TREE (the owner's sketch): search → Org Owner → groups → head
 // coaches → players, lines branching down, one open branch per level. The
 // shape, selection and search live in lib/orgtree; this draws them. The open
 // branch is kept in the URL (?at=…&team=…) and read back from it, so coming

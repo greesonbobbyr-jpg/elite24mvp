@@ -17,7 +17,10 @@ export default async function CeoOrgPage({ params }: { params: Promise<{ orgId: 
 
   return (
     <section className="flex flex-col gap-3">
-      <Link href="/ceo/orgs" className="text-xs font-semibold text-brand">← Organizations</Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/ceo/orgs" className="text-xs font-semibold text-brand">← Organizations</Link>
+        <Link href={`/org/${org.id}`} className="text-xs font-semibold text-brand">Open Organization View →</Link>
+      </div>
       <div>
         <h2 className="text-xl font-black text-ink">{org.name}</h2>
         <p className="text-xs text-subtle">

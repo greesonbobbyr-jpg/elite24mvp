@@ -6,9 +6,10 @@
  * the app runs on mid-migration. Exercises the WHOLE permission matrix and
  * the acting-membership switcher:
  *
- *   ORG "Mustang Broncos" — a 12U–17U club: Varsity (17U) and JV (16U) plus
- *     12 generated teams (CLUB_TEAMS), so org-wide staff access is real and
- *     the org tree (/org/view) has a full club to browse:
+ *   ORG "Mustang Broncos" — a club on the group tree: Boys → 12U–17U
+ *     (Varsity is 17U, JV 16U, plus 12 generated teams, CLUB_TEAMS) and
+ *     Girls → 15U, 16U (GIRLS_TEAMS), so org-wide staff access is real and
+ *     Organization View has a full club to browse:
  *     - Coach Gary       HEAD_COACH (Varsity) + ORG_ADMIN
  *     - Coach Dana       ASSISTANT_COACH (Varsity)  — view-only roster
  *     - Morgan Reyes     GENERAL_MANAGER (Varsity)  — can end memberships
@@ -16,7 +17,11 @@
  *     - Alex Vaughn      ORG_ADMIN with NO membership (org authority only)
  *     - Casey Rivers     TWO-TEAM ATHLETE (Varsity + JV memberships)
  *     - Devon Price      ENDED membership (removed from Varsity; history kept)
- *   ORG "OKC Thunder" — one team, 1:1 with the legacy shape (Coach Riley).
+ *     - Gina Ortiz       HEAD_COACH (15U Girls) + GROUP_ADMIN of Girls
+ *   ORG "OKC Thunder" — one team, no groups (Coach Riley).
+ *   ORG "Lincoln School District" — schools → levels; Vince Holt ORG_ADMIN
+ *     (no team), Leon Park GROUP_ADMIN of Lincoln Middle.
+ *   No team: Avery Collins (Personal Player Development); the CEO.
  *
  * DailyReview rows are seeded (the long-standing gap), quests exist as the 6
  * ACTIVE globals + INACTIVE org clones (the production pre-converge state):
@@ -37,6 +42,7 @@ import {
   MessageType,
   ReactionType,
   ReviewOutcome,
+  type GroupKind,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
@@ -135,6 +141,23 @@ const CLUB_TEAMS: { age: number; color: string; players: number; assistant?: boo
   { age: 17, color: "Black", players: 7, manager: true },
 ];
 const CLUB_SECONDARY: Record<string, string> = { Black: "#1f1f1f", Red: "#ffffff", White: "#e6e6e6" };
+
+// THE GIRLS SIDE of Mustang (group tree demo): Gina Ortiz coaches 15U and is
+// the Girls GROUP ADMIN — she runs that whole branch, nothing else.
+const GIRLS_TEAMS = [
+  { age: 15, coach: "Gina Ortiz", players: 6, groupAdmin: true },
+  { age: 16, coach: "Shanice Ward", players: 5, groupAdmin: false },
+];
+const GIRLS_FIRST = ["Aaliyah", "Brianna", "Camila", "Destiny", "Elena", "Faith", "Gabriela", "Harper", "Imani", "Jada", "Kayla", "Layla", "Maya", "Nia", "Olivia", "Paige", "Sofia", "Zoe"];
+
+// LINCOLN SCHOOL DISTRICT (group tree demo, a third org): schools → levels.
+// Vince Holt is the district's org admin (no team); Leon Park coaches the
+// 8th grade and is GROUP ADMIN for Lincoln Middle.
+const LINCOLN_TEAMS = [
+  { school: "Lincoln High", level: "Varsity", name: "Lincoln High Varsity", coach: "Bianca Moore", players: 4 },
+  { school: "Lincoln High", level: "JV", name: "Lincoln High JV", coach: null, players: 3 },
+  { school: "Lincoln Middle", level: "8th Grade", name: "Lincoln Middle 8th", coach: "Leon Park", players: 3 },
+];
 
 // Kept apart from the named people's first names, so demo usernames and
 // staff emails never collide with theirs.
@@ -751,6 +774,8 @@ async function main() {
   await prisma.profile.deleteMany();
   await prisma.quest.deleteMany();
   await prisma.team.deleteMany();
+  // Deepest first: a group can't go while groups still sit under it.
+  for (const depth of [4, 3, 2, 1]) await prisma.group.deleteMany({ where: { depth } });
   await prisma.division.deleteMany();
   await prisma.program.deleteMany();
   await prisma.season.deleteMany();
@@ -776,29 +801,27 @@ async function main() {
     data: { name: "OKC Thunder", joinCode: "THUNDR", primaryColor: "#007ac1", secondaryColor: "#ef3b24", organizationId: thunderOrg.id },
   });
 
-  // Grouping structure (Chunk 1) — both disclosure shapes:
-  // Mustang: ONE program (hidden) with SIX age-group divisions (shown),
-  //   12U–17U; Varsity is its 17U team, JV its 16U team (CLUB_TEAMS).
-  // Thunder: default Main/Main — all structure hidden (small-club shape).
-  const mustangProgram = await prisma.program.create({
-    data: { organizationId: mustangOrg.id, name: "Boys Basketball" },
-  });
-  const divisionByAge = new Map<number, number>();
-  for (const [sortOrder, age] of [12, 13, 14, 15, 16, 17].entries()) {
-    const division = await prisma.division.create({
-      data: { programId: mustangProgram.id, name: `${age}U`, sortOrder },
+  // The group tree (person-first Phase 2) — three shapes:
+  // Mustang: Boys → 12U–17U and Girls → 15U, 16U (Varsity is the Boys 17U
+  //   team, JV the Boys 16U team; CLUB_TEAMS + GIRLS_TEAMS fill the ages).
+  // Thunder: no groups — its one team sits directly under the org.
+  // Lincoln School District (below): schools → levels.
+  const group = (organizationId: number, name: string, kind: GroupKind, parent: { id: number; depth: number } | null, sortOrder: number) =>
+    prisma.group.create({
+      data: { organizationId, name, kind, parentId: parent?.id ?? null, depth: (parent?.depth ?? 0) + 1, sortOrder },
     });
-    divisionByAge.set(age, division.id);
+  const boys = await group(mustangOrg.id, "Boys", "GENDER", null, 0);
+  const girls = await group(mustangOrg.id, "Girls", "GENDER", null, 1);
+  const boysAge = new Map<number, number>();
+  for (const [i, age] of [12, 13, 14, 15, 16, 17].entries()) {
+    boysAge.set(age, (await group(mustangOrg.id, `${age}U`, "AGE_GROUP", boys, i)).id);
   }
-  await prisma.team.update({ where: { id: varsity.id }, data: { divisionId: divisionByAge.get(17) } });
-  await prisma.team.update({ where: { id: jv.id }, data: { divisionId: divisionByAge.get(16) } });
-  const thunderProgram = await prisma.program.create({
-    data: { organizationId: thunderOrg.id, name: "Main" },
-  });
-  const thunderDivision = await prisma.division.create({
-    data: { programId: thunderProgram.id, name: "Main" },
-  });
-  await prisma.team.update({ where: { id: thunder.id }, data: { divisionId: thunderDivision.id } });
+  const girlsAge = new Map<number, number>();
+  for (const [i, age] of [15, 16].entries()) {
+    girlsAge.set(age, (await group(mustangOrg.id, `${age}U`, "AGE_GROUP", girls, i)).id);
+  }
+  await prisma.team.update({ where: { id: varsity.id }, data: { groupId: boysAge.get(17) } });
+  await prisma.team.update({ where: { id: jv.id }, data: { groupId: boysAge.get(16) } });
 
   // The rest of the Mustang ladder (created after Thunder, so the named
   // teams keep the lowest ids).
@@ -815,7 +838,7 @@ async function main() {
         primaryColor: "#c8102e",
         secondaryColor: CLUB_SECONDARY[spec.color],
         organizationId: mustangOrg.id,
-        divisionId: divisionByAge.get(spec.age),
+        groupId: boysAge.get(spec.age),
       },
     });
     clubTeams.push({ spec, team });
@@ -923,12 +946,106 @@ async function main() {
     }
   }
 
+  // ---- The Girls side + Lincoln School District (their own fixed-seed
+  // generator, so the club's names and numbers above never shift) ----------
+  const more = seededRandom(7724);
+  const pickMore = <T,>(list: T[]) => list[Math.floor(more() * list.length)];
+  const extraPlayer = async (first: string[], teamId: number, orgId: number, seasonId: number, age: number) => {
+    let name = "";
+    do name = `${pickMore(first)} ${pickMore(CLUB_LAST)}`;
+    while (usedNames.has(name));
+    usedNames.add(name);
+    const [favoritePlayer, favoriteTeam] = pickMore(CLUB_FAVORITES);
+    await createPlayer(
+      {
+        name,
+        email: `${name.toLowerCase().replace(" ", ".")}@example.com`,
+        dream: pickMore(CLUB_DREAMS),
+        heightInches: 58 + (age - 12) * 2 + Math.floor(more() * 7),
+        position: pickMore(CLUB_POSITIONS),
+        jerseyNumber: 1 + Math.floor(more() * 54),
+        ppg: Math.round((2 + more() * 12) * 10) / 10,
+        rpg: Math.round((1 + more() * 6) * 10) / 10,
+        apg: Math.round((0.5 + more() * 4) * 10) / 10,
+        favoritePlayer,
+        favoriteTeam,
+      },
+      teamId,
+      orgId,
+      seasonId,
+      passwordHash,
+    );
+  };
+  for (const g of GIRLS_TEAMS) {
+    const team = await prisma.team.create({
+      data: {
+        name: `${g.age}U Mustang Girls`,
+        joinCode: seededJoinCode(more, joinCodes),
+        logoUrl: "/mustang-logo.png",
+        primaryColor: "#c8102e",
+        secondaryColor: "#1f1f1f",
+        organizationId: mustangOrg.id,
+        groupId: girlsAge.get(g.age),
+      },
+    });
+    const email = `${g.coach.split(" ")[0].toLowerCase()}@elite24.demo`;
+    await createStaff({ name: g.coach, email, teamId: team.id, membershipRole: Role.HEAD_COACH, orgAdmin: false, ...staffCommon });
+    if (g.groupAdmin) {
+      await prisma.roleAssignment.create({
+        data: { profileId: personOf(email).profileId, role: Role.GROUP_ADMIN, organizationId: mustangOrg.id, groupId: girls.id },
+      });
+    }
+    for (let i = 0; i < g.players; i++) await extraPlayer(GIRLS_FIRST, team.id, mustangOrg.id, mustangSeason.id, g.age);
+  }
+
+  const lincolnOrg = await prisma.organization.create({ data: { name: "Lincoln School District" } });
+  const lincolnSeason = await prisma.season.create({
+    data: { organizationId: lincolnOrg.id, name: seasonName, isCurrent: true },
+  });
+  const lincolnHigh = await group(lincolnOrg.id, "Lincoln High", "SCHOOL", null, 0);
+  const lincolnMiddle = await group(lincolnOrg.id, "Lincoln Middle", "SCHOOL", null, 1);
+  const lincolnLevel = new Map<string, number>();
+  for (const [i, level] of ["Freshman", "JV", "Varsity"].entries()) {
+    lincolnLevel.set(`Lincoln High:${level}`, (await group(lincolnOrg.id, level, "LEVEL", lincolnHigh, i)).id);
+  }
+  for (const [i, level] of ["7th Grade", "8th Grade"].entries()) {
+    lincolnLevel.set(`Lincoln Middle:${level}`, (await group(lincolnOrg.id, level, "LEVEL", lincolnMiddle, i)).id);
+  }
+  const lincolnTeams = [];
+  const lincolnCommon = { passwordHash, orgId: lincolnOrg.id, seasonId: lincolnSeason.id };
+  for (const t of LINCOLN_TEAMS) {
+    const team = await prisma.team.create({
+      data: {
+        name: t.name,
+        joinCode: seededJoinCode(more, joinCodes),
+        primaryColor: "#1d4ed8",
+        secondaryColor: "#facc15",
+        organizationId: lincolnOrg.id,
+        groupId: lincolnLevel.get(`${t.school}:${t.level}`),
+      },
+    });
+    lincolnTeams.push(team);
+    if (t.coach) {
+      const email = `${t.coach.split(" ")[0].toLowerCase()}@elite24.demo`;
+      await createStaff({ name: t.coach, email, teamId: team.id, membershipRole: Role.HEAD_COACH, orgAdmin: false, ...lincolnCommon });
+      if (t.school === "Lincoln Middle") {
+        await prisma.roleAssignment.create({
+          data: { profileId: personOf(email).profileId, role: Role.GROUP_ADMIN, organizationId: lincolnOrg.id, groupId: lincolnMiddle.id },
+        });
+      }
+    }
+    for (let i = 0; i < t.players; i++) {
+      await extraPlayer(CLUB_FIRST, team.id, lincolnOrg.id, lincolnSeason.id, t.school === "Lincoln High" ? 16 : 13);
+    }
+  }
+  await createStaff({ name: "Vince Holt", email: "vince@elite24.demo", teamId: lincolnTeams[0].id, membershipRole: null, orgAdmin: true, ...lincolnCommon });
+
   // ---- Quests: 6 ACTIVE globals + INACTIVE clones per org (pre-converge) --
   const globalQuests = [];
   for (const q of QUESTS) globalQuests.push(await prisma.quest.create({ data: q }));
   const cloneQuestsByOrg = new Map<number | null, { id: number; title: string; points: number }[]>();
   cloneQuestsByOrg.set(null, globalQuests); // the Elite24 set: athletes with no team
-  for (const orgId of [mustangOrg.id, thunderOrg.id]) {
+  for (const orgId of [mustangOrg.id, thunderOrg.id, lincolnOrg.id]) {
     const clones = [];
     for (const q of QUESTS) {
       clones.push(
@@ -1078,6 +1195,8 @@ async function main() {
   console.log("    e.g. 12U Mustang Black: head coach darnell@elite24.demo; 14U Mustang White has no head coach yet");
   console.log("    Browse the whole club: log in as gary → ☰ menu → Organization → Browse");
   console.log("  Org admin (no team): alex@elite24.demo — org authority without a roster spot");
+  console.log("  Girls side:          15U + 16U Girls; gina@elite24.demo coaches 15U AND is the Girls");
+  console.log("                       GROUP ADMIN — ☰ Organization View shows only the Girls branch");
   console.log("  Two-team athlete:    casey — switch teams via the header switcher / dev tool");
   console.log("  Removed player:      devon — logs in to the 'join a team' card (code MUSTNG restores);");
   console.log("                       Varsity's TIME OUT from today must NOT cover their screen");
@@ -1085,6 +1204,11 @@ async function main() {
   console.log("PERSONAL PLAYER DEVELOPMENT   (no team)");
   console.log("  avery — check-ins, the Elite24 quest set and career points on their own;");
   console.log("          no Team Circle, no leaderboard (dev switcher → No team)");
+  console.log("");
+  console.log("LINCOLN SCHOOL DISTRICT   (schools → levels)");
+  console.log("  Org admin:   vince@elite24.demo (no team)");
+  console.log("  Head coach:  bianca@elite24.demo (Lincoln High Varsity)");
+  console.log("  Group admin: leon@elite24.demo — coaches Lincoln Middle 8th, runs the Lincoln Middle branch");
   console.log("");
   console.log("OKC THUNDER   (join code THUNDR)");
   console.log("  Head coach: riley@elite24.demo");

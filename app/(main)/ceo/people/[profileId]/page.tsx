@@ -18,6 +18,7 @@ export default async function CeoPersonPage({ params }: { params: Promise<{ prof
   const active = p.memberships.find((m) => m.active);
   await recordAudit(ceo, "ceo.view_person", {
     targetProfileId: p.id,
+    organizationId: active?.orgId ?? p.orgAdminOf[0]?.id ?? null,
     teamId: active?.teamId ?? null,
     detail: p.name,
   });
@@ -40,9 +41,9 @@ export default async function CeoPersonPage({ params }: { params: Promise<{ prof
           <p className="text-sm text-muted">No team — training on their own.</p>
         )}
         {p.orgAdminOf.map((o) => (
-          <Link key={`admin-${o.id}`} href={`/ceo/orgs/${o.id}`} className="flex items-center justify-between gap-2 text-sm">
+          <Link key={`admin-${o.id}-${o.role}`} href={`/ceo/orgs/${o.id}`} className="flex items-center justify-between gap-2 text-sm">
             <span className="truncate text-ink">{o.name}</span>
-            <span className={chipClass("accent")}>Org Admin</span>
+            <span className={chipClass("accent")}>{o.role}</span>
           </Link>
         ))}
         {p.memberships.map((m, i) => (

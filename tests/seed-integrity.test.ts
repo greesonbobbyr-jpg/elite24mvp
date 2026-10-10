@@ -60,21 +60,23 @@ dbDescribe("Stage 5 seed integrity", () => {
     expect(await prisma.dailyReview.count()).toBeGreaterThan(0); // the old gap, closed
   });
 
-  it("structure: every org'd team sits in a division of its OWN org (chain consistency)", async () => {
+  it("group tree: every grouped team's group is in its OWN org; depths are consistent", async () => {
     const { prisma } = await import("../lib/prisma");
-    expect(
-      await prisma.team.count({ where: { organizationId: { not: null }, divisionId: null } }),
-    ).toBe(0);
     const teams = await prisma.team.findMany({
-      where: { divisionId: { not: null } },
-      select: {
-        organizationId: true,
-        division: { select: { program: { select: { organizationId: true } } } },
-      },
+      where: { groupId: { not: null } },
+      select: { organizationId: true, group: { select: { organizationId: true } } },
     });
-    for (const t of teams) {
-      expect(t.division!.program.organizationId).toBe(t.organizationId);
+    expect(teams.length).toBeGreaterThan(0);
+    for (const t of teams) expect(t.group!.organizationId).toBe(t.organizationId);
+    const groups = await prisma.group.findMany({ include: { parent: true } });
+    for (const g of groups) {
+      expect(g.depth).toBe(g.parent ? g.parent.depth + 1 : 1);
+      if (g.parent) expect(g.parent.organizationId).toBe(g.organizationId);
+      expect(g.depth).toBeLessThanOrEqual(4);
     }
+    // The three seeded shapes: Mustang (Boys / Girls), Thunder (none), Lincoln (schools).
+    const tops = await prisma.group.findMany({ where: { parentId: null }, select: { name: true }, orderBy: { name: "asc" } });
+    expect(tops.map((t) => t.name)).toEqual(["Boys", "Girls", "Lincoln High", "Lincoln Middle"]);
   });
 
   it("the two-team athlete's cookie-less default acting team matches their legacy anchor", async () => {

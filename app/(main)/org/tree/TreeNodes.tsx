@@ -10,7 +10,7 @@ import { StaffCard, StaffPortrait, type StaffPerson } from "@/app/components/Sta
 import { MINI_CARD, MiniBorder, MiniFace } from "@/app/components/card/MiniFrame";
 
 // The org tree's nodes: small cards from the card family (a player's own card
-// at a smaller size, staff in graphite) and round division badges.
+// at a smaller size, staff in graphite) and round group badges.
 // Each node carries data-node for the tree's connector lines, search flash
 // and scrolling. The open node and a search hit glow in the accent.
 
@@ -75,8 +75,8 @@ export function OwnerNode({ owner, lit, onClick }: { owner: OrgAdmin | null; lit
   );
 }
 
-/** A program or division: a round badge for short names ("12U"), a plaque
- * for long ones ("Boys Basketball"); a row uses one shape throughout. */
+/** A group: a round badge for short names ("12U", "JV"), a plaque for long
+ * ones ("Lincoln High"); a row uses one shape throughout. */
 export function GroupNode({
   group,
   round,

@@ -1,22 +1,23 @@
 import type { Role } from "@prisma/client";
+import { bySortOrder, GROUP_KIND_LABEL, type GroupRow } from "./groups";
 import type { OrgPerson, OrgViewData, OrgViewTeam } from "./orgview";
 
 // THE ORG TREE (the owner's sketch, design/reference/org-tree-sketch.jpg):
-// Org Owner → programs → divisions → head coaches → players, one open branch
-// per level. Pure: the /org/view client component renders it, tests drive it.
+// Org Owner → groups (any depth: Boys/Girls, age groups, levels, schools) →
+// head coaches → players, one open branch per level. Pure: the Organization
+// View's Tree tab renders it, tests drive it.
 //
-// PROGRESSIVE DISCLOSURE: a programs row only when the org has more than one
-// program, a divisions row only when the open program has more than one
-// division (lib/structure's flags, used verbatim). A hidden layer appears
-// nowhere — not as a row, not in search — so a one-team club goes straight
-// from its owner to its head coach and never sees "Main". Teams not in a
-// division yet (transition tolerance) join the top grouping row as "Other
-// teams", or the coaches row when no grouping row shows.
+// PROGRESSIVE DISCLOSURE — one rule, every level: a level holding exactly
+// one group and no teams is skipped (its group's own level shows instead).
+// A skipped layer appears nowhere — not as a row, not in search — so a club
+// with a single "Boys" program goes straight to its age groups, and a
+// one-team org goes straight from its owner to its head coach. Teams sitting
+// beside groups at the same level gather under "Other teams".
 
 export type TreeTeam = {
   id: number;
   name: string;
-  /** The name under its division badge ("12U Mustang Black" → "Mustang Black"). */
+  /** The name under its group badge ("12U Mustang Black" → "Mustang Black"). */
   label: string;
   logoUrl: string | null;
   primaryColor: string | null;
@@ -29,7 +30,9 @@ export type TreeTeam = {
 
 export type TreeGroup = {
   key: string;
-  kind: "program" | "division" | "other";
+  kind: "group" | "other";
+  /** What kind of group it is, for search ("Age group", "School"…). */
+  label: string;
   name: string;
   teamCount: number;
   next: TreeLevel;
@@ -50,25 +53,25 @@ export const teamNode = (teamId: number) => `t-${teamId}`;
 export const playerNode = (teamId: number, userId: number) => `p-${teamId}-${userId}`;
 export const staffNode = (teamId: number, userId: number) => `s-${teamId}-${userId}`;
 
-/** A team's name under its division, the division's own name dropped from
- * either end: "12U Mustang Black" under 12U reads "Mustang Black". */
-export function teamLabel(team: string, division: string | null): string {
-  if (!division) return team;
+/** A team's name under its group, the group's own name dropped from either
+ * end: "12U Mustang Black" under 12U reads "Mustang Black". */
+export function teamLabel(team: string, group: string | null): string {
+  if (!group) return team;
   const name = team.trim();
   const lower = name.toLowerCase();
-  const d = division.trim().toLowerCase();
+  const g = group.trim().toLowerCase();
   let label = name;
-  if (lower.startsWith(`${d} `)) label = name.slice(d.length + 1);
-  else if (lower.endsWith(` ${d}`)) label = name.slice(0, -(d.length + 1));
+  if (lower.startsWith(`${g} `)) label = name.slice(g.length + 1);
+  else if (lower.endsWith(` ${g}`)) label = name.slice(0, -(g.length + 1));
   return label.trim() || name;
 }
 
-function toTreeTeam(team: OrgViewTeam, division: string | null): TreeTeam {
+function toTreeTeam(team: OrgViewTeam, group: string | null): TreeTeam {
   const headCoach = team.staff.find((s) => s.role === "HEAD_COACH") ?? null;
   return {
     id: team.id,
     name: team.name,
-    label: teamLabel(team.name, division),
+    label: teamLabel(team.name, group),
     logoUrl: team.logoUrl,
     primaryColor: team.primaryColor,
     secondaryColor: team.secondaryColor,
@@ -78,47 +81,54 @@ function toTreeTeam(team: OrgViewTeam, division: string | null): TreeTeam {
   };
 }
 
-type TreeSource = Pick<OrgViewData, "programs" | "unassignedTeams" | "showPrograms">;
+type TreeSource = Pick<OrgViewData, "groups" | "teams">;
 
 export function buildOrgTree(data: TreeSource): TreeLevel {
-  const programLevel = (program: TreeSource["programs"][number]): TreeLevel =>
-    program.showDivisions
-      ? {
-          kind: "groups",
-          groups: program.divisions.map((d) => ({
-            key: `d${d.id}`,
-            kind: "division",
-            name: d.name,
-            teamCount: d.teams.length,
-            next: { kind: "teams", teams: d.teams.map((t) => toTreeTeam(t, d.name)) },
-          })),
-        }
-      : { kind: "teams", teams: program.divisions.flatMap((d) => d.teams.map((t) => toTreeTeam(t, null))) };
-
-  const root: TreeLevel = data.showPrograms
-    ? {
-        kind: "groups",
-        groups: data.programs.map((p) => ({
-          key: `p${p.id}`,
-          kind: "program",
-          name: p.name,
-          teamCount: p.teamCount,
-          next: programLevel(p),
-        })),
-      }
-    : data.programs[0]
-      ? programLevel(data.programs[0])
-      : { kind: "teams", teams: [] };
-
-  const other = data.unassignedTeams.map((t) => toTreeTeam(t, null));
-  if (other.length > 0) {
-    if (root.kind === "groups") {
-      root.groups.push({ key: "other", kind: "other", name: OTHER_TEAMS, teamCount: other.length, next: { kind: "teams", teams: other } });
-    } else {
-      root.teams.push(...other);
-    }
+  const present = new Set(data.groups.map((g) => g.id));
+  // A group whose parent isn't in the data (a group admin's branch) is top level.
+  const parentOf = (g: GroupRow) => (g.parentId != null && present.has(g.parentId) ? g.parentId : null);
+  const groupsUnder = new Map<number | null, GroupRow[]>();
+  for (const g of data.groups) {
+    const list = groupsUnder.get(parentOf(g)) ?? [];
+    list.push(g);
+    groupsUnder.set(parentOf(g), list);
   }
-  return root;
+  for (const list of groupsUnder.values()) list.sort(bySortOrder);
+  const teamsIn = new Map<number | null, OrgViewTeam[]>();
+  for (const t of data.teams) {
+    const at = t.groupId != null && present.has(t.groupId) ? t.groupId : null;
+    teamsIn.set(at, [...(teamsIn.get(at) ?? []), t]);
+  }
+  const teamCount = (id: number): number =>
+    (teamsIn.get(id)?.length ?? 0) + (groupsUnder.get(id) ?? []).reduce((n, g) => n + teamCount(g.id), 0);
+
+  // `name` = the group these teams sit directly in (its name comes off their labels).
+  const level = (parentId: number | null, name: string | null): TreeLevel => {
+    const groups = groupsUnder.get(parentId) ?? [];
+    const teams = (teamsIn.get(parentId) ?? []).map((t) => toTreeTeam(t, name));
+    if (groups.length === 1 && teams.length === 0) return level(groups[0].id, groups[0].name);
+    if (groups.length === 0) return { kind: "teams", teams };
+    const row: TreeGroup[] = groups.map((g) => ({
+      key: `g${g.id}`,
+      kind: "group",
+      label: GROUP_KIND_LABEL[g.kind],
+      name: g.name,
+      teamCount: teamCount(g.id),
+      next: level(g.id, g.name),
+    }));
+    if (teams.length > 0) {
+      row.push({
+        key: `o${parentId ?? 0}`,
+        kind: "other",
+        label: "",
+        name: OTHER_TEAMS,
+        teamCount: teams.length,
+        next: { kind: "teams", teams },
+      });
+    }
+    return { kind: "groups", groups: row };
+  };
+  return level(null, null);
 }
 
 export type TreeRow =
@@ -146,12 +156,12 @@ export function treeRows(root: TreeLevel, selection: Selection): TreeRow[] {
   return rows;
 }
 
-/** The open branch as the page URL keeps it: ?at=d12 (group keys joined by
- * ".") and &team=45. Anything malformed is dropped. */
+/** The open branch as the page URL keeps it: ?at=g12.g40 (group keys joined
+ * by ".") and &team=45. Anything malformed is dropped. */
 export function selectionFromQuery(at: string | null, team: string | null): Selection {
   const teamId = Number.parseInt(team ?? "", 10);
   return {
-    groups: (at ?? "").split(".").filter((key) => /^(p\d+|d\d+|other)$/.test(key)),
+    groups: (at ?? "").split(".").filter((key) => /^[go]\d+$/.test(key)),
     teamId: Number.isInteger(teamId) ? teamId : null,
   };
 }
@@ -219,7 +229,7 @@ export function searchIndex(root: TreeLevel, owner: { name: string } | null): Se
         if (g.kind !== "other") {
           hits.push({
             key: groupNode(g.key),
-            kind: g.kind === "program" ? "Program" : "Division",
+            kind: g.label,
             label: g.name,
             sub: [...names, count(g.teamCount, "team")].join(" · "),
             selection: { groups: at, teamId: null },

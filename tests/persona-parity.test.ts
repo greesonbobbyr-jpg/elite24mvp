@@ -42,12 +42,14 @@ function legacyChrome(ctx: Ctx) {
     };
   }
   if (user.role === "COACH") {
-    const isOrgAdmin = ctx.profile ? ctx.orgAdminOf.length > 0 : true;
+    // Two intended changes since 66bb147 (Phase 2, owner 2026-10-09): the
+    // item is "Organization View", and group admins get it too.
+    const isOrgAdmin = ctx.profile ? ctx.orgAdminOf.length + ctx.groupAdminOf.length > 0 : true;
     return {
       tabs: "coach",
       links: [
         { href: "/team", label: "Team settings" },
-        ...(isOrgAdmin ? [{ href: "/org", label: "Organization" }] : []),
+        ...(isOrgAdmin ? [{ href: "/org", label: "Organization View" }] : []),
         { href: "/leaderboard", label: "Team leaderboard" },
         { href: "/library", label: "Playbook" },
       ],
@@ -92,7 +94,7 @@ dbDescribe("persona parity — every seeded user sees what they saw before", () 
     for (const { id, email } of users) {
       const ctx = (await resolveContextForUser(id, null))!;
       const persona = personaOf(ctx);
-      const isOrgAdmin = ctx.profile ? ctx.orgAdminOf.length > 0 : true;
+      const isOrgAdmin = ctx.profile ? ctx.orgAdminOf.length + ctx.groupAdminOf.length > 0 : true;
       const chrome = chromeFor(persona, { userId: id, unread: 0, isOrgAdmin });
       const teamId = actingTeamId(ctx);
       const home = isStaffSide(persona) ? { kind: "coach", teamId } : { kind: "player" };

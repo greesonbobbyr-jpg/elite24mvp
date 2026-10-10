@@ -48,6 +48,7 @@ Everything else in the app is secondary to this loop working smoothly across mul
 - **Coach notifications** with **read-confirmation** tracking.
 - **E24P reference library**: browsable, structured documentation of the process (placeholder content for now, clearly marked, easy to replace with the owner's real material).
 - **Personal Player Development** (owner, 2026-10-09): an athlete on no team gets the player loop on their own — check-in, journal, Pro Review, the Elite24 quest set, points — and **no team surfaces** (no Team Circle, rosters or team leaderboard). They join a team later only with a code. What anyone sees comes from their team roles (`lib/persona.ts`), never the login's fixed role.
+- **Organization View** (owner, 2026-10-09): an org shapes its own **group tree** — Boys/Girls, age groups, JH/JV/Varsity, schools in a district; any shape, at most 4 levels, teams at any level (`lib/groups.ts`, starting shapes in `lib/structure-templates.ts`) — and sees its Tree, People and Activity. A **Group Admin** runs one branch only; the CEO can open any org (what they open or change is recorded in that org's Activity).
 - A **player profile / "Your Brand"** page: basic basketball stats (height, points-per-game, rebounds, etc. as structured fields), the dream, points/leaderboard standing, and journal access.
 
 ## 5. Scope — what's OUT of the MVP (do not build unless explicitly asked)

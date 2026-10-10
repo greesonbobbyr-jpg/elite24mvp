@@ -11,8 +11,8 @@ export type TabBar = "player" | "player-solo" | "coach" | null;
 //             leaderboard, notifications, playbook
 //   personal  no team: Home / Quests tabs; menu adds brand, journal,
 //             playbook — no team surfaces
-//   staff,    coach tabs; menu adds team settings, Organization (org admins
-//   admin     only), the team leaderboard, playbook
+//   staff,    coach tabs; menu adds team settings, Organization View (org
+//   admin     and group admins only), the team leaderboard, playbook
 //   ceo       no tabs; CEO View is home. The CEO View link also leads the
 //             menu whenever the CEO is acting on a team (opts.ceo).
 export function chromeFor(
@@ -60,7 +60,7 @@ function baseChrome(
         tabs: "coach",
         links: [
           { href: "/team", label: "Team settings" },
-          ...(opts.isOrgAdmin ? [{ href: "/org", label: "Organization" }] : []),
+          ...(opts.isOrgAdmin ? [{ href: "/org", label: "Organization View" }] : []),
           { href: "/leaderboard", label: "Team leaderboard" },
           { href: "/library", label: "Playbook" },
         ],

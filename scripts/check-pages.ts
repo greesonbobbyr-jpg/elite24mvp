@@ -66,7 +66,10 @@ const VISITS: { label: string; login?: string; start: string[]; menuOpen?: boole
   },
   // The org pages are listed: the page cap can end the crawl before the ☰
   // menu's Organization link is followed.
-  { label: "coach", login: "gary@elite24.demo", start: ["/", "/team", "/org", "/org/view"] },
+  { label: "coach", login: "gary@elite24.demo", start: ["/", "/team", "/org"] },
+  // Organization View as a group admin (one branch) and a district admin.
+  { label: "group-admin", login: "gina@elite24.demo", start: ["/org"] },
+  { label: "district-admin", login: "vince@elite24.demo", start: ["/org"] },
   { label: "new-player", login: "andre", start: ["/onboarding"] },
   // No team: Personal Player Development, a removed player, an org admin.
   { label: "personal", login: "avery", start: ["/", "/quests", "/journal", "/library"] },

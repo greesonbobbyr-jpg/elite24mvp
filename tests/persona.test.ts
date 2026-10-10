@@ -49,9 +49,9 @@ describe("chromeFor", () => {
     expect(links.map((l) => l.href)).toEqual(["/brand/7", "/journal", "/library"]);
   });
 
-  it("Organization shows only for org admins", () => {
-    expect(chromeFor("staff", opts).links.map((l) => l.label)).not.toContain("Organization");
-    expect(chromeFor("admin", { ...opts, isOrgAdmin: true }).links.map((l) => l.label)).toContain("Organization");
+  it("Organization View shows only for org and group admins", () => {
+    expect(chromeFor("staff", opts).links.map((l) => l.label)).not.toContain("Organization View");
+    expect(chromeFor("admin", { ...opts, isOrgAdmin: true }).links.map((l) => l.label)).toContain("Organization View");
   });
 
   it("an athlete's Notifications link carries the unread count", () => {

@@ -44,8 +44,8 @@ export default async function Home() {
         <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-8">
           <Card>
             <h1 className="text-lg font-semibold">No team yet</h1>
-            <p className="mt-1 text-sm text-muted">Your organization&apos;s teams are set up from Organization.</p>
-            <Link href="/org" className="mt-3 inline-block text-sm font-semibold text-brand">Open Organization →</Link>
+            <p className="mt-1 text-sm text-muted">Your organization&apos;s teams are set up in Organization View.</p>
+            <Link href="/org" className="mt-3 inline-block text-sm font-semibold text-brand">Open Organization View →</Link>
           </Card>
         </main>
       );

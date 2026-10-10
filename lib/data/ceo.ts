@@ -253,7 +253,7 @@ export async function personDetail(_ceo: CeoAccess, profileId: number) {
       },
       roleAssignments: {
         where: { revokedAt: null },
-        select: { role: true, organization: { select: { id: true, name: true } } },
+        select: { role: true, group: { select: { name: true } }, organization: { select: { id: true, name: true } } },
       },
     },
   });
@@ -290,12 +290,16 @@ export async function personDetail(_ceo: CeoAccess, profileId: number) {
       team: m.team.name,
       teamId: m.team.id,
       org: m.team.organization?.name ?? null,
+      orgId: m.team.organization?.id ?? null,
       season: m.season.name,
       active: m.endedAt == null && m.season.isCurrent,
       startedAt: m.startedAt,
       endedAt: m.endedAt,
     })),
-    orgAdminOf: p.roleAssignments.map((r) => r.organization),
+    orgAdminOf: p.roleAssignments.map((r) => ({
+      ...r.organization,
+      role: r.role === "GROUP_ADMIN" ? `Group admin · ${r.group?.name ?? ""}` : "Org Admin",
+    })),
   };
 }
 

@@ -28,6 +28,7 @@ enum Role {
   COACH // legacy — do not use in new code
   PLAYER
   ORG_ADMIN
+  GROUP_ADMIN // RoleAssignment only: an org admin for one branch (a Group)
   HEAD_COACH
   ASSISTANT_COACH
   GENERAL_MANAGER
@@ -59,6 +60,47 @@ model Organization {
   quests          Quest[]
   roleAssignments RoleAssignment[]
   programs        Program[]
+  groups          Group[]
+}
+
+// THE GROUP TREE (person-first plan Phase 2, owner 2026-10-09) — replaces the
+// fixed Program → Division layers with whatever shape an organization has:
+// Boys/Girls, age groups, Junior High/JV/Varsity, schools in a district —
+// up to 4 levels, teams at any level (Team.groupId; null = directly under the
+// org). Display and rollups, plus the reach of a GROUP_ADMIN grant
+// (lib/authz). Authorization is still bounded by organizationId first.
+enum GroupKind {
+  PROGRAM
+  GENDER
+  AGE_GROUP
+  LEVEL
+  SCHOOL
+  DIVISION
+  CUSTOM
+}
+
+model Group {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  // Restrict: a group with groups or teams under it can't be deleted.
+  parentId       Int?
+  parent         Group?       @relation("GroupTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children       Group[]      @relation("GroupTree")
+  name           String
+  kind           GroupKind    @default(CUSTOM)
+  sortOrder      Int          @default(0)
+  depth          Int          @default(1) // 1 = top level; at most 4 (lib/groups)
+  // Where a backfilled group came from (scripts/backfill-groups.ts); dropped
+  // with Program/Division in Phase 6.
+  legacyProgramId  Int?     @unique
+  legacyDivisionId Int?     @unique
+  createdAt        DateTime @default(now())
+
+  teams           Team[]
+  roleAssignments RoleAssignment[]
+
+  @@index([organizationId, parentId, sortOrder])
 }
 
 // Grouping layers (structure Chunk 1). DISPLAY/ROLLUP ONLY — never traversed
@@ -236,9 +278,10 @@ model Membership {
   @@index([profileId, endedAt])
 }
 
-// A role AT a scope. V1 uses this ONLY for ORG_ADMIN at org scope (team-scoped
-// authority comes from Membership). `organizationId` is ALWAYS set — even for a
-// future team-scoped grant — so "scope is always org-bounded" is structural.
+// A role AT a scope: ORG_ADMIN at org scope, or GROUP_ADMIN for one branch of
+// the group tree (team-scoped authority comes from Membership).
+// `organizationId` is ALWAYS set — even for a group grant — so "scope is
+// always org-bounded" is structural.
 model RoleAssignment {
   id             Int          @id @default(autoincrement())
   profileId      Int
@@ -247,10 +290,13 @@ model RoleAssignment {
   organizationId Int
   organization   Organization @relation(fields: [organizationId], references: [id])
   teamId         Int? // plain id; set only for team-scoped grants (unused in v1)
+  // GROUP_ADMIN only: the branch this grant covers (it and everything under it).
+  groupId        Int?
+  group          Group?       @relation(fields: [groupId], references: [id], onDelete: Restrict)
   createdAt      DateTime     @default(now())
   revokedAt      DateTime?
 
-  @@unique([profileId, role, organizationId, teamId])
+  @@unique([profileId, role, organizationId, teamId, groupId])
   @@index([profileId, revokedAt])
 }
 
@@ -313,6 +359,11 @@ model Team {
   // later cleanup. Restrict: a division holding teams can't be deleted.
   divisionId Int?
   division   Division? @relation(fields: [divisionId], references: [id], onDelete: Restrict)
+
+  // The group tree (Phase 2): the group this team sits in; null = directly
+  // under the organization. Restrict: a group holding teams can't be deleted.
+  groupId Int?
+  group   Group? @relation(fields: [groupId], references: [id], onDelete: Restrict)
 
   // IANA timezone for this team's calendar-day logic. Data-model prep: the app
   // currently uses the app-wide APP_TIMEZONE (lib/daykey); threading this value

@@ -2,11 +2,11 @@ import type { Prisma, Role } from "@prisma/client";
 import { prisma } from "./prisma";
 import { rank1224 } from "./leaderboard";
 import { cutoutSrc, photoSrc } from "./photoUrl";
-import { getOrgStructure } from "./structure";
+import { descendantsOf, loadOrgGroups, type GroupRow } from "./groups";
 
 // THE ORG VIEW loader (grouping Chunk 2) — READ-ONLY browsing data for the
 // whole organization. One fetch, one serializable view-model; lib/orgtree
-// shapes it into the org tree (/org/view).
+// shapes it into the org tree (Organization View · Tree, /org/[orgId]).
 //
 // MATRIX RESPECT BY CONSTRUCTION: every select below carries CARD INFO ONLY —
 // name, photo + card placement, jersey, position, role, career points (the
@@ -19,8 +19,10 @@ import { getOrgStructure } from "./structure";
 // Photos leave as /api/photo URLs (lib/photoUrl), never as the stored data:
 // URLs — a club's worth of inline photos would be megabytes of page.
 //
-// Progressive disclosure flags come from lib/structure.getOrgStructure and
-// are passed through VERBATIM — never recomputed here.
+// Structure comes from the group tree (lib/groups) as FLAT lists — groups and
+// teams with their groupId; lib/orgtree shapes them (and applies the
+// disclosure rule). A GROUP_ADMIN's view passes `branch`: only those groups,
+// everything under them, and their teams.
 
 const STAFF_ORDER: Partial<Record<Role, number>> = {
   HEAD_COACH: 0,
@@ -55,6 +57,7 @@ export type OrgAdmin = {
 export type OrgViewTeam = {
   id: number;
   name: string;
+  groupId: number | null;
   joinCode: string | null;
   logoUrl: string | null;
   primaryColor: string | null;
@@ -64,39 +67,40 @@ export type OrgViewTeam = {
   playerCount: number;
 };
 
-export type OrgViewDivision = {
-  id: number;
-  name: string;
-  teams: OrgViewTeam[];
-  teamCount: number;
-};
-
-export type OrgViewProgram = {
-  id: number;
-  name: string;
-  showDivisions: boolean;
-  divisions: OrgViewDivision[];
-  divisionCount: number;
-  teamCount: number;
-};
-
 export type OrgViewData = Awaited<ReturnType<typeof getOrgViewData>>;
 
 const PHOTO = { photoUrl: true, photoCutoutUrl: true, photoMeta: true } as const;
 
-export async function getOrgViewData(organizationId: number) {
-  const [org, structure] = await Promise.all([
+export async function getOrgViewData(organizationId: number, opts: { branch?: readonly number[] } = {}) {
+  const [org, allGroups, orgTeams] = await Promise.all([
     prisma.organization.findUniqueOrThrow({
       where: { id: organizationId },
       select: { id: true, name: true },
     }),
-    getOrgStructure(organizationId),
+    loadOrgGroups(organizationId),
+    prisma.team.findMany({
+      where: { organizationId },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        groupId: true,
+        joinCode: true,
+        logoUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+      },
+    }),
   ]);
 
-  const allTeams = [
-    ...structure.programs.flatMap((p) => p.divisions.flatMap((d) => d.teams)),
-    ...structure.unassignedTeams,
-  ];
+  // A group admin's part: their groups and everything under them.
+  let groups: GroupRow[] = allGroups;
+  let allTeams = orgTeams;
+  if (opts.branch) {
+    const inBranch = new Set(opts.branch.flatMap((id) => [id, ...descendantsOf(allGroups, id)]));
+    groups = allGroups.filter((g) => inBranch.has(g.id));
+    allTeams = orgTeams.filter((t) => t.groupId != null && inBranch.has(t.groupId));
+  }
   const teamIds = allTeams.map((t) => t.id);
 
   const [memberships, adminGrants] = await Promise.all([
@@ -161,26 +165,10 @@ export async function getOrgViewData(organizationId: number) {
     bucket.players.sort((a, b) => b.careerPoints - a.careerPoints || a.name.localeCompare(b.name));
   }
 
-  const toViewTeam = (t: (typeof allTeams)[number]): OrgViewTeam => {
+  const teams: OrgViewTeam[] = allTeams.map((t) => {
     const people = peopleByTeam.get(t.id) ?? { staff: [], players: [] };
     return { ...t, ...people, playerCount: people.players.length };
-  };
-
-  const programs: OrgViewProgram[] = structure.programs.map((p) => {
-    const divisions: OrgViewDivision[] = p.divisions.map((d) => {
-      const teams = d.teams.map(toViewTeam);
-      return { id: d.id, name: d.name, teams, teamCount: teams.length };
-    });
-    return {
-      id: p.id,
-      name: p.name,
-      showDivisions: p.showDivisions,
-      divisions,
-      divisionCount: divisions.length,
-      teamCount: divisions.reduce((s, d) => s + d.teamCount, 0),
-    };
   });
-  const unassignedTeams = structure.unassignedTeams.map(toViewTeam);
 
   // A player on two teams is one player: count people, not memberships.
   const playerIds = new Set(
@@ -206,9 +194,8 @@ export async function getOrgViewData(organizationId: number) {
     org,
     admins,
     owner: admins[0] ?? null,
-    programs,
-    unassignedTeams,
-    showPrograms: structure.showPrograms, // verbatim from lib/structure
+    groups,
+    teams,
     totals,
   };
 }

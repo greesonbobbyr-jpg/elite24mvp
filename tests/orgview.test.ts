@@ -1,22 +1,22 @@
 import { afterAll, describe, expect, it } from "vitest";
 
-// GROUPING CHUNK 2 PROOFS — the read-only Org View loader + the org tree on
-// the seeded 12U–17U Mustang club:
+// ORG VIEW PROOFS — the read-only loader + the org tree on the seeded Mustang
+// club (group tree: Boys → 12U–17U, Girls → 15U, 16U):
 //   1. Staff ordered HC → AC → GM; empty roles simply absent; players ordered
 //      by card level (career points), each with their place on the team
 //      board — the same place the team leaderboard gives them.
 //   2. Owner = the EARLIEST unrevoked ORG_ADMIN grant (seed: Gary), with the
 //      membership-less admin (Alex) listed too.
 //   3. Rollups match the seeded club; the two-team athlete counts once.
-//   4. The tree: divisions row, no program row; the team with no head coach;
-//      the two-team athlete findable under both teams; the hidden program
-//      never searchable.
+//   4. The tree: a Boys / Girls row, then age groups; the team with no head
+//      coach; the two-team athlete findable under both teams.
 //   5. FIELD ALLOWLIST: the serialized payload contains card info only — no
 //      dream, reflections, contact, or guardian data, ever — and photos go
 //      out as /api/photo URLs, never inline data.
-//   6. Disclosure flags are passed through from lib/structure VERBATIM.
-//   7. The gate is the existing create_team tier (ORG_ADMIN yes, staff no) —
-//      lib/authz untouched (tests/authz.test.ts remains the standing proof).
+//   6. A group admin's view (branch) holds only their branch — no other team,
+//      no other group, nobody from outside it.
+//   7. The gate is the create_team tier (ORG_ADMIN yes, staff no) —
+//      tests/authz.test.ts remains the standing proof.
 //
 // Same runner contract: localhost-only, self-skips without TEST_DATABASE_URL.
 
@@ -29,7 +29,7 @@ if (url) process.env.DATABASE_URL = url;
 
 const dbDescribe = url ? describe : describe.skip;
 
-dbDescribe("Grouping Chunk 2 — Org View loader", () => {
+dbDescribe("Org View loader", () => {
   afterAll(async () => {
     const { prisma } = await import("../lib/prisma");
     await prisma.$disconnect();
@@ -45,7 +45,7 @@ dbDescribe("Grouping Chunk 2 — Org View loader", () => {
     return getOrgViewData(org.id);
   }
   type Data = Awaited<ReturnType<typeof mustangData>>;
-  const teamsOf = (data: Data) => data.programs.flatMap((p) => p.divisions).flatMap((d) => d.teams);
+  const teamsOf = (data: Data) => data.teams;
 
   it("staff ordered HC → AC → GM, empty roles absent; players by card level", async () => {
     const data = await mustangData();
@@ -76,29 +76,32 @@ dbDescribe("Grouping Chunk 2 — Org View loader", () => {
 
   it("rollups match the seeded club; the two-team athlete counts once", async () => {
     const data = await mustangData();
-    expect(data.programs).toHaveLength(1);
-    expect(data.programs[0].divisions.map((d) => d.name)).toEqual(["12U", "13U", "14U", "15U", "16U", "17U"]);
-    expect(data.totals.teamCount).toBe(14); // Varsity + JV + 12 club teams
-    expect(data.programs[0].teamCount).toBe(14);
+    expect(data.groups.filter((g) => g.parentId == null).map((g) => g.name)).toEqual(["Boys", "Girls"]);
+    expect(data.totals.teamCount).toBe(16); // Varsity + JV + 12 club teams + 2 Girls teams
+    expect(data.teams.every((t) => t.groupId != null)).toBe(true);
     const memberships = teamsOf(data).reduce((sum, t) => sum + t.playerCount, 0);
     expect(data.totals.playerCount).toBe(memberships - 1); // Casey: two teams, one player
   });
 
-  it("the tree: divisions, no program row; an empty head-coach seat; search", async () => {
+  it("the tree: Boys / Girls, then age groups; an empty head-coach seat; search", async () => {
     const { buildOrgTree, search, searchIndex } = await import("../lib/orgtree");
     const data = await mustangData();
     const root = buildOrgTree(data);
-    if (root.kind !== "groups") throw new Error("a divisions row expected");
-    expect(root.groups.map((g) => g.name)).toEqual(["12U", "13U", "14U", "15U", "16U", "17U"]);
+    if (root.kind !== "groups") throw new Error("a Boys / Girls row expected");
+    expect(root.groups.map((g) => g.name)).toEqual(["Boys", "Girls"]);
+    expect(root.groups.map((g) => g.teamCount)).toEqual([14, 2]);
+    const boys = root.groups[0].next;
+    if (boys.kind !== "groups") throw new Error("an age-group row expected");
+    expect(boys.groups.map((g) => g.name)).toEqual(["12U", "13U", "14U", "15U", "16U", "17U"]);
 
-    const u14 = root.groups.find((g) => g.name === "14U")!.next;
+    const u14 = boys.groups.find((g) => g.name === "14U")!.next;
     if (u14.kind !== "teams") throw new Error("teams expected");
     expect(u14.teams.map((t) => t.label)).toEqual(["Mustang Black", "Mustang Red", "Mustang White"]);
     expect(u14.teams.find((t) => t.label === "Mustang White")!.headCoach).toBeNull();
 
     const index = searchIndex(root, data.owner);
     expect(search(index, "Casey Rivers").map((h) => h.sub).sort()).toEqual(["Mustang Broncos", "Mustang JV"]);
-    expect(search(index, "Boys Basketball")).toEqual([]); // the hidden program
+    expect(search(index, "Girls")[0]).toMatchObject({ kind: "Boys or Girls", label: "Girls" });
     expect(new Set(index.map((h) => h.key)).size).toBe(index.length);
   });
 
@@ -117,21 +120,16 @@ dbDescribe("Grouping Chunk 2 — Org View loader", () => {
     for (const photo of photos) expect(photo).toMatch(/^\/api\/photo\/\d+\?cut=1&v=/);
   });
 
-  it("disclosure flags pass through from lib/structure verbatim", async () => {
+  it("a group admin's branch holds only that branch", async () => {
     const { prisma } = await import("../lib/prisma");
-    const { getOrgStructure } = await import("../lib/structure");
     const { getOrgViewData } = await import("../lib/orgview");
-    const orgs = (await prisma.organization.findMany()).filter((o) => !o.name.includes("__"));
-    for (const org of orgs) {
-      const [structure, view] = await Promise.all([
-        getOrgStructure(org.id),
-        getOrgViewData(org.id),
-      ]);
-      expect(view.showPrograms).toBe(structure.showPrograms);
-      for (const p of structure.programs) {
-        expect(view.programs.find((vp) => vp.id === p.id)?.showDivisions).toBe(p.showDivisions);
-      }
-    }
+    const girls = await prisma.group.findFirstOrThrow({ where: { name: "Girls", organization: { name: { contains: "Mustang" } } } });
+    const data = await getOrgViewData(girls.organizationId, { branch: [girls.id] });
+    expect(data.groups.map((g) => g.name).sort()).toEqual(["15U", "16U", "Girls"]);
+    expect(data.teams.map((t) => t.name).sort()).toEqual(["15U Mustang Girls", "16U Mustang Girls"]);
+    const people = JSON.stringify(data.teams);
+    expect(people).not.toContain("Jordan Carter"); // a Boys player
+    expect(data.totals.teamCount).toBe(2);
   });
 
   it("gate: create_team tier — ORG_ADMIN passes, every team-staff role is denied", async () => {

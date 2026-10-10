@@ -41,6 +41,8 @@ export type Ctx = {
   org: Organization | null;
   season: Season | null;
   orgAdminOf: number[]; // orgs with an unrevoked ORG_ADMIN grant
+  // Unrevoked GROUP_ADMIN grants: an org admin for one branch of the tree.
+  groupAdminOf: { organizationId: number; groupId: number }[];
   // Authority above every org (PlatformGrant) — the CEO. Null for everyone
   // else. Never read for journals/reflections: those stay the player's own.
   platformRole: "CEO" | null;
@@ -88,8 +90,8 @@ export async function resolveContextForUser(
           orderBy: [{ startedAt: "desc" }, { id: "desc" }],
         },
         roleAssignments: {
-          where: { role: "ORG_ADMIN", revokedAt: null },
-          select: { organizationId: true },
+          where: { role: { in: ["ORG_ADMIN", "GROUP_ADMIN"] }, revokedAt: null },
+          select: { role: true, organizationId: true, groupId: true },
         },
         platformGrants: {
           where: { revokedAt: null },
@@ -119,7 +121,12 @@ export async function resolveContextForUser(
     team,
     org: team?.organization ?? null,
     season: membership?.season ?? null,
-    orgAdminOf: profile?.roleAssignments.map((r) => r.organizationId) ?? [],
+    orgAdminOf:
+      profile?.roleAssignments.filter((r) => r.role === "ORG_ADMIN").map((r) => r.organizationId) ?? [],
+    groupAdminOf:
+      profile?.roleAssignments
+        .filter((r) => r.role === "GROUP_ADMIN" && r.groupId != null)
+        .map((r) => ({ organizationId: r.organizationId, groupId: r.groupId! })) ?? [],
     platformRole: profile?.platformGrants.some((g) => g.role === "CEO") ? "CEO" : null,
   };
 }
