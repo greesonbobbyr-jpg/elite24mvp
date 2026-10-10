@@ -10,11 +10,13 @@ export type TabBar = "player" | "player-solo" | "coach" | null;
 //   athlete   Home / Team Circle / Quests tabs; menu adds brand, journal,
 //             leaderboard, notifications, playbook
 //   personal  no team: Home / Quests tabs; menu adds brand, journal,
-//             playbook — no team surfaces
+//             notifications (Elite24 announcements), playbook — no team
+//             surfaces
 //   staff,    coach tabs; menu adds team settings, Organization View (org
 //   admin     and group admins only), the team leaderboard, playbook
-//   ceo       no tabs; CEO View is home. The CEO View link also leads the
-//             menu whenever the CEO is acting on a team (opts.ceo).
+//   ceo       no tabs; CEO View is home; menu adds notifications. The CEO
+//             View link also leads the menu whenever the CEO is acting on a
+//             team (opts.ceo).
 export function chromeFor(
   persona: Persona | null,
   opts: { userId: number; unread: number; isOrgAdmin: boolean; ceo?: boolean },
@@ -30,6 +32,10 @@ function baseChrome(
   persona: Persona | null,
   opts: { userId: number; unread: number; isOrgAdmin: boolean },
 ): { links: NavLink[]; tabs: TabBar } {
+  const notifications = {
+    href: "/notifications",
+    label: opts.unread > 0 ? `Notifications (${opts.unread})` : "Notifications",
+  };
   switch (persona) {
     case "athlete":
       return {
@@ -38,10 +44,7 @@ function baseChrome(
           { href: `/brand/${opts.userId}`, label: "Your Brand" },
           { href: "/journal", label: "Journal" },
           { href: "/leaderboard", label: "Leaderboard" },
-          {
-            href: "/notifications",
-            label: opts.unread > 0 ? `Notifications (${opts.unread})` : "Notifications",
-          },
+          notifications,
           { href: "/library", label: "Playbook" },
         ],
       };
@@ -51,6 +54,7 @@ function baseChrome(
         links: [
           { href: `/brand/${opts.userId}`, label: "Your Brand" },
           { href: "/journal", label: "Journal" },
+          notifications,
           { href: "/library", label: "Playbook" },
         ],
       };
@@ -70,6 +74,7 @@ function baseChrome(
         tabs: null,
         links: [
           { href: "/ceo", label: "CEO View" },
+          notifications,
           { href: "/library", label: "Playbook" },
         ],
       };

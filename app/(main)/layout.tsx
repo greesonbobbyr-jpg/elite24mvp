@@ -5,6 +5,7 @@ import { isStaffSide, personaOf } from "@/lib/persona";
 import { chromeFor } from "@/lib/nav";
 import { PERSONAL_CARD_TEAM } from "@/app/components/PlayerCard";
 import { getActiveTimeout, countUnreadForPlayer } from "@/lib/notifications";
+import { unreadAnnouncements } from "@/lib/announcements";
 import { TimeoutTakeover } from "./TimeoutTakeover";
 import { NavMenu } from "./NavMenu";
 import { IdentityChip } from "./IdentityChip";
@@ -63,11 +64,13 @@ export default async function MainLayout({
       : null;
 
   // The ☰ menu + bottom tabs for this persona (lib/nav). The ☰ button
-  // carries the unread count so alerts are seen from any page.
-  const unreadCount =
-    user && persona === "athlete" && teamId != null
-      ? await countUnreadForPlayer(user.id, teamId, joinedAt)
-      : 0;
+  // carries the unread count — coach alerts plus announcements — so they
+  // are seen from any page.
+  const [alertsUnread, announcementsUnread] = await Promise.all([
+    user && persona === "athlete" && teamId != null ? countUnreadForPlayer(user.id, teamId, joinedAt) : 0,
+    ctx ? unreadAnnouncements(ctx) : 0,
+  ]);
+  const unreadCount = alertsUnread + announcementsUnread;
   // "Organization View" — org and group admins only (grant-gated), with the
   // pre-backfill legacy fallback (dies at Stage 6).
   const isOrgAdmin = ctx?.profile ? ctx.orgAdminOf.length + ctx.groupAdminOf.length > 0 : true;
@@ -148,7 +151,7 @@ export default async function MainLayout({
       {/* Role bottom tab bars (z-40, below the TIME OUT takeover). */}
       {tabs === "player" && <PlayerTabBar team />}
       {tabs === "player-solo" && <PlayerTabBar team={false} />}
-      {tabs === "coach" && <CoachTabBar />}
+      {tabs === "coach" && <CoachTabBar unread={unreadCount} />}
       {timeout && <TimeoutTakeover notification={timeout} />}
     </>
   );

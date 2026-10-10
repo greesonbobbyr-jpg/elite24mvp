@@ -1,16 +1,18 @@
 // Optional Supabase Storage backend for uploaded images (player/coach photos,
-// team logos). ACTIVATES ONLY when the owner supplies SUPABASE_URL +
-// SUPABASE_SERVICE_ROLE_KEY (dashboard → Project Settings → API); without them
-// every call passes the validated data: URL through unchanged (current, working
-// behavior — images live in the DB row and serve via /api/photo).
+// team logos). OFF unless PHOTO_STORAGE=supabase-public is set as well as
+// SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY. Off, every call passes the
+// validated data: URL through unchanged (current, working behavior — images
+// live in the DB row and serve via /api/photo, behind the app's access rules).
 //
-// With keys set, uploads land in the public "photos" bucket (create it once in
-// the dashboard) and the STORED value becomes a plain https URL — list pages and
-// /api/photo both pass those through untouched, so no other code changes.
+// Its own switch on purpose (2026-10-10): the Supabase keys now also power the
+// PRIVATE announcement media store (lib/mediaStore), and adding them must never
+// silently move kids' photos into this PUBLIC "photos" bucket. Turning it on is
+// a separate, deliberate privacy decision.
 
 const BUCKET = "photos";
 
 function config() {
+  if (process.env.PHOTO_STORAGE !== "supabase-public") return null;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return url && key ? { url: url.replace(/\/$/, ""), key } : null;

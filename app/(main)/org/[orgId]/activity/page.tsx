@@ -27,6 +27,10 @@ const VERB: Record<string, string> = {
   "invite.created": "made an invite:",
   "invite.revoked": "cancelled invite",
   "invite.accepted": "joined by invite as",
+  "announcement.sent": "sent an announcement:",
+  "announcement.deleted": "deleted an announcement:",
+  "ceo.announcement.sent": "sent an Elite24 announcement:",
+  "ceo.announcement.deleted": "deleted an Elite24 announcement:",
 };
 
 export default async function ActivityPage({ params }: { params: Promise<{ orgId: string }> }) {

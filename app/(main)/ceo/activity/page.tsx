@@ -21,6 +21,8 @@ const VERB: Record<string, string> = {
   "ceo.org.apply_template": "Started a structure from the shape:",
   "ceo.org.add_group_admin": "Made a group admin:",
   "ceo.org.remove_group_admin": "Removed a group admin:",
+  "ceo.announcement.sent": "Sent an announcement:",
+  "ceo.announcement.deleted": "Deleted an announcement:",
 };
 
 // CEO View · Activity — everything the CEO opened, newest first. The same

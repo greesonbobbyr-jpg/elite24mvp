@@ -47,10 +47,13 @@ import {
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { join as pathJoin } from "node:path";
 import { todayKey as tzDayKey } from "../lib/daykey";
 import { advanceStreak, type StreakState } from "../lib/streaks";
 import { createInvite } from "../lib/invites";
+import { cleanJpeg } from "../lib/jpeg";
+import { localMediaStore } from "../lib/mediaStore";
 
 const prisma = new PrismaClient();
 
@@ -755,6 +758,9 @@ async function main() {
   }
 
   // Reset (safe to re-run): children before parents, both worlds.
+  await prisma.announcementRead.deleteMany();
+  await prisma.mediaAsset.deleteMany();
+  await prisma.announcement.deleteMany();
   await prisma.pointsLedger.deleteMany();
   await prisma.mindsetTakeaway.deleteMany();
   await prisma.questLog.deleteMany();
@@ -1167,6 +1173,71 @@ async function main() {
     (await seedTeamMessages(jv.id, JV_MESSAGES)) +
     (await seedTeamMessages(thunder.id, OKC_MESSAGES));
 
+  // ---- Announcements (Phase 5): every scope and audience, both looks -----
+  // Sent "now" (after every account exists), so they count as unread; a few
+  // are already read, one has disappeared (its picture waits for the hourly
+  // cleanup), and the pictures are real JPEGs in the local store (.media/).
+  const store = localMediaStore();
+  await rm(pathJoin(process.cwd(), ".media", "seed"), { recursive: true, force: true });
+  const picture = async (file: string, announcementId: number, uploader: number, deleted = false) => {
+    const clean = cleanJpeg(readFileSync(pathJoin(process.cwd(), "prisma", "seed-assets", file)));
+    if (!clean) throw new Error(`seed: ${file} is not a usable JPEG`);
+    const storageKey = `seed/${announcementId}-${file}`;
+    await store.put(storageKey, clean.bytes, "image/jpeg");
+    await prisma.mediaAsset.create({
+      data: { storageKey, mime: "image/jpeg", bytes: clean.bytes.length, width: clean.width, height: clean.height, announcementId, uploadedByProfileId: uploader, deletedAt: deleted ? new Date() : null },
+    });
+  };
+  const ceoId = ceoProfile.id;
+  const announce = (data: Parameters<typeof prisma.announcement.create>[0]["data"]) => prisma.announcement.create({ data });
+  const sentAt = new Date();
+  const valueTheBall = await announce({
+    scope: "PLATFORM", audience: "EVERYONE", authorProfileId: ceoId, authorRole: "CEO", publishedAt: sentAt, expiresAt: new Date(sentAt.getTime() + 7 * 24 * 3600_000),
+    title: "See it. Say it. Sketch it. Feel it.",
+    body: "Before practice today, close your eyes for 30 seconds and see yourself making the play. Then go make it.",
+  });
+  await picture("poster-value-the-ball.jpg", valueTheBall.id, ceoId);
+  await announce({
+    scope: "PLATFORM", audience: "STAFF", authorProfileId: ceoId, authorRole: "CEO", publishedAt: sentAt,
+    title: "Coaches: Organization View is live",
+    body: "Your whole program in one place — teams, staff, invites and announcements. Find it in ☰.",
+  });
+  const expired = await announce({
+    scope: "PLATFORM", audience: "EVERYONE", authorProfileId: ceoId, authorRole: "CEO", publishedAt: hoursAgo(30), expiresAt: hoursAgo(6),
+    title: "Yesterday's challenge: 50 makes",
+    body: "Gone now — its picture is deleted by the hourly cleanup.",
+  });
+  await picture("poster-value-the-ball.jpg", expired.id, ceoId);
+  const alexId = personOf("alex@elite24.demo").profileId;
+  const tournament = await announce({
+    scope: "ORG", organizationId: mustangOrg.id, audience: "EVERYONE", authorProfileId: alexId, authorRole: "ORG_ADMIN", publishedAt: sentAt, expiresAt: new Date(sentAt.getTime() + 24 * 3600_000),
+    title: "Home tournament Saturday",
+    body: "Every Mustang team plays at home. Doors at 8:00, first tip at 9:00. Wear your game jersey.",
+    linkUrl: "https://www.hudl.com/",
+  });
+  await picture("poster-tournament.jpg", tournament.id, alexId);
+  await announce({
+    scope: "GROUP", organizationId: mustangOrg.id, groupId: girls.id, audience: "PLAYERS", authorProfileId: personOf("gina@elite24.demo").profileId, authorRole: "GROUP_ADMIN", publishedAt: sentAt,
+    title: "Girls: film session Thursday",
+    body: "Bring a notebook. We're watching how great guards value the ball.",
+    linkUrl: "https://www.youtube.com/@nba",
+  });
+  const plans = await announce({
+    scope: "TEAM", organizationId: mustangOrg.id, teamId: varsity.id, audience: "STAFF", authorProfileId: personOf("gary@elite24.demo").profileId, authorRole: "ORG_ADMIN", publishedAt: daysAgo(2),
+    title: "Varsity staff: practice plans due Friday",
+    body: "One page each. Put the Pro Plan focus at the top.",
+  });
+  await announce({
+    scope: "ORG", organizationId: lincolnOrg.id, audience: "PLAYERS", authorProfileId: personOf("vince@elite24.demo").profileId, authorRole: "ORG_ADMIN", publishedAt: sentAt,
+    title: "Sports physicals due before tryouts",
+    body: "Turn your form in at the front office. No physical, no tryout.",
+  });
+  // Already read: Jordan and Coach Gary saw the CEO's poster; Coach Dana the staff note.
+  for (const email of ["jordan.carter@example.com", "gary@elite24.demo"]) {
+    await prisma.announcementRead.create({ data: { announcementId: valueTheBall.id, profileId: personOf(email).profileId } });
+  }
+  await prisma.announcementRead.create({ data: { announcementId: plans.id, profileId: personOf("dana@elite24.demo").profileId } });
+
   // ---- Recompute ALL THREE point caches + streaks from the ledger ---------
   for (const [, p] of people) {
     const byUser = await prisma.pointsLedger.aggregate({ where: { userId: p.userId }, _sum: { amount: true } });
@@ -1253,6 +1324,13 @@ async function main() {
   console.log(`  Open coach invite (14U Mustang Black): code ${openInvite.code} · link /invite/${openInvite.token}`);
   console.log(`  Open organization code (Westside Hoops Academy): ${orgCode.code} · link /invite/${orgCode.token}`);
   console.log("  Mustang also has a used, an expired and a cancelled invite (Organization View → Invites)");
+  console.log("");
+  console.log("ANNOUNCEMENTS   (Phase 5 — ☰ Notifications; the ☰ number counts them)");
+  console.log("  From the CEO (black + gold): a poster to everyone (7 days), a note to coaches,");
+  console.log("    and one that already disappeared. Send more: ceo@ → CEO View → Announce");
+  console.log("  Mustang (its color + logo): a tournament poster to everyone (24h, Hudl link);");
+  console.log("    gina's Girls-players film note; a Varsity staff note (dana read it)");
+  console.log("  Lincoln: physicals, to players. Send as an org: alex@ → Organization View → Announce");
   console.log("");
   console.log("PERSONAL PLAYER DEVELOPMENT   (no team)");
   console.log("  avery — check-ins, the Elite24 quest set and career points on their own;");

@@ -66,17 +66,17 @@ const VISITS: { label: string; login?: string; start: string[]; menuOpen?: boole
   },
   // The org pages are listed: the page cap can end the crawl before the ☰
   // menu's Organization link is followed.
-  { label: "coach", login: "gary@elite24.demo", start: ["/", "/team", "/org"] },
+  { label: "coach", login: "gary@elite24.demo", start: ["/", "/team", "/org", "/notifications"] },
   // Organization View as a group admin (one branch) and a district admin.
   { label: "group-admin", login: "gina@elite24.demo", start: ["/org"] },
   { label: "district-admin", login: "vince@elite24.demo", start: ["/org"] },
   { label: "new-player", login: "andre.washington@example.com", start: ["/onboarding"] },
   // No team: Personal Player Development, a removed player, an org admin.
-  { label: "personal", login: "avery.collins@example.com", start: ["/", "/quests", "/journal", "/library"] },
+  { label: "personal", login: "avery.collins@example.com", start: ["/", "/quests", "/journal", "/library", "/notifications"] },
   { label: "removed", login: "devon.price@example.com", start: ["/"] },
   { label: "org-admin", login: "alex@elite24.demo", start: ["/"] },
   // The CEO: CEO View and its detail pages (followed from these).
-  { label: "ceo", login: "ceo@elite24.demo", start: ["/ceo", "/ceo/orgs", "/ceo/orgs/new", "/ceo/codes", "/ceo/people?q=jo", "/ceo/activity", "/account/password"] },
+  { label: "ceo", login: "ceo@elite24.demo", start: ["/ceo", "/ceo/orgs", "/ceo/orgs/new", "/ceo/codes", "/ceo/announce", "/ceo/people?q=jo", "/ceo/activity", "/notifications", "/account/password"] },
   // Sign-up Step 2, and an older username-only account adding its email.
   { label: "new-account", login: "taylor.reed@example.com", start: ["/welcome"], follow: false },
   { label: "username-only", login: "tyrese", start: ["/account/email"], follow: false },

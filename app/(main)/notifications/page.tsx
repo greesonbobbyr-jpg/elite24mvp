@@ -8,6 +8,10 @@ import { NotificationComposer } from "./NotificationComposer";
 import { PushToggle } from "./PushToggle";
 import { WhistleIcon } from "@/app/components/WhistleIcon";
 import { TimeoutBadge, UnreadAlerts } from "./UnreadAlerts";
+import { GotIt } from "./GotIt";
+import { inboxFor, type InboxItem } from "@/lib/announcements";
+import { announcementView } from "@/lib/announcement-view";
+import { AnnouncementCard } from "@/app/components/AnnouncementCard";
 
 // Notifications history/list. STRICTLY the current user's own team — the player
 // reads their team's notifications, the coach posts to + sees receipts for their
@@ -29,10 +33,26 @@ export default async function NotificationsPage() {
   const ctx = await getCurrentContext();
   const user = ctx?.user;
   if (!ctx || !user) redirect("/");
-  // Re-home (4f): no team → no team notifications. The ACTING team
-  // throughout — the same one the TIME OUT takeover and the menu badge use.
+  // Announcements (Elite24 and the organization) are for everyone; coach
+  // alerts need a team. The ACTING team throughout — the same one the TIME
+  // OUT takeover and the menu badge use.
+  const announcements = await inboxFor(ctx);
   const teamId = actingTeamId(ctx);
-  if (teamId == null) redirect("/");
+  if (teamId == null) {
+    return (
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
+        <header>
+          <p className="e24-eyebrow">Notifications</p>
+          <p className="mt-1 text-sm text-subtle">Announcements from Elite24 and your organization</p>
+        </header>
+        {announcements.length === 0 ? (
+          <EmptyCard line="Nothing right now. Announcements show up here." />
+        ) : (
+          <Announcements items={announcements} />
+        )}
+      </main>
+    );
+  }
   const staff = isStaffSide(personaOf(ctx));
 
   // ----- Staff: compose + per-message read receipts for their own team -----
@@ -52,6 +72,8 @@ export default async function NotificationsPage() {
             Post to your team · read receipts
           </p>
         </header>
+
+        <Announcements items={announcements} />
 
         <NotificationComposer canSendTimeout={canSendTimeout} />
 
@@ -138,6 +160,8 @@ export default async function NotificationsPage() {
       {/* Web Push opt-in — permission prompt only fires on the player's tap. */}
       <PushToggle />
 
+      <Announcements items={announcements} />
+
       {unread.length + read.length === 0 ? (
         <EmptyCard line="No notifications from your coach yet." />
       ) : (
@@ -186,6 +210,27 @@ export default async function NotificationsPage() {
         </>
       )}
     </main>
+  );
+}
+
+// Announcements from Elite24 and the organization, above the coach's
+// alerts: new ones first, each with "Got it".
+function Announcements({ items }: { items: InboxItem[] }) {
+  if (items.length === 0) return null;
+  const now = new Date();
+  const fresh = items.filter((a) => a.countsUnread);
+  const rest = items.filter((a) => !a.countsUnread);
+  return (
+    <section className="flex flex-col gap-3" aria-label="Announcements">
+      <h2 className="e24-eyebrow">{fresh.length > 0 ? `Announcements · ${fresh.length} new` : "Announcements"}</h2>
+      {[...fresh, ...rest].map((a) => (
+        <AnnouncementCard
+          key={a.id}
+          a={announcementView(a, a.countsUnread, now)}
+          action={a.countsUnread ? <GotIt id={a.id} /> : undefined}
+        />
+      ))}
+    </section>
   );
 }
 

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Coach-only bottom tab bar: Home / Team Circle / Alerts. A faithful mirror of
+// Coach-only bottom tab bar: Home / Team Circle / Alerts (with the unread
+// announcements number, like ☰). A faithful mirror of
 // PlayerTabBar (same shell, active-glow, z-40, safe-area) with the coach tab set,
 // so coaches finally get one-tap Home. Navigation UI only — no logic/data.
 // Icons are embedded MDI paths (Apache-2.0, currentColor + 24x24).
@@ -46,7 +47,7 @@ function isTabActive(href: string, pathname: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function CoachTabBar() {
+export function CoachTabBar({ unread = 0 }: { unread?: number }) {
   const pathname = usePathname();
 
   return (
@@ -72,7 +73,17 @@ export function CoachTabBar() {
                     className="absolute top-0 h-0.5 w-8 rounded-full bg-accent shadow-[0_0_8px_var(--accent)]"
                   />
                 )}
-                <Icon className="h-6 w-6" />
+                <span className="relative">
+                  <Icon className="h-6 w-6" />
+                  {href === "/notifications" && unread > 0 && (
+                    <span
+                      aria-label={`${unread} unread`}
+                      className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-frame bg-accent px-0.5 text-[10px] font-black leading-none text-on-accent"
+                    >
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </span>
                 <span
                   className={`text-[10px] font-semibold uppercase tracking-wide ${
                     active ? "text-brand-2" : "text-subtle"

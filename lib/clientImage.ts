@@ -68,3 +68,25 @@ export async function resizeToDataUrl(
     return { error: "Couldn't read that image. Try another." };
   }
 }
+
+// Announcement pictures: shrink to a fresh JPEG (≤`max` px on the long side)
+// for upload. Drawing onto a canvas keeps only the pixels — the phone's
+// location and other EXIF never leave the device. (The server strips again.)
+export async function shrinkToJpeg(file: File, max: number): Promise<Blob | null> {
+  if (!file.type.startsWith("image/")) return null;
+  try {
+    const img = await readImage(file);
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#fff"; // transparent PNGs become white, not black
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  } catch {
+    return null;
+  }
+}

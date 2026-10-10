@@ -1,7 +1,10 @@
-# Hourly trigger for the check-in reminder push (Vercel Hobby crons are
-# daily-only, so GitHub Actions carries the schedule). The endpoint decides
-# per-team whether the current hour matches the coach's setting — most runs are
-# no-ops. Requires the CRON_SECRET repo secret (Settings → Secrets → Actions)
+# Hourly jobs (Vercel Hobby crons are daily-only, so GitHub Actions carries
+# the schedule):
+#  - the check-in reminder push: the endpoint decides per-team whether the
+#    current hour matches the coach's setting — most runs are no-ops;
+#  - the announcement-picture cleanup: deletes the pictures of announcements
+#    that disappeared or were deleted (and uploads never sent).
+# Requires the CRON_SECRET repo secret (Settings → Secrets → Actions)
 # matching the Vercel env var of the same name.
 name: check-in-reminders
 
@@ -19,3 +22,9 @@ jobs:
           curl -fsS \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "https://elite24mvp.vercel.app/api/cron/check-in-reminders"
+      - name: Delete pictures of disappeared announcements
+        if: always()
+        run: |
+          curl -fsS \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://elite24mvp.vercel.app/api/cron/expire-media"

@@ -5,6 +5,7 @@ import { Card, rowNested, rowOnPage, stripAccent } from "@/app/components/ui/Car
 import { checkClass, fieldClass, labelClass } from "@/app/components/ui/Field";
 import { chipClass, iconTile, pillClass } from "@/app/components/ui/Pill";
 import { StarIcon, StatTile } from "@/app/components/ui/StatTile";
+import { AnnouncementCard } from "@/app/components/AnnouncementCard";
 
 // STYLE GUIDE — every shared building block in one place, in whichever mode
 // the phone (or the ☰ Appearance switch) is in. The light-mode revamp's
@@ -149,6 +150,45 @@ export default function StyleGuidePage() {
           <div className="max-w-[80%] self-end rounded-2xl rounded-br-md bg-bubble-mine px-3.5 py-2.5">
             <p className="text-sm text-bubble-mine-ink">Well deserved, Tyler 🔒</p>
           </div>
+        </div>
+      </Section>
+
+      <Section title="Announcements">
+        <div className="flex flex-col gap-3">
+          <AnnouncementCard
+            a={{
+              id: 1,
+              look: "elite24",
+              title: "See it. Say it. Sketch it. Feel it.",
+              body: "Before practice, close your eyes for 30 seconds and see yourself making the play.",
+              linkUrl: null,
+              pictures: [],
+              org: null,
+              to: "everyone on Elite24MVP",
+              from: "Gary Harper · CEO",
+              when: "Oct 10, 9:00 AM",
+              expires: "Disappears in 7 days",
+              unread: true,
+            }}
+            action={<Button size="sm" className="self-start">Got it</Button>}
+          />
+          <AnnouncementCard
+            a={{
+              id: 2,
+              look: "org",
+              title: "Home tournament Saturday",
+              body: "Doors at 8:00, first tip at 9:00. Wear your game jersey.",
+              linkUrl: "https://www.hudl.com/",
+              pictures: [],
+              org: { name: "Mustang Broncos", color: "#c8102e", logoUrl: "/mustang-logo.png" },
+              to: "Everyone · Mustang Broncos",
+              from: "Alex Vaughn · Mustang Broncos",
+              when: "Oct 10, 9:00 AM",
+              expires: "Disappears in 23h",
+              unread: true,
+            }}
+            action={<Button size="sm" className="self-start">Got it</Button>}
+          />
         </div>
       </Section>
 

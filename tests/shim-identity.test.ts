@@ -69,7 +69,9 @@ dbDescribe("compat shim identity", () => {
     expect(ctx!.orgAdminOf).toContain(ctx!.team!.organizationId!);
     expect(ctx!.season?.isCurrent).toBe(true);
 
-    const player = await prisma.user.findFirst({ where: { role: "PLAYER" } });
+    // The first seeded player (Jordan) — unordered, Postgres may hand back
+    // the removed player instead.
+    const player = await prisma.user.findFirst({ where: { role: "PLAYER" }, orderBy: { id: "asc" } });
     const pctx = await resolveContextForUser(player!.id);
     expect(pctx!.membership?.role).toBe("PLAYER");
     expect(pctx!.orgAdminOf).toEqual([]);

@@ -356,6 +356,81 @@ model Invite {
   @@index([kind, createdAt])
 }
 
+// ANNOUNCEMENTS (person-first plan Phase 5, owner 2026-10-09) — posters,
+// pictures and bulletins from the CEO (Elite24, app-wide) or an organization
+// (to the whole org, one group, or one team), for players, staff, or both.
+// Separate from coach alerts (Notification), which stay as they are; the
+// Notifications page shows both. Who sees one is worked out when it's read
+// (lib/announcements), so people who join later see what's still running.
+// `expiresAt`: it disappears — and its pictures are deleted from storage for
+// good — at that time (the hourly cron, /api/cron/expire-media).
+enum AnnouncementScope {
+  PLATFORM
+  ORG
+  GROUP
+  TEAM
+}
+
+enum AnnouncementAudience {
+  EVERYONE
+  PLAYERS
+  STAFF
+}
+
+model Announcement {
+  id              Int                  @id @default(autoincrement())
+  scope           AnnouncementScope
+  organizationId  Int?
+  groupId         Int?
+  teamId          Int?
+  audience        AnnouncementAudience @default(EVERYONE)
+  title           String
+  body            String
+  linkUrl         String? // a YouTube / Vimeo / Hudl link — shown as a link, never embedded
+  authorProfileId Int
+  authorRole      String // "CEO" | "ORG_ADMIN" | "GROUP_ADMIN" — the card's look and weight
+  publishedAt     DateTime             @default(now())
+  expiresAt       DateTime?
+  deletedAt       DateTime?
+
+  media MediaAsset[]
+  reads AnnouncementRead[]
+
+  @@index([scope, publishedAt])
+  @@index([organizationId, publishedAt])
+}
+
+model AnnouncementRead {
+  id             Int          @id @default(autoincrement())
+  announcementId Int
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  profileId      Int
+  readAt         DateTime     @default(now())
+
+  @@unique([announcementId, profileId])
+  @@index([profileId])
+}
+
+// A picture on an announcement, in PRIVATE storage (lib/mediaStore) — served
+// only through /api/media/[id] to people the announcement is for. Uploaded
+// first (announcementId null until the announcement is sent); an upload never
+// attached is deleted after a day.
+model MediaAsset {
+  id                  String        @id @default(uuid())
+  announcementId      Int?
+  announcement        Announcement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
+  storageKey          String        @unique
+  mime                String
+  bytes               Int
+  width               Int?
+  height              Int?
+  uploadedByProfileId Int
+  createdAt           DateTime      @default(now())
+  deletedAt           DateTime?
+
+  @@index([announcementId])
+}
+
 // What the CEO opened or changed, and when — the record each organization can
 // read about its own part (plain ids: an audit row outlives what it names).
 model AuditEvent {

@@ -52,3 +52,6 @@ next-env.d.ts
 
 # MediaPipe vision wasm runtime (postinstall copy; model .tflite IS committed)
 /public/face/wasm/
+
+# Local announcement pictures (dev only; production uses a private Supabase bucket)
+.media/

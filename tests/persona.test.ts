@@ -46,7 +46,7 @@ describe("chromeFor", () => {
   it("a personal athlete gets no team surfaces", () => {
     const { links, tabs } = chromeFor("personal", opts);
     expect(tabs).toBe("player-solo");
-    expect(links.map((l) => l.href)).toEqual(["/brand/7", "/journal", "/library"]);
+    expect(links.map((l) => l.href)).toEqual(["/brand/7", "/journal", "/notifications", "/library"]);
   });
 
   it("Organization View shows only for org and group admins", () => {

@@ -194,7 +194,7 @@ describe("the CEO — above every organization, for CEO actions only", () => {
 
   it("views and shapes any organization", () => {
     for (const org of [ORG, OTHER_ORG, 999]) {
-      for (const action of ["view_org", "manage_structure", "create_team", "invite_staff", "change_member_role"] as Action[]) {
+      for (const action of ["view_org", "manage_structure", "create_team", "invite_staff", "change_member_role", "send_announcement"] as Action[]) {
         expect(can(ceo, action, { organizationId: org }), `${action} @${org}`).toBe(true);
       }
     }
@@ -208,6 +208,6 @@ describe("the CEO — above every organization, for CEO actions only", () => {
 
   it("the CEO action list is exactly this (test-locked)", async () => {
     const { CEO_ACTIONS } = await import("../lib/authz");
-    expect([...CEO_ACTIONS].sort()).toEqual(["change_member_role", "create_team", "invite_staff", "manage_structure", "view_org"]);
+    expect([...CEO_ACTIONS].sort()).toEqual(["change_member_role", "create_team", "invite_staff", "manage_structure", "send_announcement", "view_org"]);
   });
 });
