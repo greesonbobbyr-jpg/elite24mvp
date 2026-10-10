@@ -26,7 +26,7 @@ type Action = (prev: ShapeState, formData: FormData) => Promise<ShapeState>;
 type Option = { value: string; label: string };
 
 // Fields shrink and wrap so a form never runs off a phone screen.
-const inline = `${fieldBase} min-w-0 max-w-full flex-1 basis-40 px-2.5 py-1.5 text-sm`;
+const inline = `${fieldBase} w-0 min-w-0 max-w-full flex-1 basis-40 px-2.5 py-1.5 text-sm`;
 const quiet = "text-xs font-semibold text-brand transition hover:text-brand-2";
 
 function ShapeForm({
@@ -34,7 +34,7 @@ function ShapeForm({
   orgId,
   hidden,
   children,
-  className = "flex flex-wrap items-center gap-2",
+  className = "flex min-w-0 flex-wrap items-center gap-2",
   onOk,
 }: {
   action: Action;
@@ -122,9 +122,9 @@ export function GroupEditor({
 }) {
   return (
     // Sits in the group's header line; opened, it drops to its own full line.
-    <details className="open:order-last open:basis-full">
+    <details className="min-w-0 open:order-last open:basis-full">
       <summary className={`${quiet} cursor-pointer list-none`}>Edit</summary>
-      <div className="mt-2 flex flex-col gap-3 rounded-lg border border-line bg-sunken p-3">
+      <div className="mt-2 flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-sunken p-3">
         <ShapeForm action={editGroup} orgId={orgId} hidden={{ groupId: group.id }}>
           <input name="name" defaultValue={group.name} aria-label="Group name" className={inline} />
           <KindSelect kinds={kinds} value={group.kind} />
@@ -169,9 +169,9 @@ export function GroupEditor({
 /** A team's place: "Move" opens a picker of the groups in reach. */
 export function TeamMover({ orgId, teamId, current, targets }: { orgId: number; teamId: number; current: number | null; targets: Option[] }) {
   return (
-    <details className="open:basis-full">
+    <details className="min-w-0 open:basis-full">
       <summary className={`${quiet} cursor-pointer list-none`}>Move</summary>
-      <ShapeForm action={moveTeam} orgId={orgId} hidden={{ teamId }} className="mt-2 flex flex-wrap items-center gap-2">
+      <ShapeForm action={moveTeam} orgId={orgId} hidden={{ teamId }} className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
         <select name="groupId" defaultValue={current ?? ""} aria-label="Move team to" className={inline}>
           {targets.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
