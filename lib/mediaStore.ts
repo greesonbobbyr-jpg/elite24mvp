@@ -25,7 +25,9 @@ const SIGNED_SECONDS = 300;
 
 function supabaseStore(url: string, key: string, bucket: string): MediaStore {
   const base = url.replace(/\/$/, "");
-  const auth = { Authorization: `Bearer ${key}` };
+  // Both headers, as Supabase's own client sends them: the older service_role
+  // key is read from Authorization, the newer secret keys from apikey.
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
   const path = (k: string) => k.split("/").map(encodeURIComponent).join("/");
   return {
     async put(k, bytes, mime) {
