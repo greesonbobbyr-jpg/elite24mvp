@@ -25,7 +25,8 @@ import {
 type Action = (prev: ShapeState, formData: FormData) => Promise<ShapeState>;
 type Option = { value: string; label: string };
 
-const inline = `${fieldBase} px-2.5 py-1.5 text-sm`;
+// Fields shrink and wrap so a form never runs off a phone screen.
+const inline = `${fieldBase} min-w-0 max-w-full flex-1 basis-40 px-2.5 py-1.5 text-sm`;
 const quiet = "text-xs font-semibold text-brand transition hover:text-brand-2";
 
 function ShapeForm({
