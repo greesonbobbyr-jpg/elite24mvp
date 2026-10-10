@@ -198,7 +198,40 @@ Production runbook:
    - `/invite/x` shows "isn't valid".
    - `/welcome` redirects to login when logged out.
 
-**Next:** Phase 5 (announcements, expiring media, the full ☰ number), then Phase 6 cleanup. Then the separate game logs + KPIs plan.
+### Built 2026-10-10, NOT deployed (waits on the owner's "Deploy"): Phase 5 — announcements (`person-first-p5`)
+
+What it adds:
+- **Announcements.** The CEO sends to everyone, or to any org, group or team (CEO View → Announce). An organization sends to its own org, a group or a team (Organization View → Announce); a group admin only within their branch. Each goes to players, staff or both.
+- **In Notifications**, for everyone (solo athletes and the CEO now have the page too): Elite24's are black + gold, an org's use its color and logo, each with "Got it". Coach alerts are unchanged.
+- **The ☰ number** counts unread coach alerts + announcements; coaches see it on the Alerts tab too.
+- **Pictures** (up to 4): shrunk on the phone, location stripped again on the server (`lib/jpeg.ts`), stored privately (`lib/mediaStore.ts`), served only to the people it's for (`/api/media/[id]`; everyone else gets a 404).
+- **Disappears after** 24 hours (default), 7 days, or keep. A disappeared or deleted announcement stops being shown at once; the hourly GitHub cron (`/api/cron/expire-media`) deletes its pictures from storage.
+- **Video** only as a YouTube / Vimeo / Hudl link. Short video clip uploads from the plan are NOT built.
+- Senders see "Seen by X of Y" and can delete (an org can't delete the CEO's).
+
+Checked locally on 2026-10-10:
+- Tests: 332 pass on a fresh seed. Typecheck and build clean.
+- Page checks against the production build, all 13 user types: layout (320 / 360 / 390px, light + dark), contrast and outlines all pass.
+- A real-browser walkthrough in development: an org admin sends with two pictures (a camera JPEG carrying a fake GPS tag, and a PNG) → the stored files carry no GPS → players in the org see it and its pictures, coaches don't (players-only), another org's player gets a 404 for the picture → "Got it" lowers the ☰ number → delete removes it for everyone and the files from storage.
+- Guards: a player's upload gets 403, a non-JPEG 415, a broken file 422; the cleanup endpoint answers 401 without the secret.
+- The style guide baseline was re-recorded: one new "Announcements" section, everything above it pixel-identical.
+
+Not exercised locally: the Supabase storage driver itself (uploads, signed links, deletes go to Supabase only in production). The first real test is runbook step 5.
+
+Before deploying — the owner does these two things (pictures stay off until both are done; text + links work without them):
+1. Supabase → Storage → New bucket named `announcement-media`, **Public bucket OFF**.
+2. Vercel → the project → Settings → Environment Variables (Production): `SUPABASE_URL` (the Supabase Project URL) and `SUPABASE_SERVICE_ROLE_KEY` (the `service_role` secret key). The owner pastes the key into Vercel directly — it never goes in chat or the repo.
+
+Production runbook:
+1. `npx prisma migrate deploy` applies `announcements` (additive: three new tables and two enums).
+2. No backfill.
+3. Fast-forward `main` to `person-first-p5`, push, wait for Vercel's production deployment. The workflow change ships with it: the hourly job gains the cleanup step (same `CRON_SECRET`).
+4. Smoke test: `/notifications` loads for a player and a coach; CEO View shows the Announce tab; `/api/cron/expire-media` without the secret answers 401; `/api/media/not-a-real-id` answers 404 when logged in.
+5. With the bucket and keys in place: the CEO sends one test announcement with a picture to **Coaches & staff** only, checks it shows, then deletes it.
+
+Deliberately unchanged: profile photos stay in the database. `lib/photoStore.ts` now needs `PHOTO_STORAGE=supabase-public` to move them to a public bucket, so adding the Supabase keys for announcements can never do that by accident.
+
+**Next:** deploy Phase 5 on the owner's word, then Phase 6 cleanup. Then the separate game logs + KPIs plan.
 
 - **Phase 1:**
   - `User.teamId` is nullable; screens read persona (`lib/persona.ts`), not `User.role`.

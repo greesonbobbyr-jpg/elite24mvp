@@ -13,9 +13,7 @@ export function SentAnnouncements({ items, empty }: { items: SentItem[]; empty: 
       ) : (
         items.map((s) => (
           <div key={s.view.id} className="flex flex-col gap-2">
-            <div className={s.status === "gone" ? "opacity-60" : undefined}>
-              <AnnouncementCard a={s.view} />
-            </div>
+            <AnnouncementCard a={s.view} />
             <div className="flex flex-wrap items-center justify-between gap-2 px-1">
               <p className="text-sm font-semibold text-ink-mid">
                 {s.status === "gone" ? "Disappeared · " : ""}

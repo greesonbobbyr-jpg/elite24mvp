@@ -103,7 +103,8 @@ export function AnnouncementCard({ a, action }: { a: AnnouncementView; action?: 
       <article className="theme-dark overflow-hidden rounded-2xl border-2 border-gold-solid bg-frame shadow-lg shadow-shade">
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="font-black italic leading-none text-ink" style={{ fontFamily: "var(--font-barlow)", fontSize: "1.05rem" }}>
+            {/* The wordmark is a logo (an image to screen readers), like the header's. */}
+            <span role="img" aria-label="Elite24MVP" className="font-black italic leading-none text-ink" style={{ fontFamily: "var(--font-barlow)", fontSize: "1.05rem" }}>
               Elite<span className="text-logo">24</span>MVP
             </span>
             <span className="rounded-full bg-gold-solid px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-on-gold">
