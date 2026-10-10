@@ -169,7 +169,25 @@ Production runbook:
    - Then `--verify`.
 3. Merge or rebase onto `main` (it holds the playbook commit if that deployed first), fast-forward, push, and wait for Vercel.
 
-**Next:** Phase 3 (new sign-up, org codes, invites, promotion). Phase 3 is where Gary can start creating organizations.
+### Ready, awaiting "Deploy": Phase 3 — accounts for everyone, email login, invites (branch `person-first-p3`)
+
+See the Phase 3 commit message for the full list.
+
+What changes for people already using the live app:
+- **Players who log in with a username** are asked once to add an email at their next login; after that, the email is their login.
+- **"Create a team" is gone.** A new organization needs an org code from the CEO (CEO View → Codes), or the CEO sets it up (CEO View → Orgs → Start an organization) and sends an Org Admin invite.
+- Everyone else sees no difference.
+
+Production runbook:
+1. `npx prisma migrate deploy` applies `invites` (additive: one new table and one enum).
+2. No backfill.
+3. Fast-forward `main` to `person-first-p3`, push, and wait for Vercel's production deployment.
+4. Smoke test:
+   - `/signup` and `/login` load.
+   - `/invite/x` shows "isn't valid".
+   - `/welcome` redirects to login when logged out.
+
+**Next:** Phase 5 (announcements, expiring media, the full ☰ number), then Phase 6 cleanup. Then the separate game logs + KPIs plan.
 
 - **Phase 1:**
   - `User.teamId` is nullable; screens read persona (`lib/persona.ts`), not `User.role`.
