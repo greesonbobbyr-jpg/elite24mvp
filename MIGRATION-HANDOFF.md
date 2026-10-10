@@ -169,7 +169,18 @@ Production runbook:
    - Then `--verify`.
 3. Merge or rebase onto `main` (it holds the playbook commit if that deployed first), fast-forward, push, and wait for Vercel.
 
-### Ready, awaiting "Deploy": Phase 3 — accounts for everyone, email login, invites (branch `person-first-p3`)
+### Deployed 2026-10-10: Phase 3 — accounts for everyone, email login, invites (`person-first-p3`, 0f7cf65)
+
+Deployed on the owner's "I want everything that is not live to be live and merged."
+- `invites` migration applied.
+- `main` fast-forwarded to 0f7cf65; the production deployment succeeded.
+- Live smoke test passed:
+  - `/signup` shows the new form.
+  - `/invite/x` shows "isn't valid".
+  - `/welcome` redirects to login.
+  - `/join?code=` leads to sign-up.
+
+The full layout / contrast / outline page check was still running at deploy time (the owner asked for it live). Tests, flows and the build had all passed. The only branch not merged is `org-tree-mockup`, a superseded dev-only sketch.
 
 See the Phase 3 commit message for the full list.
 
